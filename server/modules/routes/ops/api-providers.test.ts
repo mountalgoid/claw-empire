@@ -35,6 +35,21 @@ async function createHarness(now = 1_717_171_717_000) {
   return { app, db };
 }
 
+async function createProviderTools(db: DatabaseSync) {
+  const { createApiProviderTools } = await import("../../workflow/agents/providers/api-provider-tools.ts");
+  return createApiProviderTools({
+    db,
+    logsDir: ".tmp",
+    activeProcesses: new Map(),
+    broadcast: vi.fn(),
+    normalizeStreamChunk: String,
+    handleTaskRunComplete: vi.fn(),
+    createSafeLogStreamOps: () => ({ safeWrite: () => true, safeEnd: vi.fn(), isClosed: () => false }),
+    parseSSEStream: vi.fn().mockResolvedValue(undefined),
+    parseGeminiSSEStream: vi.fn().mockResolvedValue(undefined),
+  });
+}
+
 describe("api provider routes", () => {
   beforeEach(() => {
     process.env = { ...ORIGINAL_ENV, SESSION_SECRET: "api-provider-test-secret" };
@@ -59,6 +74,165 @@ describe("api provider routes", () => {
         base_url: "https://opencode.ai/zen/go/v1",
       });
       expect(response.body.official_presets["alibaba-coding-plan-openai"].fallback_models).toContain("qwen3.5-plus");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("returns MiniMax regional presets with current model IDs", async () => {
+    const { app, db } = await createHarness();
+
+    try {
+      const response = await request(app).get("/api/api-providers/presets").expect(200);
+      const expectedPresets = {
+        "minimax-global-openai": { type: "openai", base_url: "https://api.minimax.io/v1" },
+        "minimax-global-anthropic": { type: "anthropic", base_url: "https://api.minimax.io/anthropic" },
+        "minimax-cn-openai": { type: "openai", base_url: "https://api.minimaxi.com/v1" },
+        "minimax-cn-anthropic": { type: "anthropic", base_url: "https://api.minimaxi.com/anthropic" },
+      };
+
+      for (const [key, expected] of Object.entries(expectedPresets)) {
+        expect(response.body.official_presets[key]).toMatchObject({
+          ...expected,
+          fallback_models: ["MiniMax-M3.1-Flash", "MiniMax-M3"],
+        });
+      }
+    } finally {
+      db.close();
+    }
+  });
+
+  it.each([
+    ["minimax-global-openai", "https://api.minimax.io/v1/models"],
+    ["minimax-global-anthropic", "https://api.minimax.io/anthropic/v1/models"],
+    ["minimax-cn-openai", "https://api.minimaxi.com/v1/models"],
+    ["minimax-cn-anthropic", "https://api.minimaxi.com/anthropic/v1/models"],
+  ])("keeps %s choices current across cached, refreshed and stale discovery", async (presetKey, modelsUrl) => {
+    const { app, db } = await createHarness();
+    const expected = ["MiniMax-M3.1-Flash", "MiniMax-M3"];
+    try {
+      const created = await request(app).post("/api/api-providers").send({ name: "MiniMax", preset_key: presetKey });
+      const id = created.body.id;
+      const seeded = await request(app).get(`/api/api-providers/${id}/models`).expect(200);
+      expect(seeded.body.models).toEqual(expected);
+      const legacyCache = JSON.stringify(["MiniMax-M2.7", "MiniMax-M3", "speech-02-hd"]);
+      db.prepare("UPDATE api_providers SET models_cache = ? WHERE id = ?").run(legacyCache, id);
+      const cached = await request(app).get(`/api/api-providers/${id}/models`).expect(200);
+      expect(cached.body.models).toEqual([...expected, "speech-02-hd"]);
+      const listed = await request(app).get("/api/api-providers").expect(200);
+      expect(listed.body.providers[0].models_cache).toEqual(cached.body.models);
+      expect(db.prepare("SELECT models_cache FROM api_providers WHERE id = ?").get(id)?.models_cache).toBe(legacyCache);
+
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ data: [{ id: "MiniMax-M2.7" }, { id: "MiniMax-M3" }] }));
+      vi.stubGlobal("fetch", fetchMock);
+      const tested = await request(app).post(`/api/api-providers/${id}/test`).expect(200);
+      expect(tested.body.models).toEqual(expected);
+      expect(fetchMock.mock.calls[0][0]).toBe(modelsUrl);
+      const refreshed = await request(app).get(`/api/api-providers/${id}/models?refresh=true`).expect(200);
+      expect(refreshed.body.models).toEqual(expected);
+      expect(fetchMock.mock.calls[1][0]).toBe(modelsUrl);
+      fetchMock.mockResolvedValue(jsonResponse({}, 503));
+      const stale = await request(app).get(`/api/api-providers/${id}/models?refresh=true`).expect(200);
+      expect(stale.body).toMatchObject({ models: expected, cached: true, stale: true });
+    } finally {
+      db.close();
+    }
+  });
+
+  it.each([
+    ["minimax-global-openai", "https://api.minimax.io/v1/chat/completions"],
+    ["minimax-global-anthropic", "https://api.minimax.io/anthropic/v1/messages"],
+    ["minimax-cn-openai", "https://api.minimaxi.com/v1/chat/completions"],
+    ["minimax-cn-anthropic", "https://api.minimaxi.com/anthropic/v1/messages"],
+  ])("sends the default and explicit models unchanged through %s", async (presetKey, url) => {
+    const { app, db } = await createHarness();
+    try {
+      const created = await request(app).post("/api/api-providers").send({ name: "MiniMax", preset_key: presetKey });
+      const tools = await createProviderTools(db);
+      const fetchMock = vi.fn().mockImplementation(async () => new Response("data: [DONE]\n\n"));
+      vi.stubGlobal("fetch", fetchMock);
+      for (const selected of [null, "MiniMax-M3", "MiniMax-M2.7", "custom-model"]) {
+        await tools.executeApiProviderAgent(
+          "Preserve this prompt",
+          "/project",
+          null!,
+          new AbortController().signal,
+          undefined,
+          created.body.id,
+          selected,
+          () => true,
+        );
+        const [requestUrl, requestInit] = fetchMock.mock.calls.at(-1)!;
+        expect(requestUrl).toBe(url);
+        expect(requestInit.method).toBe("POST");
+        const body = JSON.parse(requestInit.body);
+        expect(body.model).toBe(selected ?? "MiniMax-M3.1-Flash");
+        expect(body.stream).toBe(true);
+        expect(body.messages.at(-1)).toEqual({ role: "user", content: "Preserve this prompt" });
+        expect(body).not.toHaveProperty("thinking");
+        expect(body).not.toHaveProperty("reasoning_effort");
+        expect(body).not.toHaveProperty("output_config");
+        expect(body).not.toHaveProperty("service_tier");
+        expect(body).not.toHaveProperty("reasoning_split");
+        if (presetKey.endsWith("anthropic")) expect(body.max_tokens).toBe(16384);
+      }
+      for (const cache of [null, "not-json", JSON.stringify(["MiniMax-M2.7"])]) {
+        db.prepare("UPDATE api_providers SET models_cache = ? WHERE id = ?").run(cache, created.body.id);
+        await tools.executeApiProviderAgent(
+          "Default",
+          "/project",
+          null!,
+          new AbortController().signal,
+          undefined,
+          created.body.id,
+          null,
+          () => true,
+        );
+        expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body).model).toBe("MiniMax-M3.1-Flash");
+      }
+    } finally {
+      db.close();
+    }
+  });
+
+  it("uses the documented M3 gateway route without seeding an unverified protocol", async () => {
+    const { app, db } = await createHarness();
+    try {
+      const presets = await request(app).get("/api/api-providers/presets").expect(200);
+      expect(presets.body.official_presets["opencode-go-anthropic"]).toMatchObject({
+        base_url: "https://opencode.ai/inference/go/anthropic/v1",
+        fallback_models: ["minimax-m3"],
+      });
+      const created = await request(app)
+        .post("/api/api-providers")
+        .send({ name: "Gateway", preset_key: "opencode-go-anthropic" });
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ data: [{ id: "minimax-m2.5" }, { id: "minimax-m3" }, { id: "minimax-m3.1-flash" }] }),
+        );
+      vi.stubGlobal("fetch", fetchMock);
+      const tested = await request(app).post(`/api/api-providers/${created.body.id}/test`).expect(200);
+      expect(tested.body.models).toEqual(["minimax-m3"]);
+      expect(fetchMock.mock.calls[0][0]).toBe("https://opencode.ai/inference/go/v1/models");
+      const tools = await createProviderTools(db);
+      fetchMock.mockImplementation(async () => new Response("data: [DONE]\n\n"));
+      await tools.executeApiProviderAgent(
+        "Gateway prompt",
+        "/project",
+        null!,
+        new AbortController().signal,
+        "test-session",
+        created.body.id,
+        null,
+        () => true,
+      );
+      const [url, init] = fetchMock.mock.calls.at(-1)!;
+      expect(url).toBe("https://opencode.ai/inference/go/anthropic/v1/messages");
+      expect(JSON.parse(init.body)).toMatchObject({ model: "minimax-m3", max_tokens: 16384, stream: true });
+      expect(init.headers).toMatchObject({ "User-Agent": "claw-empire", "x-opencode-session": "test-session" });
     } finally {
       db.close();
     }
@@ -414,7 +588,6 @@ describe("api provider routes", () => {
         "qwen3.5-plus",
         "kimi-k2.5",
         "glm-5",
-        "MiniMax-M2.5",
         "qwen3-max-2026-01-23",
         "qwen3-coder-next",
         "qwen3-coder-plus",

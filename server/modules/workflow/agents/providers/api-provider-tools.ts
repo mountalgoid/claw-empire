@@ -1,8 +1,10 @@
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import type { ChildProcess } from "node:child_process";
 import { decryptSecret } from "../../../../oauth/helpers.ts";
 import type { ApiProviderRow } from "./types.ts";
+import { apiModelChoices } from "../../../../config/minimax-models.ts";
 
 type DbLike = {
   prepare: (sql: string) => {
@@ -95,14 +97,15 @@ export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
 
   function resolveApiProviderModel(provider: ApiProviderRow, requestedModel: string | null): string {
     if (requestedModel) return requestedModel;
-    if (provider.models_cache) {
-      try {
-        const models = JSON.parse(provider.models_cache) as string[];
-        if (models.length > 0) return models[0];
-      } catch {
-        /* ignore */
-      }
+    let cachedModels: string[] = [];
+    try {
+      const parsed: unknown = JSON.parse(provider.models_cache ?? "[]");
+      if (Array.isArray(parsed)) cachedModels = parsed.filter((model): model is string => typeof model === "string");
+    } catch {
+      /* ignore malformed cache */
     }
+    const models = apiModelChoices(cachedModels, provider.base_url);
+    if (models.length > 0) return models[0];
     throw new Error(
       `No model specified for API provider '${provider.name}'. ` +
         `Please select a model in the agent settings or run a connection test first to cache available models.`,
@@ -215,6 +218,10 @@ export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
     if (taskId) broadcast("cli_output", { task_id: taskId, stream: "stderr", data: header });
 
     const req = buildApiProviderRequest(provider, model, prompt, projectPath);
+    if (req.url === "https://opencode.ai/inference/go/anthropic/v1/messages") {
+      req.headers["User-Agent"] = "claw-empire";
+      req.headers["x-opencode-session"] = taskId ?? randomUUID();
+    }
 
     const resp = await fetch(req.url, {
       method: "POST",
