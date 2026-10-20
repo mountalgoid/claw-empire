@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import { randomUUID } from "node:crypto";
 import { decryptSecret, encryptSecret } from "../../../oauth/helpers.ts";
+import { apiModelChoices, isDirectMiniMaxProvider, MINIMAX_TEXT_MODELS } from "../../../config/minimax-models.ts";
 
 type ApiProviderPreset = {
   base_url: string;
@@ -94,11 +95,11 @@ const OFFICIAL_API_PROVIDER_PRESETS = {
     label: "OpenCode Go (Anthropic)",
     description: "OpenCode Go direct API preset using the Anthropic-compatible protocol.",
     type: "anthropic",
-    base_url: "https://opencode.ai/zen/go/v1",
+    base_url: "https://opencode.ai/inference/go/anthropic/v1",
     docs_url: "https://opencode.ai/docs/ko/go/",
     api_key_hint: "Use an OpenCode Go direct API key for this endpoint.",
     api_key_placeholder: "sk-...",
-    fallback_models: ["minimax-m2.5"],
+    fallback_models: ["minimax-m3"],
   },
   "minimax-global-openai": {
     label: "MiniMax Global (OpenAI)",
@@ -108,7 +109,7 @@ const OFFICIAL_API_PROVIDER_PRESETS = {
     docs_url: "https://platform.minimax.io/docs",
     api_key_hint: "Use a MiniMax API key for this endpoint.",
     api_key_placeholder: "...",
-    fallback_models: ["MiniMax-M3", "MiniMax-M2.7"],
+    fallback_models: MINIMAX_TEXT_MODELS,
   },
   "minimax-global-anthropic": {
     label: "MiniMax Global (Anthropic)",
@@ -118,7 +119,7 @@ const OFFICIAL_API_PROVIDER_PRESETS = {
     docs_url: "https://platform.minimax.io/docs",
     api_key_hint: "Use a MiniMax API key for this endpoint.",
     api_key_placeholder: "...",
-    fallback_models: ["MiniMax-M3", "MiniMax-M2.7"],
+    fallback_models: MINIMAX_TEXT_MODELS,
   },
   "minimax-cn-openai": {
     label: "MiniMax China (OpenAI)",
@@ -128,7 +129,7 @@ const OFFICIAL_API_PROVIDER_PRESETS = {
     docs_url: "https://platform.minimaxi.com/docs",
     api_key_hint: "Use a MiniMax API key for this endpoint.",
     api_key_placeholder: "...",
-    fallback_models: ["MiniMax-M3", "MiniMax-M2.7"],
+    fallback_models: MINIMAX_TEXT_MODELS,
   },
   "minimax-cn-anthropic": {
     label: "MiniMax China (Anthropic)",
@@ -138,7 +139,7 @@ const OFFICIAL_API_PROVIDER_PRESETS = {
     docs_url: "https://platform.minimaxi.com/docs",
     api_key_hint: "Use a MiniMax API key for this endpoint.",
     api_key_placeholder: "...",
-    fallback_models: ["MiniMax-M3", "MiniMax-M2.7"],
+    fallback_models: MINIMAX_TEXT_MODELS,
   },
   "alibaba-coding-plan-openai": {
     label: "Bailian Coding Plan (OpenAI)",
@@ -152,7 +153,6 @@ const OFFICIAL_API_PROVIDER_PRESETS = {
       "qwen3.5-plus",
       "kimi-k2.5",
       "glm-5",
-      "MiniMax-M2.5",
       "qwen3-max-2026-01-23",
       "qwen3-coder-next",
       "qwen3-coder-plus",
@@ -172,7 +172,6 @@ const OFFICIAL_API_PROVIDER_PRESETS = {
       "qwen3.5-plus",
       "kimi-k2.5",
       "glm-5",
-      "MiniMax-M2.5",
       "qwen3-max-2026-01-23",
       "qwen3-coder-next",
       "qwen3-coder-plus",
@@ -238,7 +237,9 @@ function normalizeApiBaseUrl(rawUrl: string): string {
 
 function buildModelsUrl(type: ApiProviderType, baseUrl: string, apiKey: string): string {
   const preset = API_PROVIDER_PRESETS[type] || API_PROVIDER_PRESETS.custom;
-  const base = normalizeApiBaseUrl(baseUrl);
+  let base = normalizeApiBaseUrl(baseUrl);
+  if (type === "anthropic" && isDirectMiniMaxProvider(base) && !base.endsWith("/v1")) base += "/v1";
+  if (base === "https://opencode.ai/inference/go/anthropic/v1") base = "https://opencode.ai/inference/go/v1";
   let url = `${base}${preset.models_path}`;
   if (type === "google" && apiKey) {
     url += `?key=${encodeURIComponent(apiKey)}`;
@@ -341,7 +342,7 @@ export function registerApiProviderRoutes({ app, db, nowMs }: RegisterApiProvide
       preset_key: row.preset_key ?? null,
       has_api_key: Boolean(row.api_key_enc),
       enabled: Boolean(row.enabled),
-      models_cache: parseModelsCache(row.models_cache),
+      models_cache: apiModelChoices(parseModelsCache(row.models_cache), row.base_url),
       models_cached_at: row.models_cached_at,
       created_at: row.created_at,
       updated_at: row.updated_at,
@@ -529,7 +530,10 @@ export function registerApiProviderRoutes({ app, db, nowMs }: RegisterApiProvide
       }
 
       const data = await resp.json();
-      const models = mergeModelLists(officialPreset?.fallback_models ?? [], extractModelIds(row.type, data));
+      const models = apiModelChoices(
+        mergeModelLists(officialPreset?.fallback_models ?? [], extractModelIds(row.type, data)),
+        row.base_url,
+      );
       const now = nowMs();
       db.prepare("UPDATE api_providers SET models_cache = ?, models_cached_at = ?, updated_at = ? WHERE id = ?").run(
         JSON.stringify(models),
@@ -551,7 +555,7 @@ export function registerApiProviderRoutes({ app, db, nowMs }: RegisterApiProvide
     if (!row) return sendNotFound(res);
 
     const officialPreset = readOfficialPreset(row.preset_key)?.preset ?? null;
-    const cachedModels = parseModelsCache(row.models_cache);
+    const cachedModels = apiModelChoices(parseModelsCache(row.models_cache), row.base_url);
     if (!refresh && row.models_cache) {
       return res.json({ ok: true, models: cachedModels, cached: true });
     }
@@ -569,7 +573,10 @@ export function registerApiProviderRoutes({ app, db, nowMs }: RegisterApiProvide
         return res.status(502).json({ error: `upstream returned ${resp.status}` });
       }
       const data = await resp.json();
-      const models = mergeModelLists(officialPreset?.fallback_models ?? [], extractModelIds(row.type, data));
+      const models = apiModelChoices(
+        mergeModelLists(officialPreset?.fallback_models ?? [], extractModelIds(row.type, data)),
+        row.base_url,
+      );
       const now = nowMs();
       db.prepare("UPDATE api_providers SET models_cache = ?, models_cached_at = ?, updated_at = ? WHERE id = ?").run(
         JSON.stringify(models),

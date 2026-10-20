@@ -3,6 +3,16 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import type { RuntimeContext } from "../../../types/runtime-context.ts";
+import { currentMiniMaxChoices } from "../../../config/minimax-models.ts";
+
+function currentModelCatalog<T extends string | CliModelInfoServer>(catalog: Record<string, T[]>): Record<string, T[]> {
+  return Object.fromEntries(
+    Object.entries(catalog).map(([provider, models]) => {
+      const byId = new Map(models.map((model) => [typeof model === "string" ? model : model.slug, model]));
+      return [provider, currentMiniMaxChoices([...byId.keys()]).map((id) => byId.get(id)!)];
+    }),
+  );
+}
 
 interface CliModelInfoServer {
   slug: string;
@@ -202,12 +212,12 @@ export function registerModelRoutes(ctx: RuntimeContext): void {
 
     if (!refresh) {
       if (cachedCliModels) {
-        return res.json({ models: cachedCliModels.data });
+        return res.json({ models: currentModelCatalog(cachedCliModels.data) });
       }
       const dbCached = readModelCache("cli_models_cache");
       if (dbCached) {
         cachedCliModels = { data: dbCached, loadedAt: Date.now() };
-        return res.json({ models: dbCached });
+        return res.json({ models: currentModelCatalog(dbCached) });
       }
     }
 
@@ -246,7 +256,7 @@ export function registerModelRoutes(ctx: RuntimeContext): void {
 
     cachedCliModels = { data: models, loadedAt: Date.now() };
     writeModelCache("cli_models_cache", models);
-    res.json({ models });
+    res.json({ models: currentModelCatalog(models) });
   });
 
   app.get("/api/oauth/models", async (req, res) => {
@@ -254,13 +264,13 @@ export function registerModelRoutes(ctx: RuntimeContext): void {
 
     if (!refresh) {
       if (cachedModels) {
-        return res.json({ models: cachedModels.data });
+        return res.json({ models: currentModelCatalog(cachedModels.data) });
       }
       const dbCached = readModelCache("oauth_models_cache");
       if (dbCached) {
         cachedModels = { data: dbCached, loadedAt: Date.now() };
         ctx.cachedModels = cachedModels;
-        return res.json({ models: dbCached });
+        return res.json({ models: currentModelCatalog(dbCached) });
       }
     }
 
@@ -304,7 +314,7 @@ export function registerModelRoutes(ctx: RuntimeContext): void {
       cachedModels = { data: merged, loadedAt: Date.now() };
       ctx.cachedModels = cachedModels;
       writeModelCache("oauth_models_cache", merged);
-      res.json({ models: merged });
+      res.json({ models: currentModelCatalog(merged) });
     } catch (err) {
       res.status(500).json({ error: "model_fetch_failed", message: String(err) });
     }

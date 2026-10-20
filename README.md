@@ -779,10 +779,14 @@ Use only a plain executable + fixed args format (no shell/interpreter wrappers, 
 
 ### Official API presets
 
-The **Settings > API** tab now includes four official direct-API presets:
+The **Settings > API** tab includes these official direct-API presets:
 
 - `OpenCode Go (OpenAI)` -> `https://opencode.ai/zen/go/v1`
-- `OpenCode Go (Anthropic)` -> `https://opencode.ai/zen/go/v1`
+- `OpenCode Go (Anthropic)` -> `https://opencode.ai/inference/go/anthropic/v1`
+- `MiniMax Global (OpenAI)` -> `https://api.minimax.io/v1`
+- `MiniMax Global (Anthropic)` -> `https://api.minimax.io/anthropic`
+- `MiniMax China (OpenAI)` -> `https://api.minimaxi.com/v1`
+- `MiniMax China (Anthropic)` -> `https://api.minimaxi.com/anthropic`
 - `Bailian Coding Plan (OpenAI)` -> `https://coding-intl.dashscope.aliyuncs.com/v1`
 - `Bailian Coding Plan (Anthropic)` -> `https://coding-intl.dashscope.aliyuncs.com/apps/anthropic`
 
@@ -791,7 +795,8 @@ Notes:
 - Bailian Coding Plan API keys must start with `sk-sp-`.
 - These presets seed fallback model lists immediately so agents can be assigned even when live `/models` discovery is unavailable or incomplete.
 - The assignment modal uses `development` as the default baseline and also includes office packs that have already completed initial setup and been hydrated into runtime state.
-- Direct API presets use the provider endpoint model IDs such as `glm-5`, `kimi-k2.5`, and `minimax-m2.5`. They do **not** use OpenCode CLI model IDs like `opencode-go/<model-id>`.
+- Direct API presets use the provider endpoint model IDs such as `glm-5`, `kimi-k2.5`, and `minimax-m3`. They do **not** use OpenCode CLI model IDs like `opencode-go/<model-id>`.
+- MiniMax regional presets default to `MiniMax-M3.1-Flash`, followed by `MiniMax-M3`. Older MiniMax text models are hidden from discovery choices; explicit saved and custom model IDs remain unchanged. The OpenCode Go Anthropic preset uses `minimax-m3`, as Flash uses a separate protocol endpoint.
 - Bailian Coding Plan keys are intended for the interactive coding tool flow. Review the provider documentation before reusing those keys in other environments.
 
 Claw-Empire supports three provider paths:
