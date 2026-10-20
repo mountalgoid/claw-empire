@@ -123,7 +123,9 @@ describe("api provider routes", () => {
       expect(listed.body.providers[0].models_cache).toEqual(cached.body.models);
       expect(db.prepare("SELECT models_cache FROM api_providers WHERE id = ?").get(id)?.models_cache).toBe(legacyCache);
 
-      const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: [{ id: "MiniMax-M2.7" }, { id: "MiniMax-M3" }] }));
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ data: [{ id: "MiniMax-M2.7" }, { id: "MiniMax-M3" }] }));
       vi.stubGlobal("fetch", fetchMock);
       const tested = await request(app).post(`/api/api-providers/${id}/test`).expect(200);
       expect(tested.body.models).toEqual(expected);
