@@ -272,6 +272,8 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
         logFilePath,
         controller,
         fakePid,
+        undefined,
+        { searchSessionId: executionSession.sessionId },
       );
     } else if (provider === "copilot" || provider === "antigravity") {
       const controller = new AbortController();

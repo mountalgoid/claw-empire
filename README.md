@@ -815,6 +815,27 @@ Configure providers and models in the **Settings > CLI Tools** panel within the 
 Alternatively, connect agents to external LLM APIs (no CLI installation required) via the **Settings > API** tab. API keys are stored encrypted (AES-256-GCM) in the local SQLite database — not in `.env` or source code.
 Skills learn/unlearn automation is currently designed for CLI-capable providers.
 
+### Web search for API task agents
+
+Task runs using OpenAI-compatible API providers can search the web and read pages through
+[Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp). Search uses Fast
+mode and needs no Parallel account or API key. Use a model that supports function calling;
+the selected model provider and its credentials still apply.
+
+Search is available by default for these task runs, including delegated tasks. Set
+`CLAW_EMPIRE_API_SEARCH=off` in `.env` and restart the server to disable it, including for
+models that do not support tools. `parallel` explicitly selects the built-in service.
+Anthropic, Google, OAuth, CLI agents, and one-shot chat/meeting replies keep their current
+behavior and tool configuration.
+
+The model chooses when to call `web_search` or `web_fetch`. Search queries and requested
+URLs are sent to Parallel; page excerpts and source URLs return to the model as tool
+results. Treat web content as untrusted source material. Each task execution session
+keeps its own opaque search session ID across related calls and resumptions. Runs allow
+up to eight tool rounds, with request timeouts and task cancellation. Service errors are
+returned to the model without switching search providers. The anonymous service has
+usage limits; errors do not establish that a source was checked.
+
 ---
 
 ## Project Structure

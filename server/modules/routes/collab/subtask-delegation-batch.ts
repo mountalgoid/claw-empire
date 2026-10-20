@@ -92,6 +92,8 @@ interface BatchDeps {
     logFilePath: string,
     controller: AbortController,
     fakePid: number,
+    onComplete?: (exitCode: number) => void,
+    options?: { searchSessionId?: string; noTools?: boolean },
   ) => void;
   launchHttpAgent: (
     taskId: string,
@@ -598,6 +600,8 @@ export function createSubtaskDelegationBatch(deps: BatchDeps) {
                 logFilePath,
                 controller,
                 fakePid,
+                undefined,
+                { searchSessionId: executionSession.sessionId },
               );
               delegatedProcessStarted = true;
             } catch (error) {

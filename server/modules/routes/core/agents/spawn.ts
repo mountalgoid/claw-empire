@@ -257,6 +257,8 @@ export function registerAgentSpawnRoute(ctx: RuntimeContext): void {
         logPath,
         controller,
         fakePid,
+        undefined,
+        { searchSessionId: executionSession.sessionId },
       );
       return res.json({ ok: true, pid: fakePid, logPath, cwd: agentCwd });
     }

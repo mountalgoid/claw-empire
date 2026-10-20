@@ -585,6 +585,7 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
               controller,
               fakePid,
               finalizeCrossDeptRun,
+              { searchSessionId: executionSession.sessionId },
             );
           } else if (execProvider === "copilot" || execProvider === "antigravity") {
             const controller = new AbortController();

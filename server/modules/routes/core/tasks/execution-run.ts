@@ -555,6 +555,8 @@ Whenever you complete a subtask, report it in this format:
         logPath,
         controller,
         fakePid,
+        undefined,
+        { searchSessionId: executionSession.sessionId },
       );
       return res.json({ ok: true, pid: fakePid, logPath, cwd: agentCwd, worktree: !!worktreePath });
     }

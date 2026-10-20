@@ -116,6 +116,7 @@ export function initializeWorkflowAgentProviders(ctx: RuntimeContext): any {
     ANTIGRAVITY_ENDPOINTS,
   });
   const {
+    parseHttpAgentSubtasks,
     createSafeLogStreamOps,
     parseSSEStream,
     parseGeminiSSEStream,
@@ -132,6 +133,7 @@ export function initializeWorkflowAgentProviders(ctx: RuntimeContext): any {
     normalizeStreamChunk,
     handleTaskRunComplete,
     createSafeLogStreamOps,
+    parseHttpAgentSubtasks,
     parseSSEStream,
     parseGeminiSSEStream,
   });

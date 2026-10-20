@@ -3,6 +3,9 @@ import path from "node:path";
 import type { ChildProcess } from "node:child_process";
 import { decryptSecret } from "../../../../oauth/helpers.ts";
 import type { ApiProviderRow } from "./types.ts";
+import { runApiSearchAgent } from "./parallel-search-tools.ts";
+
+export type ApiProviderRunOptions = { searchSessionId?: string; noTools?: boolean };
 
 type DbLike = {
   prepare: (sql: string) => {
@@ -22,6 +25,7 @@ type CreateApiProviderToolsDeps = {
     safeEnd: (onDone?: () => void) => void;
     isClosed: () => boolean;
   };
+  parseHttpAgentSubtasks: (taskId: string, text: string, accum: { buf: string }) => void;
   parseSSEStream: (
     body: ReadableStream<Uint8Array>,
     signal: AbortSignal,
@@ -45,6 +49,7 @@ export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
     normalizeStreamChunk,
     handleTaskRunComplete,
     createSafeLogStreamOps,
+    parseHttpAgentSubtasks,
     parseSSEStream,
     parseGeminiSSEStream,
   } = deps;
@@ -194,6 +199,7 @@ export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
     apiProviderId?: string | null,
     apiModel?: string | null,
     safeWriteOverride?: (text: string) => boolean,
+    options: ApiProviderRunOptions = {},
   ): Promise<void> {
     const safeWrite = safeWriteOverride ?? createSafeLogStreamOps(logStream).safeWrite;
 
@@ -215,6 +221,38 @@ export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
     if (taskId) broadcast("cli_output", { task_id: taskId, stream: "stderr", data: header });
 
     const req = buildApiProviderRequest(provider, model, prompt, projectPath);
+
+    // Only task launchers supply a conversation ID. Meeting/chat one-shots stay tool-free.
+    const taskSearch =
+      options.searchSessionId && !options.noTools && provider.type !== "anthropic" && provider.type !== "google";
+    if (taskSearch) {
+      const mode = process.env.CLAW_EMPIRE_API_SEARCH ?? "parallel";
+      if (mode !== "off" && mode !== "parallel") {
+        throw new Error("CLAW_EMPIRE_API_SEARCH must be parallel or off.");
+      }
+      if (mode === "parallel") {
+        const subtaskAccum = { buf: "" };
+        await runApiSearchAgent(
+          req,
+          signal,
+          (text) => {
+            const normalized = normalizeStreamChunk(text);
+            const written = safeWrite(normalized);
+            if (taskId && normalized) {
+              broadcast("cli_output", { task_id: taskId, stream: "stdout", data: normalized });
+              parseHttpAgentSubtasks(taskId, normalized, subtaskAccum);
+            }
+            return written;
+          },
+          options.searchSessionId!,
+          model,
+        );
+        const done = `\n---\n[api:${provider.type}] Done.\n`;
+        safeWrite(done);
+        if (taskId) broadcast("cli_output", { task_id: taskId, stream: "stderr", data: done });
+        return;
+      }
+    }
 
     const resp = await fetch(req.url, {
       method: "POST",
@@ -252,6 +290,7 @@ export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
     controller: AbortController,
     fakePid: number,
     onComplete?: (exitCode: number) => void,
+    options: ApiProviderRunOptions = {},
   ): void {
     const logStream = fs.createWriteStream(logPath, { flags: "a" });
     const { safeWrite, safeEnd } = createSafeLogStreamOps(logStream);
@@ -281,6 +320,7 @@ export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
           apiProviderId,
           apiModel,
           safeWrite,
+          options,
         );
       } catch (err: any) {
         exitCode = 1;

@@ -86,6 +86,8 @@ interface SubtaskDelegationDeps {
     logFilePath: string,
     controller: AbortController,
     fakePid: number,
+    onComplete?: (exitCode: number) => void,
+    options?: { searchSessionId?: string; noTools?: boolean },
   ) => void;
   launchHttpAgent: (
     taskId: string,

@@ -49,6 +49,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,yml,yaml,css,scss,html}\""
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@remotion/cli": "^4.0.429",
     "cors": "^2.8.6",
     "express": "^5.2.1",
