@@ -8,13 +8,22 @@ import {
   type TaskDiffResult,
   type TaskVerifyCommitResult,
 } from "../../api";
+import { DirectiveBranchChip } from "./DirectiveProgress";
+import type { TaskDirectiveContext } from "./directive-progress";
 
 interface DiffModalProps {
   taskId: string;
+  directive?: TaskDirectiveContext;
+  ownerName?: string | null;
   onClose: () => void;
 }
 
-function DiffModal({ taskId, onClose }: DiffModalProps) {
+type IntegrationOutcome =
+  | { kind: "integrated"; message: string }
+  | { kind: "conflict"; message: string; conflicts: string[] }
+  | { kind: "failed"; message: string };
+
+function DiffModal({ taskId, directive, ownerName, onClose }: DiffModalProps) {
   const { t } = useI18n();
   const [diffData, setDiffData] = useState<TaskDiffResult | null>(null);
   const [verifyData, setVerifyData] = useState<TaskVerifyCommitResult | null>(null);
@@ -24,6 +33,15 @@ function DiffModal({ taskId, onClose }: DiffModalProps) {
   const [merging, setMerging] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [actionResult, setActionResult] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<IntegrationOutcome | null>(null);
+  const integrationBranch = directive?.branch ?? null;
+  // Child and revision tasks integrate inside the root's single CEO approval.
+  const approvedWithDirective = !!directive && !directive.isRoot;
+  const directiveSummary = directive?.isRoot ? directive.summary : null;
+  const openParts = directiveSummary
+    ? directiveSummary.parts.length - directiveSummary.counts.integrated - directiveSummary.counts.awaiting_approval
+    : 0;
+  const waitingOnParts = directiveSummary?.readiness === "not_ready";
 
   useEffect(() => {
     Promise.allSettled([getTaskDiff(taskId), getTaskVerifyCommit(taskId)]).then(([diffResult, verifyResult]) => {
@@ -59,35 +77,39 @@ function DiffModal({ taskId, onClose }: DiffModalProps) {
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  const handleMerge = useCallback(async () => {
-    if (
-      !confirm(
-        t({
-          ko: "이 브랜치를 메인에 병합하시겠습니까?",
-          en: "Merge this branch into main?",
-          ja: "このブランチを main にマージしますか？",
-          zh: "要将此分支合并到 main 吗？",
-        }),
+  const handleMerge = useCallback(
+    async (retry = false) => {
+      const target =
+        integrationBranch ??
+        t({ ko: "디렉티브 브랜치", en: "the directive branch", ja: "ディレクティブブランチ", zh: "指令分支" });
+      if (
+        !retry &&
+        !confirm(
+          t({
+            ko: `이 디렉티브를 승인하고 ${target}에 통합하시겠습니까?\n\n로컬 통합만 수행합니다. 프로젝트 체크아웃, dev, main은 변경되지 않으며 push나 PR은 없습니다.`,
+            en: `Approve this directive and integrate it into ${target}?\n\nLocal integration only: the project checkout, dev and main are not changed, and nothing is pushed or opened as a PR.`,
+            ja: `このディレクティブを承認し ${target} に統合しますか？\n\nローカル統合のみです。プロジェクトのチェックアウト、dev、main は変更されず、push や PR も行いません。`,
+            zh: `批准此指令并集成到 ${target} 吗？\n\n仅本地集成：项目检出、dev 和 main 不会更改，也不会推送或创建 PR。`,
+          }),
+        )
       )
-    )
-      return;
-    setMerging(true);
-    try {
-      const result = await mergeTask(taskId);
-      setActionResult(
-        result.ok
-          ? `${t({ ko: "병합 완료", en: "Merge completed", ja: "マージ完了", zh: "合并完成" })}: ${result.message}`
-          : `${t({ ko: "병합 실패", en: "Merge failed", ja: "マージ失敗", zh: "合并失败" })}: ${result.message}`,
-      );
-      if (result.ok) setTimeout(onClose, 1500);
-    } catch (e: unknown) {
-      setActionResult(
-        `${t({ ko: "오류", en: "Error", ja: "エラー", zh: "错误" })}: ${e instanceof Error ? e.message : String(e)}`,
-      );
-    } finally {
-      setMerging(false);
-    }
-  }, [taskId, onClose, t]);
+        return;
+      setMerging(true);
+      setOutcome(null);
+      try {
+        const result = await mergeTask(taskId);
+        if (result.ok) setOutcome({ kind: "integrated", message: result.message });
+        else if (result.conflicts?.length)
+          setOutcome({ kind: "conflict", message: result.message, conflicts: result.conflicts });
+        else setOutcome({ kind: "failed", message: result.message });
+      } catch (e: unknown) {
+        setOutcome({ kind: "failed", message: e instanceof Error ? e.message : String(e) });
+      } finally {
+        setMerging(false);
+      }
+    },
+    [taskId, integrationBranch, t],
+  );
 
   const handleDiscard = useCallback(async () => {
     if (
@@ -175,15 +197,28 @@ function DiffModal({ taskId, onClose }: DiffModalProps) {
                 {diffData.branchName}
               </span>
             )}
+            {integrationBranch && (
+              <>
+                <span aria-hidden="true" className="text-slate-500">
+                  →
+                </span>
+                <DirectiveBranchChip branch={integrationBranch} />
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleMerge}
-              disabled={merging || discarding || !diffData?.hasWorktree}
-              className="rounded-lg bg-green-700 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-600 disabled:opacity-40"
-            >
-              {merging ? "..." : t({ ko: "병합", en: "Merge", ja: "マージ", zh: "合并" })}
-            </button>
+            {!approvedWithDirective && (
+              <button
+                onClick={() => void handleMerge()}
+                disabled={merging || discarding || !diffData?.hasWorktree || waitingOnParts}
+                aria-describedby={waitingOnParts ? "directive-approval-hold" : undefined}
+                className="rounded-lg bg-green-700 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-600 disabled:opacity-40"
+              >
+                {merging
+                  ? "..."
+                  : t({ ko: "디렉티브 승인", en: "Approve directive", ja: "ディレクティブを承認", zh: "批准指令" })}
+              </button>
+            )}
             <button
               onClick={handleDiscard}
               disabled={merging || discarding || !diffData?.hasWorktree}
@@ -200,6 +235,102 @@ function DiffModal({ taskId, onClose }: DiffModalProps) {
             </button>
           </div>
         </div>
+
+        {approvedWithDirective && (
+          <p className="border-b border-slate-700 bg-slate-800 px-5 py-2 text-xs text-sky-300">
+            {t({
+              ko: "이 작업은 별도로 승인하지 않습니다. 루트 디렉티브의 단일 CEO 승인에서 함께 통합됩니다.",
+              en: "This part is not approved on its own. It integrates with the root directive's single CEO approval.",
+              ja: "この作業は単独では承認しません。ルートディレクティブの一括 CEO 承認で統合されます。",
+              zh: "此部分不单独审批，将随根指令的一次性 CEO 审批一并集成。",
+            })}
+          </p>
+        )}
+        {waitingOnParts && (
+          <p
+            id="directive-approval-hold"
+            className="border-b border-slate-700 bg-slate-800 px-5 py-2 text-xs text-amber-300"
+          >
+            {t({
+              ko: `승인 보류: 아직 ${openParts}개 작업이 통합 준비되지 않았습니다.`,
+              en: `Approval on hold: ${openParts} part(s) are not ready to integrate yet.`,
+              ja: `承認保留: まだ ${openParts} 件が統合準備できていません。`,
+              zh: `审批暂缓：仍有 ${openParts} 项尚未准备好集成。`,
+            })}
+          </p>
+        )}
+
+        {/* Integration outcome */}
+        {outcome?.kind === "integrated" && (
+          <div
+            role="status"
+            className="border-b border-emerald-500/30 bg-emerald-500/10 px-5 py-2 text-sm text-emerald-200"
+          >
+            <p className="font-medium">
+              ✅{" "}
+              {t({
+                ko: `${integrationBranch ?? "디렉티브 브랜치"}에 통합되었습니다. 검토를 위해 브랜치가 유지됩니다.`,
+                en: `Integrated into ${integrationBranch ?? "the directive branch"}. The branch is kept for your review.`,
+                ja: `${integrationBranch ?? "ディレクティブブランチ"} に統合しました。レビュー用にブランチを保持します。`,
+                zh: `已集成到 ${integrationBranch ?? "指令分支"}。分支已保留供您审核。`,
+              })}
+            </p>
+            <p className="text-xs text-emerald-300/80">
+              {t({
+                ko: "프로젝트 체크아웃, dev, main은 변경되지 않았고 push되지 않았습니다. 게시는 별도의 CEO 작업입니다.",
+                en: "Project checkout, dev and main are unchanged and nothing was pushed. Publishing is a separate CEO action.",
+                ja: "プロジェクトのチェックアウト、dev、main は未変更で push もしていません。公開は別の CEO 操作です。",
+                zh: "项目检出、dev 和 main 均未更改，也未推送。发布是单独的 CEO 操作。",
+              })}
+            </p>
+          </div>
+        )}
+        {outcome && outcome.kind !== "integrated" && (
+          <div role="alert" className="border-b border-red-500/30 bg-red-500/10 px-5 py-2 text-sm text-red-200">
+            <p className="font-medium">
+              ⚠️{" "}
+              {outcome.kind === "conflict"
+                ? t({
+                    ko: "통합 충돌: 디렉티브 브랜치는 변경되지 않았습니다.",
+                    en: "Integration conflict: the directive branch was not changed.",
+                    ja: "統合コンフリクト: ディレクティブブランチは変更されていません。",
+                    zh: "集成冲突：指令分支未被更改。",
+                  })
+                : t({
+                    ko: "통합 실패: 디렉티브 브랜치는 변경되지 않았습니다.",
+                    en: "Integration failed: the directive branch was not changed.",
+                    ja: "統合失敗: ディレクティブブランチは変更されていません。",
+                    zh: "集成失败：指令分支未被更改。",
+                  })}
+            </p>
+            {outcome.kind === "conflict" && (
+              <>
+                <ul className="mt-1 list-inside list-disc font-mono text-xs text-red-200/90">
+                  {outcome.conflicts.map((file) => (
+                    <li key={file}>{file}</li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-xs text-red-200/80">
+                  {t({
+                    ko: `${ownerName ?? "담당자"}가 기존 워크트리에서 충돌을 해결한 뒤 다시 시도하세요.`,
+                    en: `${ownerName ?? "The owner"} resolves these in the retained worktree; then retry.`,
+                    ja: `${ownerName ?? "担当者"} が既存のワークツリーで解消した後、再試行してください。`,
+                    zh: `由 ${ownerName ?? "负责人"} 在保留的工作树中解决后再重试。`,
+                  })}
+                </p>
+              </>
+            )}
+            {outcome.kind === "failed" && <p className="text-xs text-red-200/80">{outcome.message}</p>}
+            <button
+              type="button"
+              onClick={() => void handleMerge(true)}
+              disabled={merging}
+              className="mt-1.5 rounded bg-red-800 px-2 py-1 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-40"
+            >
+              ↻ {t({ ko: "통합 다시 시도", en: "Retry integration", ja: "統合を再試行", zh: "重试集成" })}
+            </button>
+          </div>
+        )}
 
         {/* Action result */}
         {actionResult && (

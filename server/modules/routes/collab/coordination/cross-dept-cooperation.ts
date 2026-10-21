@@ -42,6 +42,7 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
     linkCrossDeptTaskToParentSubtask,
     detectProjectPath,
     resolveProjectPath,
+    createWorktree,
     logsDir,
     getDeptRoleConstraint,
     getRecentConversationContext,
@@ -57,6 +58,8 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
     handleSubtaskDelegationComplete,
     handleTaskRunComplete,
     startProgressTimer,
+    processSubtaskDelegations,
+    maybeNotifyAllSubtasksComplete,
   } = deps;
 
   function getConstrainedAgentIds(
@@ -129,6 +132,19 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
         }
       | undefined;
     if (!parent || parent.status !== "collaborating" || !parent.department_id) return;
+
+    const graph = db
+      .prepare(
+        "SELECT 1 FROM task_logs WHERE task_id = ? AND kind = 'system' AND message LIKE 'Planned graph seeded %' LIMIT 1",
+      )
+      .get(parent.id);
+    if (graph) {
+      // Graph dependencies survive lost in-memory callbacks. Never reconstruct
+      // them as the legacy sequential department queue.
+      processSubtaskDelegations(parent.id);
+      maybeNotifyAllSubtasksComplete(parent.id);
+      return;
+    }
 
     const activeSibling = db
       .prepare(
@@ -251,6 +267,10 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
       return;
     }
 
+    const parent = db.prepare("SELECT status FROM tasks WHERE id = ?").get(ctx.taskId) as
+      | { status: string }
+      | undefined;
+    if (!parent || !["planned", "pending", "collaborating", "in_progress", "review"].includes(parent.status)) return;
     const crossDeptId = deptIds[index];
     const { teamLeader, taskTitle, ceoMessage, leaderDeptId, leaderDeptName, leaderName, lang, taskId } = ctx;
     const resolvedProjectId =
@@ -269,8 +289,9 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
         : getConstrainedAgentIds(resolvedPackKey ?? null, resolvedProjectId, ctx.leaderDeptId);
     const crossLeader = findTeamLeader(crossDeptId, projectCandidateAgentIds);
     if (!crossLeader) {
-      // Skip this dept, try next
-      startCrossDeptCooperation(deptIds, index + 1, ctx, onAllDone);
+      appendTaskLog(taskId, "system", `Collaboration waiting for department leader (${crossDeptId})`);
+      const retry = setTimeout(() => startCrossDeptCooperation(deptIds, index, ctx, onAllDone), 5_000);
+      retry.unref?.();
       return;
     }
     const nextCtx: CrossDeptContext =
@@ -352,6 +373,8 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
     // Cross-department leader acknowledges AND creates a real task
     const crossAckDelay = 1500 + Math.random() * 1000;
     setTimeout(() => {
+      const parent = db.prepare("SELECT status FROM tasks WHERE id = ?").get(taskId) as { status: string } | undefined;
+      if (!parent || !["planned", "pending", "collaborating", "in_progress", "review"].includes(parent.status)) return;
       const crossSubAtRun = manualScoped
         ? findBestSubordinate(crossDeptId, crossLeader.id, projectCandidateAgentIds)
         : findBestSubordinate(crossDeptId, crossLeader.id);
@@ -362,11 +385,21 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
             pickManualPoolAgent(projectCandidateAgentIds, crossDeptId) ||
             pickManualPoolAgent(projectCandidateAgentIds, null)
           : null;
+      const availableAgent = (candidate: AgentRow | null): AgentRow | null => {
+        if (!candidate) return null;
+        const fresh = db.prepare("SELECT * FROM agents WHERE id = ?").get(candidate.id) as AgentRow | undefined;
+        return fresh && ["idle", "break"].includes(fresh.status) && !fresh.current_task_id ? fresh : null;
+      };
       const execAgent =
-        crossSubAtRun ??
-        (crossLeaderAllowed ? crossLeader : manualPoolFallbackAtRun) ??
-        crossCoordinator ??
-        crossLeader;
+        availableAgent(crossSubAtRun) ??
+        availableAgent(crossLeaderAllowed ? crossLeader : manualPoolFallbackAtRun) ??
+        availableAgent(crossCoordinator);
+      if (!execAgent) {
+        appendTaskLog(taskId, "system", `Collaboration waiting for an available agent (${crossDeptId})`);
+        const retry = setTimeout(() => startCrossDeptCooperation(deptIds, index, nextCtx, onAllDone), 5_000);
+        retry.unref?.();
+        return;
+      }
       const execName = lang === "ko" ? execAgent.name_ko || execAgent.name : execAgent.name;
 
       const crossAckMsg =
@@ -516,6 +549,12 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
           | undefined;
         if (crossTaskData) {
           const projPath = resolveProjectPath(crossTaskData);
+          const agentCwd = createWorktree(projPath, crossTaskId, execAgent.name);
+          if (!agentCwd) {
+            appendTaskLog(crossTaskId, "error", "Execution blocked: isolated collaboration worktree creation failed");
+            handleTaskRunComplete(crossTaskId, 1);
+            return;
+          }
           const logFilePath = path.join(logsDir, `${crossTaskId}.log`);
           const roleLabels: Record<string, string> = {
             team_leader: "Team Leader",
@@ -563,12 +602,9 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
             spawnPrompt,
           ].join("\n");
           const finalizeCrossDeptRun = (exitCode: number) => {
-            const linked = delegatedTaskToSubtask.get(crossTaskId);
-            if (linked) {
-              handleSubtaskDelegationComplete(crossTaskId, linked, exitCode);
-            } else {
-              handleTaskRunComplete(crossTaskId, exitCode);
-            }
+            // Completion and dependency release follow approval/integration,
+            // including HTTP/API providers with linked subtasks.
+            handleTaskRunComplete(crossTaskId, exitCode);
           };
 
           appendTaskLog(crossTaskId, "system", `RUN start (agent=${execAgent.name}, provider=${execProvider})`);
@@ -580,7 +616,7 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
               execAgent.api_provider_id ?? null,
               execAgent.api_model ?? null,
               sessionPrompt,
-              projPath,
+              agentCwd,
               logFilePath,
               controller,
               fakePid,
@@ -593,7 +629,7 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
               crossTaskId,
               execProvider,
               sessionPrompt,
-              projPath,
+              agentCwd,
               logFilePath,
               controller,
               fakePid,
@@ -611,7 +647,7 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
               crossTaskId,
               execProvider,
               sessionPrompt,
-              projPath,
+              agentCwd,
               logFilePath,
               crossModel,
               crossReasoningLevel,

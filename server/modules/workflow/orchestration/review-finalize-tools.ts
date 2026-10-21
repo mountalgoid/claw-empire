@@ -7,6 +7,7 @@ import {
 } from "../packs/video-artifact.ts";
 import { evaluateRemotionOnlyGateFromLogFiles } from "../packs/video-render-engine-gate.ts";
 import { readYoloModeEnabled } from "../../routes/ops/messages/decision-inbox/yolo-mode.ts";
+import { createWorktreeLifecycleTools, findTaskBranch, recoverTaskWorktree } from "../core/worktree/lifecycle.ts";
 import { reconcileVideoRenderDelegationState } from "./video-render-delegation-state.ts";
 
 type CreateReviewFinalizeToolsDeps = Record<string, any>;
@@ -26,9 +27,10 @@ export function createReviewFinalizeTools(deps: CreateReviewFinalizeToolsDeps) {
     projectReviewGateNotifiedAt,
     notifyCeo,
     taskWorktrees,
-    mergeToDevAndCreatePR,
     mergeWorktree,
     cleanupWorktree,
+    startTaskExecutionForAgent,
+    getDeptName,
     findTeamLeader,
     getAgentDisplayName,
     setTaskCreationAuditCompletion,
@@ -59,9 +61,12 @@ export function createReviewFinalizeTools(deps: CreateReviewFinalizeToolsDeps) {
 `,
       )
       .all(taskId) as Array<{ id: string; task_id: string }>;
-    if (linked.length <= 0) return;
 
     const touchedParents = new Set<string>();
+    const task = db.prepare("SELECT source_task_id FROM tasks WHERE id = ?").get(taskId) as
+      | { source_task_id: string | null }
+      | undefined;
+    if (task?.source_task_id) touchedParents.add(task.source_task_id);
     for (const sub of linked) {
       if (sub.task_id) touchedParents.add(sub.task_id);
     }
@@ -128,7 +133,7 @@ export function createReviewFinalizeTools(deps: CreateReviewFinalizeToolsDeps) {
   function finishReview(
     taskId: string,
     taskTitle: string,
-    options?: { bypassProjectDecisionGate?: boolean; trigger?: string },
+    options?: { bypassProjectDecisionGate?: boolean; skipConsensus?: boolean; trigger?: string },
   ): void {
     const lang = resolveLang(taskTitle);
     const currentTask = db
@@ -209,7 +214,7 @@ export function createReviewFinalizeTools(deps: CreateReviewFinalizeToolsDeps) {
       SELECT 1
       FROM tasks dt
       WHERE dt.id = subtasks.delegated_task_id
-        AND dt.status IN ('review', 'done')
+        AND dt.status = 'done'
     )
 `,
       )
@@ -296,8 +301,8 @@ export function createReviewFinalizeTools(deps: CreateReviewFinalizeToolsDeps) {
       return;
     }
 
-    // Parent task must wait until all collaboration children reached review(done) checkpoint.
-    if (!currentTask.source_task_id) {
+    // Every parent waits for its collaboration children, including nested delegation.
+    {
       const childProgress = db
         .prepare(
           `
@@ -523,86 +528,114 @@ export function createReviewFinalizeTools(deps: CreateReviewFinalizeToolsDeps) {
         | undefined;
       if (!latestTask || latestTask.status !== "review") return;
 
-      // If task has a worktree, merge the branch back before marking done
-      const wtInfo = taskWorktrees.get(taskId);
+      // Integrate children before declaring the directive complete. A failed child
+      // remains actionable and must not be hidden by a completed parent.
+      {
+        const children = db
+          .prepare("SELECT id, title FROM tasks WHERE source_task_id = ? AND status = 'review' ORDER BY created_at ASC")
+          .all(taskId) as Array<{ id: string; title: string }>;
+        for (const child of children) {
+          finishReview(child.id, child.title);
+          const childState = db.prepare("SELECT status FROM tasks WHERE id = ?").get(child.id) as { status: string };
+          if (childState.status !== "done") {
+            appendTaskLog(taskId, "system", `Finalization held: collaboration task ${child.id} requires revision`);
+            return;
+          }
+        }
+      }
+
+      let wtInfo = taskWorktrees.get(taskId);
+      let recoveryError = "";
+      if (!wtInfo) {
+        const project =
+          !currentTask.project_path && currentTask.project_id
+            ? (db.prepare("SELECT project_path FROM projects WHERE id = ?").get(currentTask.project_id) as
+                | { project_path: string | null }
+                | undefined)
+            : undefined;
+        const projectPath = currentTask.project_path || project?.project_path;
+        if (projectPath) {
+          wtInfo = recoverTaskWorktree(projectPath, taskId, db);
+          if (wtInfo) taskWorktrees.set(taskId, wtInfo);
+          else if (findTaskBranch(projectPath, taskId)) {
+            // An orphaned legacy branch still contains task work. Reattach it
+            // instead of approving a task with no in-memory worktree metadata.
+            const lifecycle = createWorktreeLifecycleTools({ db, appendTaskLog, taskWorktrees });
+            const restored = lifecycle.createWorktree(projectPath, taskId, "review recovery");
+            wtInfo = restored ? taskWorktrees.get(taskId) : undefined;
+            if (!wtInfo) recoveryError = "Existing task branch could not be recovered; task work requires revision";
+          }
+        }
+      }
       let mergeNote = "";
-      if (wtInfo) {
-        // Check if this is a GitHub project → merge to dev + PR flow
-        const projectRow = currentTask.project_id
-          ? (db.prepare("SELECT github_repo FROM projects WHERE id = ?").get(currentTask.project_id) as
-              | { github_repo: string | null }
-              | undefined)
-          : undefined;
-        const githubRepo = projectRow?.github_repo;
-
-        const mergeResult = githubRepo
-          ? mergeToDevAndCreatePR(wtInfo.projectPath, taskId, githubRepo)
+      if (wtInfo || recoveryError) {
+        const mergeResult = recoveryError
+          ? { success: false, message: recoveryError, conflicts: undefined }
           : mergeWorktree(wtInfo.projectPath, taskId);
-
-        if (mergeResult.success) {
-          appendTaskLog(taskId, "system", `Git merge completed: ${mergeResult.message}`);
-          cleanupWorktree(wtInfo.projectPath, taskId);
-          appendTaskLog(taskId, "system", "Worktree cleaned up after successful merge");
-          mergeNote = githubRepo
-            ? pickL(
-                l(
-                  [" (dev 병합 + PR 생성)"],
-                  [" (merged to dev + PR)"],
-                  [" (dev マージ + PR)"],
-                  ["（合并到 dev + PR）"],
-                ),
-                lang,
-              )
-            : pickL(l([" (병합 완료)"], [" (merged)"], [" (マージ完了)"], ["（已合并）"]), lang);
-        } else {
-          appendTaskLog(taskId, "system", `Git merge failed: ${mergeResult.message}`);
-
-          const conflictLeader = findTeamLeader(latestTask.department_id);
-          const conflictLeaderName = conflictLeader
-            ? getAgentDisplayName(conflictLeader, lang)
-            : pickL(l(["팀장"], ["Team Lead"], ["チームリーダー"], ["组长"]), lang);
-          const conflictFiles = mergeResult.conflicts?.length
-            ? pickL(
-                l(
-                  [`\n충돌 파일: ${mergeResult.conflicts.join(", ")}`],
-                  [`\nConflicting files: ${mergeResult.conflicts.join(", ")}`],
-                  [`\n競合ファイル: ${mergeResult.conflicts.join(", ")}`],
-                  [`\n冲突文件: ${mergeResult.conflicts.join(", ")}`],
-                ),
-                lang,
-              )
-            : "";
-          notifyCeo(
-            pickL(
-              l(
-                [
-                  `${conflictLeaderName}: '${taskTitle}' 병합 중 충돌이 발생했습니다. 수동 해결이 필요합니다.${conflictFiles}\n브랜치: ${wtInfo.branchName}`,
-                ],
-                [
-                  `${conflictLeaderName}: Merge conflict while merging '${taskTitle}'. Manual resolution is required.${conflictFiles}\nBranch: ${wtInfo.branchName}`,
-                ],
-                [
-                  `${conflictLeaderName}: '${taskTitle}' のマージ中に競合が発生しました。手動解決が必要です。${conflictFiles}\nブランチ: ${wtInfo.branchName}`,
-                ],
-                [
-                  `${conflictLeaderName}：合并 '${taskTitle}' 时发生冲突，需要手动解决。${conflictFiles}\n分支: ${wtInfo.branchName}`,
-                ],
-              ),
-              lang,
-            ),
-            taskId,
-          );
-
-          mergeNote = pickL(
+        const integrationBranch = wtInfo?.integrationBranch || wtInfo?.branchName || "unrecovered task branch";
+        if (!mergeResult.success) {
+          appendTaskLog(taskId, "system", `Directive integration failed: ${mergeResult.message}`);
+          const conflictFiles = mergeResult.conflicts?.length ? `\n${mergeResult.conflicts.join(", ")}` : "";
+          const revisionNote = pickL(
             l(
-              [" (병합 충돌 - 수동 해결 필요)"],
-              [" (merge conflict - manual resolution required)"],
-              [" (マージ競合 - 手動解決が必要)"],
-              ["（合并冲突 - 需要手动解决）"],
+              [
+                `'${taskTitle}' 통합에 실패했습니다. 담당 에이전트가 기존 작업 트리에서 수정한 뒤 다시 승인받아야 합니다. 통합 브랜치: ${integrationBranch}. 오류: ${mergeResult.message}${conflictFiles}`,
+              ],
+              [
+                `Integration of '${taskTitle}' failed. The owning agent must revise the existing worktree and request approval again. Integration branch: ${integrationBranch}. Error: ${mergeResult.message}${conflictFiles}`,
+              ],
+              [
+                `'${taskTitle}' の統合に失敗しました。担当エージェントは既存の作業ツリーで修正し、再承認を依頼してください。統合ブランチ: ${integrationBranch}。エラー: ${mergeResult.message}${conflictFiles}`,
+              ],
+              [
+                `'${taskTitle}' 集成失败。原负责人须在现有工作树中修订后重新申请审批。集成分支: ${integrationBranch}。错误: ${mergeResult.message}${conflictFiles}`,
+              ],
             ),
             lang,
           );
+          // Keep the task, its owner, and its worktree for revision instead of
+          // creating a sibling task from an outdated base.
+          db.prepare(
+            "UPDATE tasks SET status = 'planned', completed_at = NULL, description = COALESCE(description, '') || ?, updated_at = ? WHERE id = ?",
+          ).run(`\n\n[Integration revision]\n${revisionNote}`, t, taskId);
+          const linked = db
+            .prepare("SELECT id FROM subtasks WHERE delegated_task_id = ? AND status != 'cancelled'")
+            .all(taskId) as Array<{ id: string }>;
+          for (const sub of linked) {
+            db.prepare(
+              "UPDATE subtasks SET status = 'blocked', completed_at = NULL, blocked_reason = ? WHERE id = ?",
+            ).run(revisionNote, sub.id);
+            broadcast("subtask_update", db.prepare("SELECT * FROM subtasks WHERE id = ?").get(sub.id));
+          }
+          reviewRoundState.delete(taskId);
+          reviewInFlight.delete(taskId);
+          endTaskExecutionSession(taskId, "integration_revision");
+          broadcast("task_update", db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId));
+          notifyTaskStatus(taskId, taskTitle, "planned", lang);
+          notifyCeo(revisionNote, taskId);
+          const owner = db
+            .prepare("SELECT a.* FROM agents a JOIN tasks t ON t.assigned_agent_id = a.id WHERE t.id = ?")
+            .get(taskId) as
+            | { id: string; status: string; current_task_id: string | null; department_id: string | null }
+            | undefined;
+          if (owner && owner.status !== "offline" && (owner.status !== "working" || owner.current_task_id === taskId)) {
+            const deptId = owner.department_id || latestTask.department_id;
+            startTaskExecutionForAgent(taskId, owner, deptId, getDeptName(deptId || ""));
+          }
+          return;
         }
+        appendTaskLog(taskId, "system", `Directive integration completed: ${mergeResult.message}`);
+        cleanupWorktree(wtInfo.projectPath, taskId);
+        appendTaskLog(taskId, "system", "Worktree cleaned up after successful integration");
+        mergeNote = pickL(
+          l(
+            [` (통합 브랜치: ${integrationBranch}; CEO 수동 검토/병합 대기)`],
+            [` (integration branch: ${integrationBranch}; ready for CEO manual review/merge)`],
+            [` (統合ブランチ: ${integrationBranch}、CEOの手動レビュー/マージ待ち)`],
+            [`（集成分支: ${integrationBranch}；等待 CEO 手动审查/合并）`],
+          ),
+          lang,
+        );
       }
 
       db.prepare("UPDATE tasks SET status = 'done', completed_at = ?, updated_at = ? WHERE id = ?").run(t, t, taskId);
@@ -648,23 +681,10 @@ export function createReviewFinalizeTools(deps: CreateReviewFinalizeToolsDeps) {
 
       reviewRoundState.delete(taskId);
       reviewInFlight.delete(taskId);
+      reconcileDelegatedSubtasksAfterRun(taskId, 0);
 
-      // Parent final approval is the merge point for collaboration children in review.
       if (!currentTask.source_task_id) {
-        const childRows = db
-          .prepare("SELECT id, title FROM tasks WHERE source_task_id = ? AND status = 'review' ORDER BY created_at ASC")
-          .all(taskId) as Array<{ id: string; title: string }>;
-        if (childRows.length > 0) {
-          appendTaskLog(
-            taskId,
-            "system",
-            `Finalization: closing ${childRows.length} collaboration child task(s) after parent review`,
-          );
-          for (const child of childRows) {
-            finishReview(child.id, child.title);
-          }
-        }
-        // Generate and archive one consolidated project report via planning leader model.
+        // Archive one consolidated directive report after every integration succeeds.
         void archivePlanningConsolidatedReport(taskId);
       }
 
@@ -684,8 +704,8 @@ export function createReviewFinalizeTools(deps: CreateReviewFinalizeToolsDeps) {
       }
     };
 
-    if (currentTask.source_task_id) {
-      appendTaskLog(taskId, "system", "Review consensus skipped for delegated collaboration task");
+    if (currentTask.source_task_id || options?.skipConsensus) {
+      appendTaskLog(taskId, "system", "Review consensus skipped; directive integration is still required");
       finalizeApprovedReview();
       return;
     }
