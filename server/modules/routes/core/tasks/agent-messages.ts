@@ -121,6 +121,7 @@ export function registerAgentMessageRoutes({
     if (
       !content ||
       content.length > AGENT_NOTE_MAX_CHARS ||
+      // eslint-disable-next-line no-control-regex -- notes must not contain control characters
       /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(content)
     ) {
       return res.status(400).json({ error: "invalid_note", max_chars: AGENT_NOTE_MAX_CHARS });
