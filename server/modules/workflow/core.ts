@@ -199,6 +199,7 @@ export function initializeWorkflowPartA(ctx: RuntimeContext): WorkflowCoreExport
   const taskWorktrees = new Map<string, WorktreeInfo>();
 
   const { isGitRepo, createWorktree, cleanupWorktree } = createWorktreeLifecycleTools({
+    db: db as any,
     appendTaskLog,
     taskWorktrees,
   });

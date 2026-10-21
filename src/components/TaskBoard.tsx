@@ -8,6 +8,7 @@ import CreateTaskModal from "./taskboard/CreateTaskModal";
 import FilterBar from "./taskboard/FilterBar";
 import TaskCard from "./taskboard/TaskCard";
 import { COLUMNS, isHideableStatus, taskStatusLabel, type HideableStatus } from "./taskboard/constants";
+import { buildDirectiveContexts } from "./taskboard/directive-progress";
 
 interface TaskBoardProps {
   tasks: Task[];
@@ -120,6 +121,8 @@ export function TaskBoard({
     }
     return grouped;
   }, [subtasks]);
+
+  const directiveByTask = useMemo(() => buildDirectiveContexts(tasks, subtasksByTask), [tasks, subtasksByTask]);
 
   const activeFilterCount = [filterDept, filterAgent, filterType, search].filter(Boolean).length;
   const hiddenTaskCount = useMemo(() => {
@@ -268,6 +271,7 @@ export function TaskBoard({
                       agents={agents}
                       departments={departments}
                       taskSubtasks={subtasksByTask[task.id] ?? []}
+                      directive={directiveByTask.get(task.id)}
                       isHiddenTask={hiddenTaskIds.has(task.id)}
                       onUpdateTask={onUpdateTask}
                       onDeleteTask={onDeleteTask}
