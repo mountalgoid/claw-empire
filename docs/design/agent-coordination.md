@@ -46,34 +46,11 @@ Fetch the full parent reference with the same authenticated GET, adding `referen
 
 Embedding the full directive in a quoted appendix was rejected because it still amplifies prompts and encourages whole-job execution. Sharing the CEO bearer token was rejected in favor of a task/session capability. Reusing the paused-only inject endpoint would require pausing and grant the wrong authority. Writing to live CLI stdin is incompatible with existing one-shot runners, which close stdin after the initial prompt. Cooperative inbox reads plus a bounded provider-neutral continuation preserve the existing launch model and deliver late notes without CEO intervention.
 
-## Review revision and reuse
+## Known limitations
 
-This worktree reuses Development commit `465ccc0` from the read-only `626ed68c` worktree, rather than rebuilding completed coordination code. The QA handoff in read-only `0fabbdbc/docs/qa/2026-10-20-agent-coordination.md` identified HIGH AC-QA-001: cross-department cooperation bypassed isolated worktree creation, so late-note continuation could not reuse its original work.
+- Notes included in the initial prompt are marked delivered before the provider run succeeds. If that first run fails or is interrupted, they are not put back as unread. Explicit authenticated inbox reads still return them.
+- A late note can only continue work in the task's original worktree. A note that arrives after that worktree is gone waits in the inbox for the next explicit run.
 
-Cooperation now creates and registers its worktree before prompt construction and launches all CLI, HTTP and API providers there. Claude guidance uses that same checkout. Failure goes through the existing linked-subtask/task finalizer, which releases the agent and advances the department queue. We keep continuation's strict reuse requirement: creating a fresh worktree when a note arrives would lose access to the original uncommitted work. A regression adapted from QA's reproducer exercises successful note delivery and failed isolation for all eight providers, checks the continuation prompt, and preserves a dirty file. Existing provider-routing fixtures now supply the required isolation dependency.
-
-The independent read-only technical review confirmed the other launchers already create registered worktrees. MEDIUM AC-QA-002 remains warning-only per the review policy: initial prompt construction marks included notes delivered before provider success, and initial-run failure/interruption does not restore the unread marker. Explicit authenticated inbox reads still retain those rows. Design's remaining visual review is outside this Development batch.
-
-## Verification
+## Testing
 
 Regression coverage includes scoped department descriptions/direct prompts, planned-item execution semantics, all four locales, related-task selection and Git fallbacks, authentication/session rotation, socket/host/origin guards, unrelated recipients, pagination/limits/reference access, durable chat/log visibility, dirty-worktree reuse, late-note continuation, failure preservation, and stop/pause behavior. All tests use in-memory databases or isolated test runtime paths.
-
-Final verification in this worktree:
-
-| Command | Result |
-| --- | --- |
-| `pnpm install --frozen-lockfile` | Passed; lockfile unchanged. |
-| `pnpm run format:check` | Passed for source snapshot; metadata exception below. |
-| `pnpm run lint` | Passed: 0 errors, 41 warnings (40 baseline, 1 inherited endpoint control-character regex). |
-| `pnpm run build` | Passed; existing Vite large-chunk advisory. |
-| `pnpm run test:web --run` | Passed: 82 tests, 26 files. |
-| `pnpm run test:api --run` | Passed: 267 tests, 53 files, including 16 cooperation regressions. |
-| QA reference acceptance tests | Passed: 13 tests across scoped delegation, real Git awareness, and inbox routes. |
-| `pnpm run openapi:check` | Passed: 113 operations. |
-| `git diff --check` | Passed. |
-
-The QA reference acceptance files were copied temporarily into this worktree for execution and removed in a `finally` block; the QA worktree remained read-only. The old passing defect reproduction is superseded by the new successful delivery regression, rather than copied with assertions expecting the bug. All test databases/logs are isolated by `server/test/setup.ts`; no real provider is launched.
-
-The formatting command temporarily relocates the pre-existing untracked `.serena/project.yml` under excluded `node_modules`, restoring it unchanged in a `finally` block, matching the QA source-check procedure. That local tool metadata is not part of this deliverable; a raw check with it present may flag its formatting.
-
-No push, PR, GitHub write, or live server/database operation was performed.
