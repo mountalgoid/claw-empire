@@ -20,12 +20,14 @@ checkout after confirmation. The diff shows the source and actual target branch,
 and confirmation names both branches and the project path. The merge API requires
 `expectedTargetBranch`; a changed or detached checkout returns HTTP 409 before
 auto-commit, merge or cleanup. A missing target returns HTTP 400. The UI refreshes
-the diff after a target change and requires a fresh confirmation; detached HEAD
-disables Merge now. A successful merge cleans up the worktree; a failed
-merge retains it. Review includes staged and unstaged tracked changes and a
-warning listing pending files; untracked contents must be reviewed in the
-worktree. Registered task worktrees are rediscovered read-only after restart,
-and rerunning a task reuses retained work rather than deleting it.
+the diff and branch verification after a target change and requires a fresh
+confirmation; detached HEAD disables Merge now. A successful merge cleans up the
+worktree; a failed merge retains it. Review includes staged and unstaged tracked
+changes and a warning listing pending files; untracked contents must be reviewed
+in the worktree. Registered task worktrees are rediscovered read-only after
+restart, and rerunning a task reuses retained work rather than deleting it.
+Deleting a done task whose branch is still retained returns HTTP 409
+`worktree_retained`; merge or discard the branch first so it is not orphaned.
 
 GitHub metadata no longer authorizes publishing. The legacy helper that switched
 to `dev`, pushed `origin/dev`, created/updated a PR against `main`, and switched to

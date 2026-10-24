@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import * as api from "../api";
+import { isApiRequestError } from "../api/core";
 import { buildDecisionInboxItems } from "../components/chat/decision-inbox";
 import type { DecisionInboxItem } from "../components/chat/decision-inbox";
 import { LANGUAGE_USER_SET_STORAGE_KEY, normalizeLanguage, pickLang } from "../i18n";
@@ -158,10 +159,22 @@ export function useAppActions({
         await api.deleteTask(id);
         setTasks((prev) => prev.filter((task) => task.id !== id));
       } catch (error) {
+        if (isApiRequestError(error) && error.code === "worktree_retained") {
+          const branch = (error.details as { branch?: string } | null)?.branch ?? "";
+          window.alert(
+            pickLang(normalizeLanguage(settings.language), {
+              ko: `이 태스크에는 아직 병합되지 않은 브랜치(${branch})가 있습니다. 삭제하기 전에 변경사항 보기에서 병합하거나 폐기하세요.`,
+              en: `This task still has a retained branch (${branch}). Merge or discard it from the diff view before deleting the task.`,
+              ja: `このタスクにはまだ保持されたブランチ（${branch}）があります。削除する前に差分ビューからマージまたは破棄してください。`,
+              zh: `此任务仍保留分支（${branch}）。删除任务前，请在差异视图中合并或丢弃该分支。`,
+            }),
+          );
+          return;
+        }
         console.error("Delete task failed:", error);
       }
     },
-    [setTasks],
+    [setTasks, settings.language],
   );
 
   const refreshTasksAndAgents = useCallback(async () => {
