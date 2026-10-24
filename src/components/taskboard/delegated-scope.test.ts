@@ -96,6 +96,16 @@ describe("buildRelatedTaskIndex", () => {
     expect(index.has("solo")).toBe(false);
   });
 
+  it("keeps review tasks in the in-flight tier ahead of newer finished work", () => {
+    const index = buildRelatedTaskIndex([
+      task("parent", { status: "collaborating", updated_at: 1 }),
+      task("reviewing", { source_task_id: "parent", status: "review", updated_at: 2 }),
+      task("finished", { source_task_id: "parent", status: "done", updated_at: 9 }),
+    ]);
+
+    expect(index.get("parent")?.map((item) => item.id)).toEqual(["reviewing", "finished"]);
+  });
+
   it("groups siblings whose parent is not loaded", () => {
     const index = buildRelatedTaskIndex([
       task("a", { source_task_id: "missing" }),

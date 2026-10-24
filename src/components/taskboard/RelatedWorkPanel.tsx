@@ -3,7 +3,7 @@ import { getTaskVerifyCommit, getWorktrees } from "../../api";
 import { useI18n } from "../../i18n";
 import type { Agent, Department, Task } from "../../types";
 import AgentAvatar from "../AgentAvatar";
-import { clipReport, RELATED_WORK_MAX_TASKS } from "./delegated-scope";
+import { clipReport, isInFlight, RELATED_WORK_MAX_TASKS } from "./delegated-scope";
 import { COLUMNS, taskStatusLabel } from "./constants";
 
 interface BranchInfo {
@@ -26,9 +26,7 @@ export default function RelatedWorkPanel({ relatedTasks, agents, departments }: 
   const visibleTasks = relatedTasks.slice(0, RELATED_WORK_MAX_TASKS);
   const hiddenCount = relatedTasks.length - visibleTasks.length;
   const doneCount = relatedTasks.filter((task) => task.status === "done").length;
-  const inFlightCount = relatedTasks.filter(
-    (task) => task.status === "in_progress" || task.status === "collaborating" || task.status === "review",
-  ).length;
+  const inFlightCount = relatedTasks.filter(isInFlight).length;
   const visibleKey = visibleTasks.map((task) => task.id).join(",");
 
   useEffect(() => {

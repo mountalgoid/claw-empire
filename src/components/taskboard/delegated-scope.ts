@@ -108,8 +108,8 @@ function taskFamilyRoot(task: Task, byId: Map<string, Task>): string {
   return current.id;
 }
 
-function isInFlight(task: Task): boolean {
-  return task.status === "in_progress" || task.status === "collaborating";
+export function isInFlight(task: Pick<Task, "status">): boolean {
+  return task.status === "in_progress" || task.status === "collaborating" || task.status === "review";
 }
 
 /**
