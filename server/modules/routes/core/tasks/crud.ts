@@ -7,6 +7,7 @@ import type { RuntimeContext } from "../../../../types/runtime-context.ts";
 import type { MeetingMinuteEntryRow, MeetingMinutesRow } from "../../shared/types.ts";
 import { isWorkflowPackKey } from "../../../workflow/packs/definitions.ts";
 import { resolveWorkflowPackKeyForTask } from "../../../workflow/packs/task-pack-resolver.ts";
+import { discoverTaskWorktree } from "../../../workflow/core/worktree/lifecycle.ts";
 
 export type TaskCrudRouteDeps = Pick<
   RuntimeContext,
@@ -26,6 +27,7 @@ export type TaskCrudRouteDeps = Pick<
   | "stopRequestedTasks"
   | "killPidTree"
   | "logsDir"
+  | "taskWorktrees"
 >;
 
 export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
@@ -46,6 +48,7 @@ export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
     stopRequestedTasks,
     killPidTree,
     logsDir,
+    taskWorktrees,
   } = deps;
 
   function normalizeProjectPathInput(raw: unknown): string | null {
@@ -536,9 +539,34 @@ export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
     const existing = db.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as
       | {
           assigned_agent_id: string | null;
+          status: string;
+          project_path: string | null;
+          project_id: string | null;
         }
       | undefined;
     if (!existing) return res.status(404).json({ error: "not_found" });
+
+    // Manual merge policy keeps the branch of a done task; deleting the row would orphan it on disk.
+    if (existing.status === "done") {
+      let retained = taskWorktrees.get(id);
+      const projectPath =
+        existing.project_path?.trim() ||
+        (existing.project_id
+          ? (
+              db.prepare("SELECT project_path FROM projects WHERE id = ?").get(existing.project_id) as
+                | { project_path?: string | null }
+                | undefined
+            )?.project_path
+          : null);
+      if (!retained && projectPath) retained = discoverTaskWorktree(projectPath, id);
+      if (retained) {
+        return res.status(409).json({
+          error: "worktree_retained",
+          message: "Merge or discard the retained branch before deleting this task.",
+          branch: retained.branchName,
+        });
+      }
+    }
 
     endTaskExecutionSession(id, "task_deleted");
     clearTaskWorkflowState(id);

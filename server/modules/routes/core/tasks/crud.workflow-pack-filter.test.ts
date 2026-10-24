@@ -26,7 +26,12 @@ function createFakeResponse(): FakeResponse {
   };
 }
 
-function createTaskCrudHarness(): { db: DatabaseSync; routes: Map<string, RouteHandler> } {
+type WorktreeInfo = { worktreePath: string; branchName: string; projectPath: string };
+
+function createTaskCrudHarness(taskWorktrees = new Map<string, WorktreeInfo>()): {
+  db: DatabaseSync;
+  routes: Map<string, RouteHandler>;
+} {
   const db = new DatabaseSync(":memory:");
   db.exec(`
     CREATE TABLE tasks (
@@ -77,6 +82,8 @@ function createTaskCrudHarness(): { db: DatabaseSync; routes: Map<string, RouteH
       status TEXT NOT NULL,
       delegated_task_id TEXT
     );
+    CREATE TABLE task_logs (task_id TEXT);
+    CREATE TABLE messages (task_id TEXT);
   `);
 
   const routes = new Map<string, RouteHandler>();
@@ -127,6 +134,7 @@ function createTaskCrudHarness(): { db: DatabaseSync; routes: Map<string, RouteH
     stopRequestedTasks: new Set(),
     killPidTree: () => {},
     logsDir: "/tmp",
+    taskWorktrees,
   });
 
   return { db, routes };
@@ -262,6 +270,51 @@ describe("task CRUD workflow pack filter", () => {
       expect(payload.task.workflow_pack_key).toBe("novel");
       expect(payload.task.project_id).toBe("project-novel");
       expect(payload.task.project_path).toBe("/tmp/novel-project");
+    } finally {
+      db.close();
+    }
+  });
+});
+
+describe("DELETE /api/tasks/:id retained worktrees", () => {
+  function insertDoneTask(db: DatabaseSync, id: string): void {
+    db.prepare(
+      "INSERT INTO tasks (id, title, status, priority, task_type, created_at, updated_at) VALUES (?, 'Done', 'done', 0, 'general', 1, 1)",
+    ).run(id);
+  }
+
+  it("refuses to delete a done task whose branch is still retained", () => {
+    const worktrees = new Map([
+      [
+        "kept-task",
+        {
+          worktreePath: "/project/.climpire-worktrees/kept-tas",
+          branchName: "climpire/kept-tas",
+          projectPath: "/project",
+        },
+      ],
+    ]);
+    const { db, routes } = createTaskCrudHarness(worktrees);
+    try {
+      insertDoneTask(db, "kept-task");
+      const res = createFakeResponse();
+      routes.get("DELETE /api/tasks/:id")?.({ params: { id: "kept-task" } }, res);
+      expect(res.statusCode).toBe(409);
+      expect(res.payload).toMatchObject({ error: "worktree_retained", branch: "climpire/kept-tas" });
+      expect(db.prepare("SELECT id FROM tasks WHERE id = 'kept-task'").get()).toBeTruthy();
+    } finally {
+      db.close();
+    }
+  });
+
+  it("deletes a done task without a retained branch", () => {
+    const { db, routes } = createTaskCrudHarness();
+    try {
+      insertDoneTask(db, "merged-task");
+      const res = createFakeResponse();
+      routes.get("DELETE /api/tasks/:id")?.({ params: { id: "merged-task" } }, res);
+      expect(res.statusCode).toBe(200);
+      expect(db.prepare("SELECT id FROM tasks WHERE id = 'merged-task'").get()).toBeUndefined();
     } finally {
       db.close();
     }
