@@ -29,30 +29,43 @@ function DiffModal({ taskId, onClose, language, onWorktreeRemoved }: DiffModalPr
   const [actionResult, setActionResult] = useState<string | null>(null);
   const [worktreeRemoved, setWorktreeRemoved] = useState(false);
 
-  useEffect(() => {
-    Promise.allSettled([getTaskDiff(taskId), getTaskVerifyCommit(taskId)]).then(([diffResult, verifyResult]) => {
-      if (diffResult.status === "fulfilled") {
-        const d = diffResult.value;
-        if (!d.ok)
-          setError(d.error || t({ ko: "알 수 없는 오류", en: "Unknown error", ja: "不明なエラー", zh: "未知错误" }));
-        else setDiffData(d);
-      } else {
-        setError(diffResult.reason instanceof Error ? diffResult.reason.message : String(diffResult.reason));
-      }
+  // Diff and verification describe the same target, so they are always loaded together.
+  const loadReview = useCallback(
+    () =>
+      Promise.allSettled([getTaskDiff(taskId), getTaskVerifyCommit(taskId)]).then(([diffResult, verifyResult]) => {
+        let loaded: TaskDiffResult | null = null;
+        if (diffResult.status === "fulfilled") {
+          const d = diffResult.value;
+          if (!d.ok)
+            setError(d.error || t({ ko: "알 수 없는 오류", en: "Unknown error", ja: "不明なエラー", zh: "未知错误" }));
+          else {
+            setDiffData(d);
+            loaded = d;
+          }
+        } else {
+          setError(diffResult.reason instanceof Error ? diffResult.reason.message : String(diffResult.reason));
+        }
 
-      if (verifyResult.status === "fulfilled") {
-        const v = verifyResult.value;
-        if (!v.ok)
-          setVerifyError(v.error || t({ ko: "검증 실패", en: "Verification failed", ja: "検証失敗", zh: "校验失败" }));
-        else setVerifyData(v);
-      } else {
-        setVerifyError(
-          verifyResult.reason instanceof Error ? verifyResult.reason.message : String(verifyResult.reason),
-        );
-      }
-      setLoading(false);
-    });
-  }, [taskId, t]);
+        if (verifyResult.status === "fulfilled") {
+          const v = verifyResult.value;
+          if (!v.ok)
+            setVerifyError(
+              v.error || t({ ko: "검증 실패", en: "Verification failed", ja: "検証失敗", zh: "校验失败" }),
+            );
+          else setVerifyData(v);
+        } else {
+          setVerifyError(
+            verifyResult.reason instanceof Error ? verifyResult.reason.message : String(verifyResult.reason),
+          );
+        }
+        return loaded;
+      }),
+    [taskId, t],
+  );
+
+  useEffect(() => {
+    loadReview().then(() => setLoading(false));
+  }, [loadReview]);
 
   // Close on Escape key
   useEffect(() => {
@@ -92,12 +105,12 @@ function DiffModal({ taskId, onClose, language, onWorktreeRemoved }: DiffModalPr
       }
     } catch (e: unknown) {
       if (isApiRequestError(e) && e.code === "target_changed") {
-        // Refresh the diff as well as the target. A retry always needs a new confirmation.
+        // Refresh the diff and verification for the new target. A retry always needs a new confirmation.
         setDiffData(null);
-        try {
-          const refreshed = await getTaskDiff(taskId);
-          if (!refreshed.ok) throw new Error(refreshed.error || "Unable to refresh target");
-          setDiffData(refreshed);
+        setVerifyData(null);
+        setVerifyError(null);
+        const refreshed = await loadReview();
+        if (refreshed) {
           const target = refreshed.targetBranch ?? "HEAD";
           setActionResult(
             t({
@@ -107,8 +120,6 @@ function DiffModal({ taskId, onClose, language, onWorktreeRemoved }: DiffModalPr
               zh: `项目检出已变更为 ${target}。请确认目标后重新确认。`,
             }),
           );
-        } catch (refreshError) {
-          setError(refreshError instanceof Error ? refreshError.message : String(refreshError));
         }
         return;
       }
@@ -118,7 +129,7 @@ function DiffModal({ taskId, onClose, language, onWorktreeRemoved }: DiffModalPr
     } finally {
       setMerging(false);
     }
-  }, [taskId, onWorktreeRemoved, t, diffData]);
+  }, [taskId, onWorktreeRemoved, t, diffData, loadReview]);
 
   const handleDiscard = useCallback(async () => {
     if (

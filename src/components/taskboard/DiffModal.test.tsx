@@ -190,6 +190,66 @@ describe("DiffModal", () => {
     },
   );
 
+  it("reloads branch verification against the changed target", async () => {
+    apiMocks.mergeTask.mockRejectedValueOnce(
+      new ApiRequestError("target_changed", {
+        status: 409,
+        code: "target_changed",
+        url: "/api/tasks/kept-task/merge",
+      }),
+    );
+    apiMocks.getTaskDiff.mockResolvedValueOnce({
+      ok: true,
+      hasWorktree: true,
+      branchName: "climpire/test",
+      targetBranch: "dev",
+      projectPath: "/project",
+    });
+    apiMocks.getTaskDiff.mockResolvedValueOnce({
+      ok: true,
+      hasWorktree: true,
+      branchName: "climpire/test",
+      targetBranch: "other-session",
+      projectPath: "/project",
+    });
+    apiMocks.getTaskVerifyCommit.mockResolvedValueOnce({
+      ok: true,
+      hasWorktree: true,
+      verdict: "ok",
+      commitCount: 1,
+      compareRef: "dev",
+      files: ["src/old-target.ts"],
+      uncommittedFiles: [],
+      hasUncommittedChanges: false,
+      hasRealCode: true,
+    });
+    apiMocks.getTaskVerifyCommit.mockResolvedValueOnce({
+      ok: true,
+      hasWorktree: true,
+      verdict: "ok",
+      commitCount: 2,
+      compareRef: "other-session",
+      files: ["src/new-target.ts"],
+      uncommittedFiles: [],
+      hasUncommittedChanges: false,
+      hasRealCode: true,
+    });
+    render(
+      <I18nProvider language="en">
+        <DiffModal taskId="kept-task" onClose={vi.fn()} />
+      </I18nProvider>,
+    );
+    const button = screen.getByRole("button", { name: "Merge now" });
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(screen.getByText("src/old-target.ts")).toBeInTheDocument();
+    fireEvent.click(button);
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Review the target and confirm again"));
+    expect(await screen.findByText("src/new-target.ts")).toBeInTheDocument();
+    expect(screen.queryByText("src/old-target.ts")).not.toBeInTheDocument();
+    expect(screen.getByText("2 commits")).toBeInTheDocument();
+    expect(apiMocks.getTaskVerifyCommit).toHaveBeenCalledTimes(2);
+  });
+
   it("blocks merging a detached checkout", async () => {
     apiMocks.getTaskDiff.mockResolvedValue({
       ok: true,
