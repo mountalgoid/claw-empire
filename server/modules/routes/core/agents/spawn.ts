@@ -1,3 +1,4 @@
+import { buildAgentCoordinationContext } from "../../../workflow/core/agent-coordination.ts";
 import path from "node:path";
 import { notifyTaskStatus } from "../../../../gateway/client.ts";
 import type { RuntimeContext } from "../../../../types/runtime-context.ts";
@@ -205,6 +206,9 @@ export function registerAgentSpawnRoute(ctx: RuntimeContext): void {
         "This session is scoped to this task only.",
         `[Task] ${task.title}`,
         task.description ? `\n${task.description}` : "",
+        buildAgentCoordinationContext(db, taskId, executionSession, taskLang, { l, pickL }, nowMs(), {
+          taskWorktrees: ctx.taskWorktrees,
+        }),
         workflowPackGuidance ? `\n[Workflow Pack Execution Rules]\n${workflowPackGuidance}` : "",
         `NOTE: You are working in an isolated Git worktree branch (climpire/${taskId.slice(0, 8)}). Commit your changes normally.`,
         `Agent: ${agent.name} (${roleLabel}, ${agent.department_name || "Unassigned"})`,

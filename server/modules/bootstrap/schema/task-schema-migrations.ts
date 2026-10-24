@@ -138,6 +138,52 @@ export function applyTaskSchemaMigrations(db: DbLike): void {
   migrateLegacyTasksStatusSchema(db);
   repairLegacyTaskForeignKeys(db);
   ensureMessagesIdempotencySchema(db);
+  // Must run after the parent-table rebuilds above: renaming messages/tasks rewrites this table's FKs.
+  ensureTaskAgentNotesSchema(db);
+}
+
+const TASK_AGENT_NOTES_DDL = `
+CREATE TABLE IF NOT EXISTS task_agent_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  message_id TEXT NOT NULL UNIQUE REFERENCES messages(id) ON DELETE CASCADE,
+  source_task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  target_task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  delivered_at INTEGER
+)`;
+
+function ensureTaskAgentNotesSchema(db: DbLike): void {
+  const fks = db.prepare("PRAGMA foreign_key_list(task_agent_notes)").all() as Array<{ table: string }>;
+  const stale = fks.some((fk) => fk.table !== "messages" && fk.table !== "tasks");
+  if (stale) {
+    console.log("[Claw-Empire] Rebuilding task_agent_notes after parent table migration");
+    const newTable = "task_agent_notes_fkfix_new";
+    db.exec("PRAGMA foreign_keys = OFF");
+    try {
+      db.exec("BEGIN");
+      try {
+        db.exec(`DROP TABLE IF EXISTS ${newTable}`);
+        db.exec(TASK_AGENT_NOTES_DDL.replace("task_agent_notes", newTable));
+        db.exec(`
+          INSERT INTO ${newTable} (id, message_id, source_task_id, target_task_id, delivered_at)
+          SELECT id, message_id, source_task_id, target_task_id, delivered_at
+          FROM task_agent_notes;
+        `);
+        db.exec("DROP TABLE task_agent_notes");
+        db.exec(`ALTER TABLE ${newTable} RENAME TO task_agent_notes`);
+        db.exec("COMMIT");
+      } catch (err) {
+        db.exec("ROLLBACK");
+        throw err;
+      }
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+    }
+  }
+  db.exec(TASK_AGENT_NOTES_DDL);
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_task_agent_notes_inbox ON task_agent_notes(target_task_id, delivered_at, id)",
+  );
+  db.exec("CREATE INDEX IF NOT EXISTS idx_task_agent_notes_source ON task_agent_notes(source_task_id, id)");
 }
 
 function safeJsonParse(raw: string): unknown {

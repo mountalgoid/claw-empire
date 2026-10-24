@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import { buildAgentCoordinationContext } from "../core/agent-coordination.ts";
 import path from "node:path";
 import type { RuntimeContext } from "../../../types/runtime-context.ts";
 import { getDepartmentPromptForPack } from "../packs/department-scope.ts";
@@ -21,6 +23,7 @@ type CreateExecutionStartTaskToolsDeps = {
   notifyTaskStatus: (...args: any[]) => any;
   resolveProjectPath: RuntimeContext["resolveProjectPath"];
   createWorktree: RuntimeContext["createWorktree"];
+  taskWorktrees?: RuntimeContext["taskWorktrees"];
   getDeptRoleConstraint: RuntimeContext["getDeptRoleConstraint"];
   getRecentConversationContext: RuntimeContext["getRecentConversationContext"];
   getTaskContinuationContext: RuntimeContext["getTaskContinuationContext"];
@@ -53,6 +56,7 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
     notifyTaskStatus,
     resolveProjectPath,
     createWorktree,
+    taskWorktrees,
     getDeptRoleConstraint,
     getRecentConversationContext,
     getTaskContinuationContext,
@@ -73,7 +77,13 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
     startProgressTimer,
   } = deps;
 
-  function startTaskExecutionForAgent(taskId: string, execAgent: any, deptId: string | null, deptName: string): void {
+  function startTaskExecutionForAgent(
+    taskId: string,
+    execAgent: any,
+    deptId: string | null,
+    deptName: string,
+    options?: { reuseWorktree: boolean },
+  ): void {
     const execName = execAgent.name_ko || execAgent.name;
     const t = nowMs();
     db.prepare(
@@ -127,7 +137,12 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
     notifyTaskStatus(taskId, taskData.title, "in_progress", taskLang);
 
     const projPath = resolveProjectPath(taskData);
-    const worktreePath = createWorktree(projPath, taskId, execAgent.name, taskData.base_branch ?? undefined);
+    const existingWorktree = options?.reuseWorktree ? taskWorktrees?.get(taskId)?.worktreePath : null;
+    const worktreePath = options?.reuseWorktree
+      ? existingWorktree && fs.existsSync(existingWorktree)
+        ? existingWorktree
+        : null
+      : createWorktree(projPath, taskId, execAgent.name, taskData.base_branch ?? undefined);
     if (!worktreePath) {
       const rollbackAt = nowMs();
       appendTaskLog(
@@ -220,6 +235,15 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
       taskLang,
     );
     const availableSkillsPromptBlock = buildAvailableSkillsPromptBlock(provider);
+    const coordinationContext = buildAgentCoordinationContext(
+      db,
+      taskId,
+      executionSession,
+      taskLang,
+      { l, pickL },
+      nowMs(),
+      { taskWorktrees },
+    );
     const spawnPrompt = buildTaskExecutionPrompt(
       [
         availableSkillsPromptBlock,
@@ -229,6 +253,7 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
         `[Task] ${taskData.title}`,
         taskData.description ? `\n${taskData.description}` : "",
         workflowPackGuidance ? `\n[Workflow Pack Execution Rules]\n${workflowPackGuidance}` : "",
+        coordinationContext,
         continuationCtx,
         conversationCtx,
         `\n---`,

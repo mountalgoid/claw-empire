@@ -443,6 +443,7 @@ export function initializeWorkflowPartC(ctx: RuntimeContext): WorkflowOrchestrat
   }
 
   const { startTaskExecutionForAgent } = createExecutionStartTaskTools({
+    taskWorktrees,
     nowMs,
     db,
     logsDir,
@@ -612,6 +613,9 @@ export function initializeWorkflowPartC(ctx: RuntimeContext): WorkflowOrchestrat
   // Run completion handler — enhanced with review flow + CEO reporting
   // ---------------------------------------------------------------------------
   const runCompleteHandler = createRunCompleteHandler({
+    taskExecutionSessions,
+    startTaskExecutionForAgent,
+    getDeptName,
     activeProcesses,
     stopProgressTimer,
     db,
