@@ -88,6 +88,12 @@ export function registerAgentMessageRoutes({
       const offset = Number(req.query.offset ?? 0);
       if (!Number.isSafeInteger(offset) || offset < 0) return res.status(400).json({ error: "invalid_offset" });
       const description = task.description ?? "";
+      // Full rows for the subtasks delegated to this task; the delegated prompt clips them.
+      const ownedSubtasks = db
+        .prepare(
+          "SELECT id, title, description, status FROM subtasks WHERE task_id = ? AND delegated_task_id = ? ORDER BY created_at, id",
+        )
+        .all(referenceId, actor.taskId);
       return res.json({
         reference: {
           id: task.id,
@@ -95,6 +101,7 @@ export function registerAgentMessageRoutes({
           description: description.slice(offset, offset + 8000),
           offset,
           total_chars: description.length,
+          owned_subtasks: ownedSubtasks,
         },
       });
     }

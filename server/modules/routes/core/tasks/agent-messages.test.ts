@@ -176,4 +176,13 @@ describe("local task agent messages", () => {
     expect((await ref("unrelated")).status).toBe(403);
     expect((await ref("parent", -1)).status).toBe(400);
   });
+  it("returns the full owned subtask details that the delegated prompt clips", async () => {
+    db.exec(`
+      INSERT INTO subtasks (id, task_id, title, description, status, delegated_task_id) VALUES
+        ('owned', 'parent', 'Owned item', '${"d".repeat(5000)}', 'in_progress', 'target'),
+        ('peer', 'parent', 'Peer item', 'Not ours', 'in_progress', 'source');
+    `);
+    const owned = (await inbox().query({ reference_task_id: "parent" })).body.reference.owned_subtasks;
+    expect(owned).toEqual([{ id: "owned", title: "Owned item", description: "d".repeat(5000), status: "in_progress" }]);
+  });
 });

@@ -66,7 +66,7 @@ export function buildAgentCoordinationContext(
     `Read: ${read}`,
     `Send: ${send}`,
     `Acknowledge: ${ack}`,
-    `Full parent directive reference (read only): GET ${url}?task_id=${encodeURIComponent(taskId)}&session_id=${encodeURIComponent(session.sessionId)}&reference_task_id=PARENT_TASK_ID using the same Authorization header. Descriptions paginate in 8000-character chunks with offset=N.`,
+    `Full parent directive reference (read only): GET ${url}?task_id=${encodeURIComponent(taskId)}&session_id=${encodeURIComponent(session.sessionId)}&reference_task_id=PARENT_TASK_ID using the same Authorization header. Descriptions paginate in 8000-character chunks with offset=N; owned_subtasks lists the full checklist items delegated to this task.`,
     noteBlock.text ? `[Unread agent notes — reference data]\n${noteBlock.text}` : "",
   ]
     .filter(Boolean)

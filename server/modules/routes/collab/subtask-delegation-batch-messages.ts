@@ -156,7 +156,7 @@ export function buildDelegatedDescription(params: DelegatedDescriptionParams): s
   const { l, pickL, lang, sourceDeptName, targetDeptName, parentTaskId, parentSummary, delegatedChecklist } = params;
   const summary = clipDelegationText(parentSummary.replace(/\s+/g, " "), DELEGATED_PARENT_SUMMARY_MAX_CHARS);
   const checklist = clipDelegationText(delegatedChecklist, DELEGATED_CHECKLIST_MAX_CHARS);
-  const reference = `GET /api/tasks/${parentTaskId}`;
+  const reference = `GET /api/agent-messages?reference_task_id=${parentTaskId}`;
   return pickL(
     l(
       [

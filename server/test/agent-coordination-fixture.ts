@@ -8,6 +8,7 @@ export function createCoordinationDb(): DatabaseSync {
   db.exec(`
     ALTER TABLE tasks ADD COLUMN source_task_id TEXT;
     ALTER TABLE tasks ADD COLUMN base_branch TEXT;
+    ALTER TABLE subtasks ADD COLUMN delegated_task_id TEXT;
     INSERT INTO departments (id, name, name_ko, icon, color) VALUES ('dev', 'Development', '개발', '', '');
     INSERT INTO agents (id, name, department_id, role, cli_provider) VALUES
       ('alpha', 'Alpha', 'dev', 'senior', 'codex'), ('beta', 'Beta', 'dev', 'junior', 'codex');

@@ -53,7 +53,7 @@ describe("QA acceptance: persisted description to UI scope contract", () => {
         });
         expect(scope!.instruction).toBeTruthy();
         expect(scope!.instruction).not.toContain("Common project background.");
-        expect(scope!.parentContext).toContain("GET /api/tasks/parent");
+        expect(scope!.parentContext).toContain("GET /api/agent-messages?reference_task_id=parent");
         expect(scope!.parentContext).toContain("Common project background.");
         expect(scope!.parentContext).not.toContain("FULL DIRECTIVE TAIL");
         expect(scope!.parentContext.length).toBeLessThan(DELEGATED_PARENT_SUMMARY_MAX_CHARS + 400);

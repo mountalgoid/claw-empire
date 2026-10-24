@@ -15,7 +15,6 @@ describe("QA acceptance: persisted department delegation", () => {
     db.exec(`
       ALTER TABLE projects ADD COLUMN assignment_mode TEXT DEFAULT 'auto';
       ALTER TABLE subtasks ADD COLUMN target_department_id TEXT;
-      ALTER TABLE subtasks ADD COLUMN delegated_task_id TEXT;
       UPDATE tasks SET status='in_progress' WHERE id='parent';
       INSERT INTO departments(id,name,name_ko,icon,color) VALUES
         ('design','Design','디자인','',''), ('qa','QA','품질','','');
@@ -110,7 +109,7 @@ describe("QA acceptance: persisted department delegation", () => {
       for (const child of children) {
         expect(child.description).toContain(`${child.department_id.toUpperCase()} EXCLUSIVE RESPONSIBILITY`);
         expect(child.description).toContain(`[${child.department_id}-item]`);
-        expect(child.description).toContain("GET /api/tasks/parent");
+        expect(child.description).toContain("GET /api/agent-messages?reference_task_id=parent");
         expect(child.description).not.toContain("FULL DIRECTIVE REFERENCE TAIL");
         for (const other of departments.filter((dept) => dept !== child.department_id)) {
           expect(child.description).not.toContain(`${other.toUpperCase()} EXCLUSIVE RESPONSIBILITY`);

@@ -122,7 +122,7 @@ describe("scoped subtask delegation", () => {
       const text = description(lang, "Background title", ownChecklist);
 
       expect(text).toContain("Development");
-      expect(text).toContain("GET /api/tasks/parent-task");
+      expect(text).toContain("GET /api/agent-messages?reference_task_id=parent-task");
       expect(text.indexOf(ownChecklist)).toBeLessThan(text.indexOf("Background title"));
     },
   );
@@ -146,7 +146,7 @@ describe("scoped subtask delegation", () => {
     expect(checklist.length).toBeLessThanOrEqual(DELEGATED_CHECKLIST_MAX_CHARS);
     expect(text).not.toContain("TAIL OF FULL DIRECTIVE");
     expect(text).not.toContain(parent);
-    expect(text).toContain("GET /api/tasks/parent-task");
+    expect(text).toContain("GET /api/agent-messages?reference_task_id=parent-task");
     expect(text.length).toBeLessThan(DELEGATED_CHECKLIST_MAX_CHARS + DELEGATED_PARENT_SUMMARY_MAX_CHARS + 900);
   });
 
@@ -165,7 +165,7 @@ describe("scoped subtask delegation", () => {
       expect(instructions).not.toContain("[qa-item]");
       expect(text).toContain("qa owned item (qa - in_progress)");
       expect(text).not.toContain("FULL DIRECTIVE TAIL");
-      expect(text).toContain("GET /api/tasks/parent-task");
+      expect(text).toContain("GET /api/agent-messages?reference_task_id=parent-task");
     } finally {
       fixture.db.close();
     }
