@@ -193,13 +193,115 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
     return null;
   }
 
+  function listTaskMediaAssets(taskId: string, roots: Array<{ path: string; source: "task" | "project" }>) {
+    const allowedRoots = ["content", "output", "video_output", "public", "dist", "assets"];
+    const mimeByExt: Record<string, { kind: "image" | "video"; mime: string }> = {
+      ".png": { kind: "image", mime: "image/png" },
+      ".jpg": { kind: "image", mime: "image/jpeg" },
+      ".jpeg": { kind: "image", mime: "image/jpeg" },
+      ".webp": { kind: "image", mime: "image/webp" },
+      ".avif": { kind: "image", mime: "image/avif" },
+      ".gif": { kind: "image", mime: "image/gif" },
+      ".mp4": { kind: "video", mime: "video/mp4" },
+      ".webm": { kind: "video", mime: "video/webm" },
+      ".mov": { kind: "video", mime: "video/quicktime" },
+    };
+    const fileMimeByExt: Record<string, string> = {
+      ".txt": "text/plain",
+      ".md": "text/markdown",
+      ".csv": "text/csv",
+      ".json": "application/json",
+      ".pdf": "application/pdf",
+      ".zip": "application/zip",
+      ".py": "text/x-python",
+      ".html": "text/html",
+      ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    };
+    const assetsByPath = new Map<string, { name: string; path: string; kind: "image" | "video" | "file"; mime: string; size_bytes: number; url: string }>();
+    const visit = (root: string, source: "task" | "project", directory: string, relativeDirectory: string, depth: number): void => {
+      if (depth > 6 || assetsByPath.size >= 100) return;
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(directory, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        if (assetsByPath.size >= 100 || entry.name.startsWith(".")) continue;
+        const relative = relativeDirectory ? `${relativeDirectory}/${entry.name}` : entry.name;
+        const absolute = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+          visit(root, source, absolute, relative, depth + 1);
+          continue;
+        }
+        if (!entry.isFile()) continue;
+        const extension = path.extname(entry.name).toLowerCase();
+        const media = mimeByExt[extension];
+        const fileMime = fileMimeByExt[extension];
+        if (!media && !fileMime) continue;
+        try {
+          const stat = fs.lstatSync(absolute);
+          if (!stat.isFile() || stat.isSymbolicLink() || stat.size <= 0) continue;
+          const encodedPath = relative.split("/").map(encodeURIComponent).join("/");
+          const sourceQuery = source === "project" ? "?source=project" : "";
+          if (!assetsByPath.has(relative)) assetsByPath.set(relative, {
+            name: entry.name,
+            path: relative,
+            kind: media?.kind ?? "file",
+            mime: media?.mime ?? fileMime!,
+            size_bytes: stat.size,
+            url: `/api/tasks/${encodeURIComponent(taskId)}/preview/${encodedPath}${sourceQuery}`,
+          });
+        } catch {
+          // Files may disappear while a task is finishing; omit them safely.
+        }
+      }
+    };
+
+    const uniqueRoots = roots.filter((item, index, all) => all.findIndex((candidate) => path.resolve(candidate.path) === path.resolve(item.path)) === index);
+    for (const { path: root, source } of uniqueRoots) {
+      for (const directoryName of allowedRoots) {
+        if (assetsByPath.size >= 100) break;
+        const directory = path.resolve(root, directoryName);
+        if (!directory.startsWith(`${root}${path.sep}`)) continue;
+        try {
+          const stat = fs.lstatSync(directory);
+          if (stat.isDirectory() && !stat.isSymbolicLink()) {
+            visit(root, source, directory, directoryName, 0);
+          }
+        } catch {
+          // An output directory is optional.
+        }
+      }
+    }
+    return [...assetsByPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+  }
+
+  app.get("/api/tasks/:id/artifacts", (req, res) => {
+    const taskId = String(req.params.id ?? "").trim();
+    const task = db.prepare("SELECT id, project_path FROM tasks WHERE id = ?").get(taskId) as
+      | { id: string; project_path: string | null }
+      | undefined;
+    if (!task) return res.status(404).json({ ok: false, error: "task_not_found" });
+    const taskRoot = resolvePreviewRoot(taskId, task.project_path);
+    const roots: Array<{ path: string; source: "task" | "project" }> = [];
+    if (taskRoot) roots.push({ path: taskRoot, source: "task" });
+    if (task.project_path) roots.push({ path: path.resolve(task.project_path), source: "project" });
+    if (roots.length === 0) return res.status(200).json({ ok: true, assets: [] });
+    return res.json({ ok: true, assets: listTaskMediaAssets(taskId, roots) });
+  });
+
   function sendProjectPreview(req: any, res: any): void {
     const taskId = String(req.params.id ?? "").trim();
     const task = db.prepare("SELECT id, project_path, status FROM tasks WHERE id = ?").get(taskId) as
       | { id: string; project_path: string | null; status: string }
       | undefined;
     if (!task) return res.status(404).json({ error: "task_not_found" });
-    const root = resolvePreviewRoot(taskId, task.project_path);
+    const root = req.query?.source === "project" && task.project_path
+      ? path.resolve(task.project_path)
+      : resolvePreviewRoot(taskId, task.project_path);
     if (!root) return res.status(404).json({ error: "preview_not_available" });
     const requested = typeof req.params[0] === "string" ? req.params[0] : "index.html";
     const relative = requested.trim() || "index.html";
@@ -211,7 +313,8 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
       return res.status(400).json({ error: "invalid_preview_path" });
     }
     try {
-      if (!fs.statSync(target).isFile()) return res.status(404).json({ error: "preview_file_not_found" });
+      const stat = fs.lstatSync(target);
+      if (!stat.isFile() || stat.isSymbolicLink()) return res.status(404).json({ error: "preview_file_not_found" });
     } catch {
       return res.status(404).json({ error: "preview_file_not_found" });
     }

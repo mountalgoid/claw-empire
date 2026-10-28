@@ -102,6 +102,53 @@ afterEach(() => {
   }
 });
 
+describe("task media artifacts route", () => {
+  it("lists only supported media files inside task output directories", () => {
+    const worktreePath = fs.mkdtempSync(path.join(os.tmpdir(), "climpire-artifacts-"));
+    const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), "climpire-artifacts-project-"));
+    tempDirs.push(worktreePath, projectPath);
+    fs.mkdirSync(path.join(worktreePath, "content", "week-01"), { recursive: true });
+    fs.mkdirSync(path.join(projectPath, "content", "week-01"), { recursive: true });
+    fs.writeFileSync(path.join(worktreePath, "content", "week-01", "post.png"), "png-data");
+    fs.writeFileSync(path.join(worktreePath, "content", "week-01", "reel.mp4"), "video-data");
+    fs.writeFileSync(path.join(worktreePath, "content", "week-01", "notes.txt"), "not media");
+    fs.writeFileSync(path.join(projectPath, "content", "week-01", "project-post.png"), "project-png");
+    const outsideFile = path.join(os.tmpdir(), `climpire-secret-${Date.now()}.png`);
+    fs.writeFileSync(outsideFile, "outside");
+    fs.symlinkSync(outsideFile, path.join(worktreePath, "content", "week-01", "linked.png"));
+    tempDirs.push(outsideFile);
+
+    const taskId = "artifact-task-0000-0000-000000000000";
+    const worktrees = new Map([[taskId, { worktreePath, branchName: "test", projectPath }]]);
+    const { db, getRoutes } = createHarness(worktrees);
+    try {
+      db.exec("CREATE TABLE tasks (id TEXT PRIMARY KEY, project_path TEXT)");
+      db.prepare("INSERT INTO tasks (id, project_path) VALUES (?, ?)").run(taskId, projectPath);
+      const handler = getRoutes.get("/api/tasks/:id/artifacts");
+      expect(handler).toBeTypeOf("function");
+      const res = createFakeResponse();
+      handler?.({ params: { id: taskId } }, res);
+      expect(res.statusCode).toBe(200);
+      const payload = res.payload as { ok: boolean; assets: Array<{ path: string; kind: string; mime: string; url: string }> };
+      expect(payload.ok).toBe(true);
+      expect(payload.assets).toEqual(expect.arrayContaining([
+        expect.objectContaining({ path: "content/week-01/post.png", kind: "image", mime: "image/png" }),
+        expect.objectContaining({ path: "content/week-01/reel.mp4", kind: "video", mime: "video/mp4" }),
+        expect.objectContaining({ path: "content/week-01/notes.txt", kind: "file", mime: "text/plain" }),
+        expect.objectContaining({
+          path: "content/week-01/project-post.png",
+          kind: "image",
+          mime: "image/png",
+          url: expect.stringContaining("?source=project"),
+        }),
+      ]));
+      expect(JSON.stringify(res.payload)).not.toContain("linked.png");
+    } finally {
+      db.close();
+    }
+  });
+});
+
 describe("worktree verify-commit route", () => {
   it("worktree가 없으면 no_worktree 판정을 돌려준다", () => {
     const { db, getRoutes } = createHarness(new Map());

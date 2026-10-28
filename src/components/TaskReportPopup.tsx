@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import type { Agent, Department, Task } from "../types";
-import type { TaskReportDetail, TaskReportDocument, TaskReportTeamSection } from "../api";
-import { archiveTaskReport, getTaskReportDetail } from "../api";
+import type { TaskPreviewArtifact, TaskReportDetail, TaskReportDocument, TaskReportTeamSection } from "../api";
+import { archiveTaskReport, getTaskPreviewArtifacts, getTaskReportDetail } from "../api";
 import type { UiLanguage } from "../i18n";
 import { localeName, pickLang } from "../i18n";
 import AgentAvatar from "./AgentAvatar";
@@ -20,6 +20,13 @@ interface TaskReportPopupProps {
 }
 
 const DOCUMENTS_PER_PAGE = 3;
+
+function formatFileSize(size: number): string {
+  if (!Number.isFinite(size) || size < 0) return "";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 function fmtTime(ts: number | null | undefined): string {
   if (!ts) return "-";
@@ -72,10 +79,36 @@ export default function TaskReportPopup({
   const [revisionText, setRevisionText] = useState("");
   const [actionBusy, setActionBusy] = useState<"run" | "revision" | null>(null);
   const [actionError, setActionError] = useState("");
+  const [artifacts, setArtifacts] = useState<TaskPreviewArtifact[]>([]);
+  const [artifactsLoading, setArtifactsLoading] = useState(true);
+  const [artifactsFailed, setArtifactsFailed] = useState(false);
+  const [copiedDocumentId, setCopiedDocumentId] = useState<string | null>(null);
 
   useEffect(() => {
     setCurrentReport(report);
   }, [report]);
+
+  useEffect(() => {
+    let active = true;
+    setArtifactsLoading(true);
+    setArtifactsFailed(false);
+    getTaskPreviewArtifacts(currentReport.task.id)
+      .then((items) => {
+        if (active) setArtifacts(items);
+      })
+      .catch(() => {
+        if (active) {
+          setArtifacts([]);
+          setArtifactsFailed(true);
+        }
+      })
+      .finally(() => {
+        if (active) setArtifactsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentReport.task.id]);
 
   const rootTaskId = currentReport.project?.root_task_id || currentReport.task.id;
   const teamReports = useMemo(() => currentReport.team_reports ?? [], [currentReport.team_reports]);
@@ -260,6 +293,103 @@ export default function TaskReportPopup({
   }, [activeTab, teamReports]);
 
   const planningDocs = planningSummary?.documents ?? [];
+  const copyText = async (text: string, documentId?: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedDocumentId(documentId ?? "planning-summary");
+      window.setTimeout(() => setCopiedDocumentId(null), 1800);
+    } catch {
+      setActionError(t({ ko: "클립보드에 복사할 수 없습니다. 텍스트를 직접 선택해 복사하세요.", en: "Could not copy to clipboard. Select and copy the text manually.", id: "Teks tidak dapat disalin. Silakan pilih dan salin teks secara manual." }));
+    }
+  };
+  const downloadText = (filename: string, content: string) => {
+    const blobUrl = URL.createObjectURL(new Blob([content], { type: "text/plain;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename.replace(/[\\/:*?"<>|]/g, "-").slice(0, 120) || "task-result.txt";
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  };
+  const renderMediaGallery = () => {
+    const images = artifacts.filter((asset) => asset.kind === "image");
+    const videos = artifacts.filter((asset) => asset.kind === "video");
+    const files = artifacts.filter((asset) => asset.kind === "file");
+    return (
+      <section className="mb-5 border-b border-slate-700/50 pb-5" aria-label={t({ ko: "미디어 결과", en: "Media results", id: "Hasil media" })}>
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-100">
+              {t({ ko: "Hasil media", en: "Media results", id: "Hasil media" })}
+            </h3>
+            <p className="mt-1 text-xs text-slate-400">
+              {t({ ko: "File, gambar, dan video yang tersedia pada hasil tugas.", en: "Files, images, and videos available in this task output.", id: "File, gambar, dan video yang tersedia pada hasil tugas." })}
+            </p>
+          </div>
+          {!artifactsLoading && artifacts.length > 0 && (
+            <span className="text-xs text-slate-400">
+              {images.length} {t({ ko: "gambar", en: "images", id: "gambar" })} · {videos.length} {t({ ko: "video", en: "videos", id: "video" })} · {files.length} {t({ ko: "file", en: "files", id: "file" })}
+            </span>
+          )}
+        </div>
+        {artifactsLoading ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" aria-live="polite">
+            <div className="h-40 animate-pulse rounded-xl bg-slate-800/70" />
+            <div className="h-40 animate-pulse rounded-xl bg-slate-800/70" />
+          </div>
+        ) : artifactsFailed ? (
+          <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
+            {t({ ko: "파일 미디어를 불러오지 못했습니다. 결과 파일 경로와 연결을 확인하세요.", en: "Media files could not be loaded. Check the task output path and connection.", id: "File media tidak dapat dimuat. Periksa lokasi hasil tugas dan koneksi." })}
+          </p>
+        ) : artifacts.length === 0 ? (
+          <p className="rounded-lg border border-slate-700/60 bg-slate-950/40 px-3 py-3 text-xs leading-relaxed text-slate-400">
+            {t({ ko: "아직 이 작업 결과 폴더에서 출력 파일을 찾지 못했습니다. 텍스트 보고서는 요청한 파일이 완성되었다는 뜻이 아닙니다.", en: "No output files were found in this task folder yet. A text report does not mean requested files are finished.", id: "Belum ada file hasil di folder tugas ini. Laporan teks bukan berarti file yang diminta sudah selesai." })}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+            {images.map((asset) => (
+              <figure key={asset.path} className="min-w-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-950/50">
+                <a href={asset.url} target="_blank" rel="noreferrer" className="block bg-black/20">
+                  <img src={asset.url} alt={asset.name} loading="lazy" decoding="async" className="mx-auto max-h-[360px] w-full object-contain" />
+                </a>
+                <figcaption className="flex min-w-0 items-center justify-between gap-2 px-3 py-2 text-xs text-slate-300">
+                  <span className="truncate" title={asset.path}>{asset.path}</span>
+                  <a href={asset.url} download={asset.name} className="shrink-0 rounded border border-slate-600 px-2 py-1 hover:bg-slate-700">
+                    {t({ ko: "다운로드", en: "Download", id: "Unduh" })}
+                  </a>
+                </figcaption>
+              </figure>
+            ))}
+            {videos.map((asset) => (
+              <figure key={asset.path} className="min-w-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-950/50 sm:col-span-2">
+                <video src={asset.url} controls preload="metadata" playsInline className="mx-auto max-h-[65vh] w-full bg-black object-contain" aria-label={asset.name} />
+                <figcaption className="flex min-w-0 items-center justify-between gap-2 px-3 py-2 text-xs text-slate-300">
+                  <span className="truncate" title={asset.path}>{asset.path}</span>
+                  <a href={asset.url} download={asset.name} className="shrink-0 rounded border border-slate-600 px-2 py-1 hover:bg-slate-700">
+                    {t({ ko: "다운로드", en: "Download", id: "Unduh" })}
+                  </a>
+                </figcaption>
+              </figure>
+            ))}
+            {files.length > 0 && (
+              <div className="space-y-2 sm:col-span-2" aria-label={t({ ko: "파일 결과", en: "Output files", id: "File hasil" })}>
+                {files.map((asset) => (
+                  <div key={asset.path} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-slate-700/60 bg-slate-950/50 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium text-slate-200" title={asset.path}>{asset.name}</p>
+                      <p className="truncate text-[11px] text-slate-500">{asset.path} · {formatFileSize(asset.size_bytes)}</p>
+                    </div>
+                    <a href={asset.url} download={asset.name} className="shrink-0 rounded border border-slate-600 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-slate-700">
+                      {t({ ko: "다운로드", en: "Download", id: "Unduh" })}
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  };
 
   const toggleDoc = (docId: string) => {
     setExpandedDocs((prev) => {
@@ -289,7 +419,7 @@ export default function TaskReportPopup({
           const isExpanded = expandedDocs[doc.id] !== false;
           return (
             <div key={doc.id} className="rounded-lg border border-slate-700/60 bg-slate-800/50 p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-slate-100">{doc.title}</p>
                   <p className="truncate text-[11px] text-slate-500">
@@ -297,14 +427,33 @@ export default function TaskReportPopup({
                     {doc.path ? ` · ${doc.path}` : ""}
                   </p>
                 </div>
-                <button
-                  onClick={() => toggleDoc(doc.id)}
-                  className="rounded-md border border-slate-600 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
-                >
-                  {isExpanded
-                    ? t({ ko: "접기", en: "Collapse", ja: "折りたたむ", zh: "收起" })
-                    : t({ ko: "확장", en: "Expand", ja: "展開", zh: "展开" })}
-                </button>
+                <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                  <button
+                    type="button"
+                    onClick={() => void copyText(doc.content, doc.id)}
+                    className="rounded-md border border-slate-600 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
+                  >
+                    {copiedDocumentId === doc.id
+                      ? t({ ko: "복사됨", en: "Copied", id: "Tersalin" })
+                      : t({ ko: "텍스트 복사", en: "Copy text", id: "Salin teks" })}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadText(`${doc.title || "task-result"}.txt`, doc.content)}
+                    className="rounded-md border border-slate-600 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
+                  >
+                    {t({ ko: "다운로드", en: "Download", id: "Unduh" })}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleDoc(doc.id)}
+                    className="rounded-md border border-slate-600 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
+                  >
+                    {isExpanded
+                      ? t({ ko: "접기", en: "Collapse", ja: "折りたたむ", zh: "收起", id: "Ciutkan" })
+                      : t({ ko: "확장", en: "Expand", ja: "展開", zh: "展开", id: "Perluas" })}
+                  </button>
+                </div>
               </div>
               <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-[11px] leading-relaxed text-slate-300">
                 {isExpanded ? doc.content : doc.text_preview}
@@ -367,6 +516,24 @@ export default function TaskReportPopup({
             })}
           </p>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void copyText(planningSummary?.content || "", "planning-summary")}
+              disabled={!planningSummary?.content}
+              className="rounded-md border border-emerald-400/40 bg-emerald-500/15 px-2 py-1 text-[11px] text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
+            >
+              {copiedDocumentId === "planning-summary"
+                ? t({ ko: "복사됨", en: "Copied", id: "Tersalin" })
+                : t({ ko: "요약 복사", en: "Copy summary", id: "Salin ringkasan" })}
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadText("planning-summary.txt", planningSummary?.content || "")}
+              disabled={!planningSummary?.content}
+              className="rounded-md border border-emerald-400/40 bg-emerald-500/15 px-2 py-1 text-[11px] text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
+            >
+              {t({ ko: "다운로드", en: "Download", id: "Unduh" })}
+            </button>
             <button
               onClick={refreshArchive}
               disabled={refreshingArchive}
@@ -536,13 +703,18 @@ export default function TaskReportPopup({
                 <span>
                   {taskAgentName} ({currentReport.task.agent_role})
                 </span>
-                <span>
-                  {t({ ko: "완료", en: "Completed", ja: "完了", zh: "完成" })}:{" "}
-                  {fmtTime(currentReport.task.completed_at)}
+                <span className={`rounded px-1.5 py-0.5 ${statusClass(currentReport.task.status)}`}>
+                  {currentReport.task.status === "done"
+                    ? t({ ko: "Selesai", en: "Completed", ja: "完了", zh: "完成", id: "Selesai" })
+                    : currentReport.task.status === "review"
+                      ? t({ ko: "Dalam peninjauan", en: "In review", id: "Dalam peninjauan" })
+                      : currentReport.task.status === "in_progress"
+                        ? t({ ko: "Sedang berjalan", en: "In progress", id: "Sedang berjalan" })
+                        : t({ ko: "Belum selesai", en: "Not complete", id: "Belum selesai" })}
                 </span>
-                <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-400">
+                {currentReport.task.status === "done" && <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-400">
                   {elapsed(currentReport.task.created_at, currentReport.task.completed_at)}
-                </span>
+                </span>}
               </div>
             </div>
           </div>
@@ -581,6 +753,7 @@ export default function TaskReportPopup({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+          {renderMediaGallery()}
           {activeTab === "planning" ? (
             renderPlanningSummary()
           ) : selectedTeam ? (

@@ -149,6 +149,15 @@ export interface TaskReportDocument {
   content: string;
 }
 
+export interface TaskPreviewArtifact {
+  name: string;
+  path: string;
+  kind: "image" | "video" | "file";
+  mime: string;
+  size_bytes: number;
+  url: string;
+}
+
 export interface TaskReportTeamSection {
   id: string;
   task_id: string;
@@ -303,6 +312,13 @@ export async function getTaskReports(): Promise<TaskReportSummary[]> {
 
 export async function getTaskReportDetail(taskId: string): Promise<TaskReportDetail> {
   return request<TaskReportDetail>(`/api/task-reports/${taskId}`);
+}
+
+export async function getTaskPreviewArtifacts(taskId: string): Promise<TaskPreviewArtifact[]> {
+  const result = await request<{ ok: boolean; assets: TaskPreviewArtifact[] }>(
+    `/api/tasks/${encodeURIComponent(taskId)}/artifacts`,
+  );
+  return result.assets ?? [];
 }
 
 export async function archiveTaskReport(taskId: string): Promise<{
