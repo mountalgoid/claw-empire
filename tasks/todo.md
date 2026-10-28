@@ -289,6 +289,13 @@
 - [x] Teruskan prop notifikasi agen ke komponen Dashboard.
 - [x] Tambahkan fallback defensif agar data notifikasi kosong tidak merusak halaman.
 - [x] Verifikasi build, TypeScript, diff, dan health server.
+
+## Status eksekusi Task Board
+
+- [x] Tambahkan indikator jumlah tugas yang sedang berjalan di header.
+- [x] Beri penanda visual khusus pada kolom `in_progress`.
+- [x] Tampilkan badge eksekusi pada setiap kartu yang sedang berjalan.
+- [x] Lokalkan status kolaborasi dan eksekusi ke Bahasa Indonesia.
 - [x] Normalisasi path artefak dari worktree lama ke folder proyek utama.
 
 ## Pemulihan otomatis saat bahan atau tool tidak tersedia

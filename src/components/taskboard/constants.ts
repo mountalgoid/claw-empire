@@ -193,9 +193,11 @@ export function taskStatusLabel(status: TaskStatus, t: TFunction) {
     case "inbox":
       return t({ ko: "수신함", en: "Inbox", ja: "受信箱", zh: "收件箱" });
     case "planned":
-      return t({ ko: "계획됨", en: "Planned", ja: "計画済み", zh: "已计划" });
+      return t({ ko: "계획됨", en: "Planned", ja: "計画済み", zh: "已计划", id: "Direncanakan" });
+    case "collaborating":
+      return t({ ko: "협업 중", en: "Collaborating", ja: "協業中", zh: "协作中", id: "Berkolaborasi" });
     case "in_progress":
-      return t({ ko: "진행 중", en: "In Progress", ja: "進行中", zh: "进行中" });
+      return t({ ko: "진행 중", en: "In Progress", ja: "進行中", zh: "进行中", id: "Sedang berjalan" });
     case "review":
       return t({ ko: "검토", en: "Review", ja: "レビュー", zh: "审核" });
     case "done":

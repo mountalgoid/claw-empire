@@ -136,6 +136,10 @@ export function TaskBoard({
   }, [subtasks]);
 
   const activeFilterCount = [filterDept, filterAgent, filterType, search].filter(Boolean).length;
+  const runningTasks = useMemo(
+    () => tasks.filter((task) => task.status === "in_progress" || task.status === "collaborating"),
+    [tasks],
+  );
   const hiddenTaskCount = useMemo(() => {
     let count = 0;
     for (const task of tasks) {
@@ -161,6 +165,19 @@ export function TaskBoard({
               zh: "个已应用",
             })})`}
         </span>
+        <div
+          role="status"
+          className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
+            runningTasks.length > 0
+              ? "border-amber-400/50 bg-amber-500/15 text-amber-200"
+              : "border-slate-700 bg-slate-900 text-slate-500"
+          }`}
+        >
+          <span className={runningTasks.length > 0 ? "animate-pulse text-amber-300" : "text-slate-600"}>●</span>
+          {runningTasks.length > 0
+            ? `${t({ ko: "Sedang berjalan", en: "Running now", ja: "実行中", zh: "正在运行", id: "Sedang berjalan" })} ${runningTasks.length}`
+            : t({ ko: "실행 중인 업무 없음", en: "No task running", ja: "実行中のタスクなし", zh: "没有运行中的任务", id: "Tidak ada tugas berjalan" })}
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <button onClick={() => setShowQuickProject(true)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-500">
             {t({ ko: "자동 프로젝트", en: "Auto Project", ja: "自動プロジェクト", zh: "自动项目", id: "Proyek Otomatis" })}
@@ -271,13 +288,20 @@ export function TaskBoard({
           return (
             <div
               key={column.status}
-              className={`taskboard-column flex min-h-[280px] w-full flex-col rounded-xl border ${column.borderColor} bg-slate-900 sm:h-full sm:min-h-0 sm:w-72 sm:flex-shrink-0`}
+              className={`taskboard-column flex min-h-[280px] w-full flex-col rounded-xl border ${column.borderColor} bg-slate-900 sm:h-full sm:min-h-0 sm:w-72 sm:flex-shrink-0 ${
+                column.status === "in_progress" && columnTasks.length > 0 ? "ring-2 ring-amber-400/30" : ""
+              }`}
             >
               <div className={`flex items-center justify-between rounded-t-xl ${column.headerBg} px-3.5 py-2.5`}>
                 <div className="flex items-center gap-2">
-                  <span className={`h-2 w-2 flex-shrink-0 rounded-full ${column.dotColor}`} />
+                  <span className={`h-2 w-2 flex-shrink-0 rounded-full ${column.dotColor} ${column.status === "in_progress" && columnTasks.length > 0 ? "animate-pulse" : ""}`} />
                   <span className="text-sm font-semibold text-white">
                     {column.icon} {taskStatusLabel(column.status, t)}
+                    {column.status === "in_progress" && columnTasks.length > 0 && (
+                      <span className="ml-1 text-[10px] font-bold uppercase tracking-wide text-amber-200">
+                        {t({ ko: "Sedang berjalan", en: "RUNNING", ja: "実行中", zh: "运行中", id: "Sedang berjalan" })}
+                      </span>
+                    )}
                   </span>
                 </div>
                 <span className="rounded-full bg-black/30 px-2 py-0.5 text-xs font-bold text-white/80">

@@ -150,6 +150,21 @@ export default function TaskCard({
       </div>
 
       <div className="mb-3">
+        {task.status === "in_progress" && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-2.5 py-2 text-xs font-semibold text-amber-200">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-amber-300" />
+            <span>{t({ ko: "Sedang berjalan", en: "Running now", ja: "実行中", zh: "正在运行", id: "Sedang berjalan" })}</span>
+            <span className="ml-auto text-[10px] font-normal text-amber-200/70">
+              {assignedLabel || t({ ko: "팀 실행", en: "Team execution", ja: "チーム実行", zh: "团队执行", id: "Eksekusi tim" })}
+            </span>
+          </div>
+        )}
+        {task.status === "collaborating" && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-indigo-400/40 bg-indigo-500/10 px-2.5 py-2 text-xs font-semibold text-indigo-200">
+            <span className="animate-pulse">🤝</span>
+            <span>{t({ ko: "팀 협업 중", en: "Team collaboration", ja: "チーム協業中", zh: "团队协作中", id: "Tim sedang berkolaborasi" })}</span>
+          </div>
+        )}
         <select
           value={task.status}
           onChange={(event) => onUpdateTask(task.id, { status: event.target.value as TaskStatus })}

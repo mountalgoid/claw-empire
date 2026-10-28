@@ -34,6 +34,7 @@ describe("ChatMessageList sender fallback", () => {
         agents={[]}
         spriteMap={new Map()}
         locale="ko-KR"
+        language="id"
         tr={tr}
         getAgentName={(agent) => agent?.name_ko ?? agent?.name ?? ""}
         decisionRequestByMessage={new Map()}

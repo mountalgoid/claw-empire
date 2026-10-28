@@ -193,7 +193,6 @@ function Dashboard({ stats, agents, tasks, companyName, onPrimaryCtaClick, unrea
         primaryCtaLabel={primaryCtaLabel}
         onPrimaryCtaClick={onPrimaryCtaClick}
         t={t}
-        unreadAgentIds={unreadAgentIds}
       />
 
       <DashboardHudStats hudStats={hudStats} numberFormatter={numberFormatter} />

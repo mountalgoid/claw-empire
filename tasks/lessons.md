@@ -19,3 +19,4 @@
 - Pemulihan otomatis harus berada di dalam prompt eksekusi dengan batas keamanan: diagnosis dulu, gunakan resource disetujui, buat fallback lokal hanya jika aman, verifikasi ulang sekali, lalu jeda dengan blocker terukur agar tidak terjadi retry loop.
 - Penemuan external tidak boleh bergantung pada input manual, tetapi harus dibatasi allowlist, query minimum, redaksi data sensitif, validasi paket, dan pencatatan sumber agar otomatis tetap aman dan dapat diaudit.
 - Prop UI yang dipakai dalam render bersarang harus diteruskan dan memiliki fallback default; prop undefined pada operasi seperti Set.has dapat membuat seluruh Dashboard blank meskipun TypeScript tidak menangkapnya.
+- Status task perlu terlihat pada tiga tingkat: ringkasan header, kolom status, dan kartu tugas; label dropdown saja mudah terlewat saat pengguna memantau eksekusi.

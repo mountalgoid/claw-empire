@@ -3,12 +3,13 @@ import type * as api from "../api";
 import { normalizeLanguage, pickLang } from "../i18n";
 import type { CompanySettings, Department } from "../types";
 import type { RuntimeOs, View } from "./types";
+import type { ThemeMode } from "../ThemeContext";
 
 interface UseAppLabelsParams {
   view: View;
   settings: CompanySettings;
   departments: Department[];
-  theme: "light" | "dark";
+  theme: ThemeMode;
   runtimeOs: RuntimeOs;
   forceUpdateBanner: boolean;
   updateStatus: api.UpdateStatus | null;

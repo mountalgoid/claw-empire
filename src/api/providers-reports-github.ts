@@ -127,6 +127,7 @@ export interface TaskReportSummary {
   source_task_id?: string | null;
   created_at: number;
   completed_at: number | null;
+  result?: string | null;
   agent_name: string;
   agent_name_ko: string;
   agent_role: string;

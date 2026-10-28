@@ -28,6 +28,7 @@ function createBaseProps(): ComponentProps<typeof AppHeaderBar> {
     onOpenAnnouncement: vi.fn(),
     onOpenRoomManager: vi.fn(),
     onToggleTheme: vi.fn(),
+    onSelectTheme: vi.fn(),
     onToggleMobileHeaderMenu: vi.fn(),
     onCloseMobileHeaderMenu: vi.fn(),
   };
