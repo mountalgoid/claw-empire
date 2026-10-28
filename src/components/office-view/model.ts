@@ -29,6 +29,8 @@ interface OfficeViewProps {
   onSelectDepartment: (dept: Department) => void;
 }
 
+type OfficeMapMode = "balanced" | "wide" | "focused";
+
 interface Delivery {
   sprite: Container;
   fromX: number;
@@ -86,36 +88,6 @@ function trackProcessedId(set: Set<string>, id: string, max = 4000): void {
     removed += 1;
     if (removed >= trimCount) break;
   }
-}
-
-type ScrollAxis = "x" | "y";
-
-function isScrollableOverflowValue(value: string): boolean {
-  return value === "auto" || value === "scroll" || value === "overlay";
-}
-
-function canScrollOnAxis(el: HTMLElement, axis: ScrollAxis): boolean {
-  const style = window.getComputedStyle(el);
-  if (axis === "y") {
-    return isScrollableOverflowValue(style.overflowY) && el.scrollHeight > el.clientHeight + 1;
-  }
-  return isScrollableOverflowValue(style.overflowX) && el.scrollWidth > el.clientWidth + 1;
-}
-
-function findScrollContainer(start: HTMLElement | null, axis: ScrollAxis): HTMLElement | null {
-  let current = start?.parentElement ?? null;
-  let fallback: HTMLElement | null = null;
-  while (current) {
-    const style = window.getComputedStyle(current);
-    const overflowY = style.overflowY;
-    const overflowX = style.overflowX;
-    const hasScrollableStyle =
-      axis === "y" ? isScrollableOverflowValue(overflowY) : isScrollableOverflowValue(overflowX);
-    if (!fallback && hasScrollableStyle) fallback = current;
-    if (canScrollOnAxis(current, axis)) return current;
-    current = current.parentElement;
-  }
-  return fallback;
 }
 
 /* ================================================================== */
@@ -261,12 +233,10 @@ export {
   type Delivery,
   type RoomRect,
   type WallClockVisual,
+  type OfficeMapMode,
   detachNode,
   destroyNode,
   trackProcessedId,
-  type ScrollAxis,
-  canScrollOnAxis,
-  findScrollContainer,
   MIN_OFFICE_W,
   CEO_ZONE_H,
   HALLWAY_H,

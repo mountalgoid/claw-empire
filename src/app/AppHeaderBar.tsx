@@ -1,4 +1,5 @@
 import type { WorkflowPackKey } from "../types";
+import { THEME_OPTIONS, type ThemeMode } from "../ThemeContext";
 import type { View } from "./types";
 
 type OfficePackOption = {
@@ -27,7 +28,7 @@ interface AppHeaderBarProps {
     options: OfficePackOption[];
     onChange: (packKey: WorkflowPackKey) => void;
   } | null;
-  theme: "light" | "dark";
+  theme: ThemeMode;
   mobileHeaderMenuOpen: boolean;
   onOpenMobileNav: () => void;
   onOpenTasks: () => void;
@@ -37,6 +38,7 @@ interface AppHeaderBarProps {
   onOpenAnnouncement: () => void;
   onOpenRoomManager: () => void;
   onToggleTheme: () => void;
+  onSelectTheme: (theme: ThemeMode) => void;
   onToggleMobileHeaderMenu: () => void;
   onCloseMobileHeaderMenu: () => void;
 }
@@ -64,6 +66,7 @@ export default function AppHeaderBar({
   onOpenAnnouncement,
   onOpenRoomManager,
   onToggleTheme,
+  onSelectTheme,
   onToggleMobileHeaderMenu,
   onCloseMobileHeaderMenu,
 }: AppHeaderBarProps) {
@@ -130,7 +133,8 @@ export default function AppHeaderBar({
           </label>
         )}
       </div>
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="header-action-scroller">
+        <div className="flex w-max min-w-full items-center justify-end gap-2 sm:gap-3">
         <button
           onClick={onOpenTasks}
           className="header-action-btn header-action-btn-primary"
@@ -210,6 +214,17 @@ export default function AppHeaderBar({
             )}
           </span>
         </button>
+        <label className="theme-template-select hidden sm:flex items-center rounded-lg px-1.5" title="UI theme template">
+          <span className="sr-only">UI theme template</span>
+          <select
+            value={theme}
+            onChange={(event) => onSelectTheme(event.target.value as ThemeMode)}
+            className="max-w-[92px] bg-transparent px-1.5 py-1 text-[10px] font-semibold outline-none"
+            aria-label="UI theme template"
+          >
+            {THEME_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
         <div className="relative sm:hidden">
           <button
             onClick={onToggleMobileHeaderMenu}
@@ -311,6 +326,7 @@ export default function AppHeaderBar({
         <div className="flex items-center gap-2 text-xs" style={{ color: "var(--th-text-muted)" }}>
           <div className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`} />
           <span className="hidden sm:inline">{connected ? "Live" : "Offline"}</span>
+        </div>
         </div>
       </div>
     </header>

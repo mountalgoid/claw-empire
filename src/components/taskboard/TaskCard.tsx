@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Agent, Department, SubTask, Task, TaskStatus } from "../../types";
-import { useI18n } from "../../i18n";
+import { localeName, useI18n } from "../../i18n";
 import AgentAvatar from "../AgentAvatar";
 import AgentSelect from "../AgentSelect";
 import DiffModal from "./DiffModal";
@@ -71,15 +71,13 @@ export default function TaskCard({
   const [agentWarning, setAgentWarning] = useState(false);
 
   const assignedAgent = task.assigned_agent ?? agents.find((agent) => agent.id === task.assigned_agent_id);
-  const fallbackAssignedName =
-    (locale === "ko" ? task.agent_name_ko || task.agent_name : task.agent_name || task.agent_name_ko) ||
-    task.assigned_agent_id;
-  const assignedDisplayName = assignedAgent ? (locale === "ko" ? assignedAgent.name_ko : assignedAgent.name) : null;
+  const fallbackAssignedName = (locale === "ko" ? task.agent_name_ko || task.agent_name : task.agent_name) || task.assigned_agent_id;
+  const assignedDisplayName = assignedAgent ? localeName(locale, assignedAgent) : null;
   const assignedLabel = assignedDisplayName || fallbackAssignedName || null;
   const department = departments.find((d) => d.id === task.department_id);
   const typeBadge = getTaskTypeBadge(task.task_type, t);
 
-  const canRun = task.status === "planned" || task.status === "inbox";
+  const canRun = task.status === "planned" || task.status === "inbox" || task.status === "review" || task.status === "done";
   const canStop = task.status === "in_progress";
   const canPause = task.status === "in_progress" && !!onPauseTask;
   const canResume = (task.status === "pending" || task.status === "cancelled") && !!onResumeTask;
@@ -124,7 +122,7 @@ export default function TaskCard({
         )}
         {department && (
           <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-300">
-            {department.icon} {locale === "ko" ? department.name_ko : department.name}
+            {department.icon} {localeName(locale, department)}
           </span>
         )}
       </div>
@@ -158,7 +156,9 @@ export default function TaskCard({
             </span>
           )}
         </div>
-        <span className="text-xs text-slate-500">{timeAgo(task.created_at, localeTag)}</span>
+        <span className="text-xs text-slate-500" title={timeAgo(task.updated_at || task.created_at, localeTag)}>
+          {timeAgo(task.updated_at || task.created_at, localeTag)}
+        </span>
       </div>
 
       <div
@@ -235,7 +235,7 @@ export default function TaskCard({
                         className="shrink-0 rounded px-1 py-0.5 text-[10px] font-medium"
                         style={{ backgroundColor: targetDepartment.color + "30", color: targetDepartment.color }}
                       >
-                        {targetDepartment.icon} {targetDepartment.name_ko}
+                        {targetDepartment.icon} {localeName(locale, targetDepartment)}
                       </span>
                     )}
                     {subtask.delegated_task_id && subtask.status !== "done" && (
@@ -270,10 +270,22 @@ export default function TaskCard({
               }
               onRunTask(task.id);
             }}
-            title={t({ ko: "작업 실행", en: "Run task", ja: "タスク実行", zh: "运行任务" })}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-green-700 px-2 py-1.5 text-xs font-medium text-white transition hover:bg-green-600"
+            title={t({
+              ko: task.status === "done" || task.status === "review" ? "완료된 프로젝트 다시 개선" : "작업 실행",
+              en: task.status === "done" || task.status === "review" ? "Improve this project again" : "Run task",
+              ja: task.status === "done" || task.status === "review" ? "完成したプロジェクトを再改善" : "タスク実行",
+              zh: task.status === "done" || task.status === "review" ? "再次改进此项目" : "运行任务",
+            })}
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-white transition ${
+              task.status === "done" || task.status === "review" ? "bg-amber-700 hover:bg-amber-600" : "bg-green-700 hover:bg-green-600"
+            }`}
           >
-            ▶ {t({ ko: "실행", en: "Run", ja: "実行", zh: "运行" })}
+            {task.status === "done" || task.status === "review" ? "↻" : "▶"} {t({
+              ko: task.status === "done" || task.status === "review" ? "다시 개선" : "실행",
+              en: task.status === "done" || task.status === "review" ? "Improve again" : "Run",
+              ja: task.status === "done" || task.status === "review" ? "再改善" : "実行",
+              zh: task.status === "done" || task.status === "review" ? "再次改进" : "运行",
+            })}
           </button>
         )}
         {canPause && (
@@ -366,6 +378,23 @@ export default function TaskCard({
             className="flex items-center justify-center gap-1 rounded-lg bg-purple-800 px-2 py-1.5 text-xs font-medium text-purple-200 transition hover:bg-purple-700"
           >
             {t({ ko: "Diff", en: "Diff", ja: "差分", zh: "差异" })}
+          </button>
+        )}
+        {(task.status === "review" || task.status === "done") && (
+          <button
+            onClick={() =>
+              window.open(
+                task.project_id
+                  ? `/api/projects/${encodeURIComponent(task.project_id)}/preview/index.html`
+                  : `/api/tasks/${encodeURIComponent(task.id)}/preview/index.html`,
+                "_blank",
+                "noopener,noreferrer",
+              )
+            }
+            title={t({ ko: "완성 결과 실행", en: "Open finished project", ja: "完成したプロジェクトを開く", zh: "打开已完成项目" })}
+            className="flex items-center justify-center gap-1 rounded-lg bg-emerald-700 px-2 py-1.5 text-xs font-medium text-emerald-50 transition hover:bg-emerald-600"
+          >
+            ▶ {t({ ko: "결과 보기", en: "Preview", ja: "結果を見る", zh: "查看结果" })}
           </button>
         )}
         {canHideTask && !isHiddenTask && onHideTask && (

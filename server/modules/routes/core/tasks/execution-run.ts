@@ -6,6 +6,8 @@ import { resolveConstrainedAgentScopeForTask, selectAutoAssignableAgentForTask }
 import { buildWorkflowPackExecutionGuidance } from "../../../workflow/packs/execution-guidance.ts";
 import { resolveVideoArtifactSpecForTask } from "../../../workflow/packs/video-artifact.ts";
 import { ensureVideoPreprodRemotionBestPracticesSkill } from "../../../workflow/core/video-skill-bootstrap.ts";
+import { createAgentMemoryTools } from "../../../workflow/core/agent-memory-tools.ts";
+import { createProjectGovernanceTools } from "../../../workflow/core/project-governance-tools.ts";
 import {
   buildInterruptPromptBlock,
   consumeInterruptPrompts,
@@ -83,6 +85,8 @@ export function registerTaskRunRoute(deps: TaskRunRouteDeps): void {
     handleTaskRunComplete,
     buildAvailableSkillsPromptBlock,
   } = deps;
+  const { getAgentMemoryContext } = createAgentMemoryTools({ db: db as any, nowMs });
+  const { getAgentPermissionContext, getProjectExternalResourceContext } = createProjectGovernanceTools({ db: db as any, nowMs });
 
   app.post("/api/tasks/:id/run", (req, res) => {
     const id = String(req.params.id);
@@ -454,16 +458,26 @@ Whenever you complete a subtask, report it in this format:
     const workflowPackGuidance = buildWorkflowPackExecutionGuidance(task.workflow_pack_key, taskLang, {
       videoArtifactRelativePath: videoArtifactSpec?.relativePath,
     });
+    const agentMemoryContext = getAgentMemoryContext(agent.id, task.project_id, 8);
+    const agentPermissionContext = getAgentPermissionContext(agent.id);
+    const externalResourceContext = getProjectExternalResourceContext(
+      task.project_id,
+      agent.id,
+      `${task.title}\n${task.description ?? ""}`,
+    );
 
     const prompt = buildTaskExecutionPrompt(
       [
         (
           buildAvailableSkillsPromptBlock ||
-          ((providerName: string) => `[Available Skills][provider=${providerName || "unknown"}][unavailable]`)
-        )(provider),
+          ((providerName: string, _taskText?: string) => `[Available Skills][provider=${providerName || "unknown"}][unavailable]`)
+        )(provider, `${task.title}\n${task.description ?? ""}`),
         `[Task Session] id=${executionSession.sessionId} owner=${executionSession.agentId} provider=${executionSession.provider}`,
         "This session is task-scoped. Keep continuity for this task only and do not cross-contaminate context from other projects.",
         projectStructureBlock,
+        agentMemoryContext,
+        agentPermissionContext,
+        externalResourceContext,
         recentChanges ? `[Recent Changes]\n${recentChanges}` : "",
         `[Task] ${task.title}`,
         task.description ? `\n${task.description}` : "",

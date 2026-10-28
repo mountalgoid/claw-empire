@@ -2,7 +2,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Application, AnimatedSprite, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import type { Agent, Department, SubAgent, Task } from "../../types";
 import type { ThemeMode } from "../../ThemeContext";
-import type { Delivery, RoomRect, SubCloneBurstParticle, WallClockVisual } from "./model";
+import type { Delivery, OfficeMapMode, RoomRect, SubCloneBurstParticle, WallClockVisual } from "./model";
 import type { SupportedLocale } from "./themes-locale";
 
 export interface DataSnapshot {
@@ -31,6 +31,7 @@ export interface AnimItem {
   deskG?: Graphics;
   bedG?: Graphics;
   blanketG?: Graphics;
+  phase?: number;
 }
 
 export interface BreakAnimItem {
@@ -61,6 +62,7 @@ export interface BuildOfficeSceneContext {
   meetingMinutesOpenRef: MutableRefObject<((taskId: string) => void) | undefined>;
   localeRef: MutableRefObject<SupportedLocale>;
   themeRef: MutableRefObject<ThemeMode>;
+  mapModeRef: MutableRefObject<OfficeMapMode>;
   animItemsRef: MutableRefObject<AnimItem[]>;
   roomRectsRef: MutableRefObject<RoomRect[]>;
   deliveriesRef: MutableRefObject<Delivery[]>;

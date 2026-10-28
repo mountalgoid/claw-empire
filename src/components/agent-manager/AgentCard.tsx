@@ -1,7 +1,7 @@
 import type { Agent, Department } from "../../types";
 import { localeName } from "../../i18n";
 import AgentAvatar from "../AgentAvatar";
-import { ROLE_BADGE, ROLE_LABEL, STATUS_DOT } from "./constants";
+import { ROLE_BADGE, ROLE_LABEL } from "./constants";
 import type { Translator } from "./types";
 
 interface AgentCardProps {
@@ -45,10 +45,6 @@ export default function AgentCard({
       <div className="flex items-start gap-3">
         <div className="relative shrink-0">
           <AgentAvatar agent={agent} spriteMap={spriteMap} size={44} rounded="xl" />
-          <div
-            className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${STATUS_DOT[agent.status] ?? STATUS_DOT.idle}`}
-            style={{ borderColor: "var(--th-card-bg)" }}
-          />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">

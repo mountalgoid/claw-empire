@@ -6,6 +6,8 @@ import {
   resolveVideoArtifactSpecForTask,
 } from "../packs/video-artifact.ts";
 import { evaluateRemotionOnlyGateFromLogFiles } from "../packs/video-render-engine-gate.ts";
+import { createAgentMemoryTools } from "../core/agent-memory-tools.ts";
+import { createProjectGovernanceTools } from "../core/project-governance-tools.ts";
 
 type CreateRunCompleteHandlerDeps = Record<string, any>;
 
@@ -52,6 +54,8 @@ export function createRunCompleteHandler(deps: CreateRunCompleteHandlerDeps) {
     getWorktreeDiffSummary,
     hasVisibleDiffSummary,
   } = deps;
+  const { rememberTaskResult } = createAgentMemoryTools({ db, nowMs });
+  const { captureCheckpoint, recordExecutionMetrics } = createProjectGovernanceTools({ db, nowMs });
 
   function handleTaskRunComplete(taskId: string, exitCode: number): void {
     activeProcesses.delete(taskId);
@@ -70,6 +74,7 @@ export function createRunCompleteHandler(deps: CreateRunCompleteHandlerDeps) {
           project_id: string | null;
           project_path: string | null;
           source_task_id: string | null;
+          started_at: number | null;
         }
       | undefined;
     const stopRequested = stopRequestedTasks.has(taskId);
@@ -259,7 +264,41 @@ export function createRunCompleteHandler(deps: CreateRunCompleteHandlerDeps) {
 
     if (result) {
       db.prepare("UPDATE tasks SET result = ? WHERE id = ?").run(result, taskId);
+      if (task?.assigned_agent_id) {
+        rememberTaskResult({
+          agentId: task.assigned_agent_id,
+          projectId: task.project_id,
+          taskId,
+          taskTitle: task.title,
+          exitCode: finalExitCode,
+          result,
+        });
+      }
     }
+
+    const taskAgentProvider = task?.assigned_agent_id
+      ? (db.prepare("SELECT cli_provider FROM agents WHERE id = ?").get(task.assigned_agent_id) as
+          | { cli_provider: string | null }
+          | undefined)?.cli_provider ?? null
+      : null;
+    recordExecutionMetrics({
+      taskId,
+      agentId: task?.assigned_agent_id ?? null,
+      projectId: task?.project_id ?? null,
+      provider: taskAgentProvider,
+      exitCode: finalExitCode,
+      startedAt: task?.started_at ?? null,
+      result: result ?? "",
+    });
+    const completedWorktree = taskWorktrees.get(taskId);
+    captureCheckpoint({
+      projectId: task?.project_id ?? null,
+      taskId,
+      worktreePath: completedWorktree?.worktreePath,
+      branchName: completedWorktree?.branchName,
+      status: finalExitCode === 0 ? "review" : "failed",
+      evidence: { exit_code: finalExitCode, result_available: Boolean(result) },
+    });
 
     // Auto-complete own-department subtasks on CLI success; foreign ones get delegated
     if (finalExitCode === 0) {
@@ -297,6 +336,39 @@ export function createRunCompleteHandler(deps: CreateRunCompleteHandlerDeps) {
         | Record<string, unknown>
         | undefined;
       broadcast("agent_status", agent);
+    }
+
+    const offlineProviderPause =
+      finalExitCode !== 0 &&
+      Boolean(
+        result &&
+          /(fetch failed|ECONNREFUSED|ENETUNREACH|EHOSTUNREACH|ETIMEDOUT|timed out|network|connection reset|provider .*\(5\d\d\))/i.test(
+            result,
+          ),
+      );
+    if (offlineProviderPause) {
+      db.prepare("UPDATE tasks SET status = 'pending', updated_at = ? WHERE id = ?").run(t, taskId);
+      appendTaskLog(
+        taskId,
+        "system",
+        "Task paused for retry: provider or network unavailable; project checkpoint preserved.",
+      );
+      const pauseLang = resolveLang(task?.description ?? task?.title ?? "");
+      notifyCeo(
+        pickL(
+          l(
+            ["작업이 일시 중지되었습니다. 연결이 복구되면 같은 체크포인트에서 다시 실행할 수 있습니다."],
+            ["Task paused. It can resume from the same checkpoint when the provider or network returns."],
+            ["タスクを一時停止しました。接続復旧後、同じチェックポイントから再開できます。"],
+            ["任务已暂停。服务或网络恢复后可从同一检查点继续。"],
+            ["Tugas dijeda. Setelah provider atau jaringan kembali, tugas dapat dilanjutkan dari checkpoint yang sama."],
+          ),
+          pauseLang,
+        ),
+        taskId,
+      );
+      broadcast("task_update", db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId));
+      return;
     }
 
     if (finalExitCode === 0 && task) {

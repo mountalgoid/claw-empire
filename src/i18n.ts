@@ -1,7 +1,7 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-export type UiLanguage = "ko" | "en" | "ja" | "zh";
+export type UiLanguage = "ko" | "en" | "ja" | "zh" | "id";
 export const LANGUAGE_STORAGE_KEY = "climpire.language";
 export const LANGUAGE_USER_SET_STORAGE_KEY = "climpire.language.user_set";
 
@@ -10,9 +10,44 @@ export type LangText = {
   en: string;
   ja?: string;
   zh?: string;
+  id?: string;
 };
+export type LanguageText = LangText;
 
 type TranslationInput = LangText | string;
+
+const INDONESIAN_FALLBACKS: Record<string, string> = {
+  Office: "Kantor",
+  Agents: "Agen",
+  Library: "Perpustakaan",
+  Dashboard: "Dasbor",
+  Tasks: "Tugas",
+  Settings: "Pengaturan",
+  Decisions: "Keputusan",
+  "Department Status": "Status Departemen",
+  working: "sedang bekerja",
+  "Auto Assign": "Penugasan Otomatis",
+  "YOLO Mode": "Mode YOLO",
+  "Auto Update (Global)": "Pembaruan Otomatis (Global)",
+  "OAuth Auto Swap": "Penggantian OAuth Otomatis",
+  "Default CLI Provider": "Penyedia CLI Bawaan",
+  Language: "Bahasa",
+  Save: "Simpan",
+  Saved: "Tersimpan",
+  General: "Umum",
+  "CLI Tools": "Alat CLI",
+  Channel: "Saluran",
+  "CEO OFFICE": "KANTOR CEO",
+  "6P COLLAB TABLE": "MEJA KOLABORASI 6 ORANG",
+  Staff: "Staf",
+  Working: "Sedang bekerja",
+  "In Progress": "Sedang berjalan",
+  Done: "Selesai",
+  "Break Room": "☕ Ruang Istirahat",
+  "No assigned staff": "Tidak ada staf yang ditugaskan",
+  "Meeting live: click table for minutes": "Rapat berlangsung: klik meja untuk melihat notulen",
+  Interact: "Berinteraksi",
+};
 
 function parseLanguage(value?: string | null): UiLanguage | null {
   const code = (value ?? "").toLowerCase().replace("_", "-");
@@ -20,6 +55,7 @@ function parseLanguage(value?: string | null): UiLanguage | null {
   if (code === "en" || code.startsWith("en-")) return "en";
   if (code === "ja" || code.startsWith("ja-")) return "ja";
   if (code === "zh" || code.startsWith("zh-")) return "zh";
+  if (code === "id" || code.startsWith("id-")) return "id";
   return null;
 }
 
@@ -27,15 +63,35 @@ export function normalizeLanguage(value?: string | null): UiLanguage {
   return parseLanguage(value) ?? "en";
 }
 
-/** 로캘별 이름 반환. 해당 로캘 이름이 비어있으면 영문(name) fallback */
+/** Return the name for the active locale, falling back to English when unavailable. */
 export function localeName(
   locale: UiLanguage | string,
-  obj: { name: string; name_ko?: string | null; name_ja?: string | null; name_zh?: string | null },
+  obj: {
+    name: string;
+    name_ko?: string | null;
+    name_ja?: string | null;
+    name_zh?: string | null;
+    name_id?: string | null;
+  },
 ): string {
   const lang = (typeof locale === "string" ? locale : "en").slice(0, 2);
   if (lang === "ko") return obj.name_ko || obj.name;
   if (lang === "ja") return obj.name_ja || obj.name;
   if (lang === "zh") return obj.name_zh || obj.name;
+  if (lang === "id") {
+    if (obj.name_id) return obj.name_id;
+    const standardNames: Record<string, string> = {
+      planning: "Perencanaan",
+      development: "Pengembangan",
+      design: "Desain",
+      "qa/qc": "QA/QC",
+      devsecops: "DevSecOps",
+      operations: "Operasional",
+      research: "Riset",
+      marketing: "Pemasaran",
+    };
+    return standardNames[obj.name.trim().toLowerCase()] || obj.name;
+  }
   return obj.name;
 }
 
@@ -73,6 +129,8 @@ export function localeFromLanguage(lang: UiLanguage): string {
       return "ja-JP";
     case "zh":
       return "zh-CN";
+    case "id":
+      return "id-ID";
     default:
       return "en-US";
   }
@@ -88,6 +146,8 @@ export function pickLang(lang: UiLanguage, text: LangText): string {
       return text.ja ?? text.en;
     case "zh":
       return text.zh ?? text.en;
+    case "id":
+      return text.id ?? INDONESIAN_FALLBACKS[text.en] ?? text.en;
     default:
       return text.en;
   }

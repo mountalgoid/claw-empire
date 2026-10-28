@@ -6,6 +6,7 @@ type CreateMeetingPromptToolsDeps = {
   getDeptRoleConstraint: (departmentId: string, departmentName?: string) => string;
   getRoleLabel: (role: string, lang: string) => string;
   getRecentConversationContext: (agentId: string, limit?: number) => string;
+  getAgentMemoryContext: (agentId: string, projectId?: string | null, limit?: number) => string;
   getAgentDisplayName: (agent: AgentRow, lang: string) => string;
   formatMeetingTranscript: (transcript: MeetingPromptOptions["transcript"], lang?: Lang) => string;
   compactTaskDescriptionForMeeting: (taskDescription: string | null) => string;
@@ -20,6 +21,7 @@ export function createMeetingPromptTools(deps: CreateMeetingPromptToolsDeps) {
     getDeptRoleConstraint,
     getRoleLabel,
     getRecentConversationContext,
+    getAgentMemoryContext,
     getAgentDisplayName,
     formatMeetingTranscript,
     compactTaskDescriptionForMeeting,
@@ -34,6 +36,7 @@ export function createMeetingPromptTools(deps: CreateMeetingPromptToolsDeps) {
     const role = getRoleLabel(agent.role, lang);
     const deptConstraint = agent.department_id ? getDeptRoleConstraint(agent.department_id, deptName) : "";
     const recentCtx = getRecentConversationContext(agent.id, 8);
+    const memoryCtx = getAgentMemoryContext(agent.id, null, 8);
     const meetingLabel = opts.meetingType === "planned" ? "Planned Approval" : "Review Consensus";
     const compactTaskContext = compactTaskDescriptionForMeeting(opts.taskDescription);
     const videoPlanningInvariant =
@@ -86,6 +89,7 @@ export function createMeetingPromptTools(deps: CreateMeetingPromptToolsDeps) {
       "[Meeting transcript so far]",
       formatMeetingTranscript(opts.transcript, lang),
       recentCtx,
+      memoryCtx,
     ]
       .filter(Boolean)
       .join("\n");
@@ -101,6 +105,7 @@ export function createMeetingPromptTools(deps: CreateMeetingPromptToolsDeps) {
     const role = getRoleLabel(agent.role, lang);
     const deptConstraint = agent.department_id ? getDeptRoleConstraint(agent.department_id, deptName) : "";
     const recentCtx = getRecentConversationContext(agent.id, 12);
+    const memoryCtx = getAgentMemoryContext(agent.id, null, 8);
     const typeHint =
       messageType === "report"
         ? "CEO requested a report update."
@@ -132,6 +137,7 @@ export function createMeetingPromptTools(deps: CreateMeetingPromptToolsDeps) {
       "",
       `CEO message: ${ceoMessage}`,
       recentCtx,
+      memoryCtx,
     ]
       .filter(Boolean)
       .join("\n");

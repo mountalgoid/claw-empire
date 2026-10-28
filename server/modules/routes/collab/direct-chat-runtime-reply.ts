@@ -69,6 +69,7 @@ function localeInstructionForDirect(lang: Lang): string {
   if (lang === "en") return "Respond in English.";
   if (lang === "ja") return "Respond in Japanese.";
   if (lang === "zh") return "Respond in Chinese.";
+  if (lang === "id") return "Respond in Indonesian (Bahasa Indonesia).";
   return "Respond in Korean.";
 }
 

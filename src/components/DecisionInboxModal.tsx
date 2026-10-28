@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { UiLanguage } from "../i18n";
-import { pickLang } from "../i18n";
+import { localeName, pickLang } from "../i18n";
 import type { Agent } from "../types";
 import AgentAvatar, { buildSpriteMap } from "./AgentAvatar";
 import MessageContent from "./MessageContent";
@@ -20,7 +20,6 @@ export default function DecisionInboxModal({
   onOpenChat,
 }: DecisionInboxModalProps) {
   const t = (text: { ko: string; en: string; ja?: string; zh?: string }) => pickLang(uiLanguage, text);
-  const isKorean = uiLanguage.startsWith("ko");
   const spriteMap = useMemo(() => buildSpriteMap(agents), [agents]);
   const agentById = useMemo(() => {
     const map = new Map<string, Agent>();
@@ -213,9 +212,9 @@ export default function DecisionInboxModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="app-overlay-panel fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-2 backdrop-blur-sm sm:p-4" onClick={onClose}>
       <div
-        className="relative mx-4 w-full max-w-3xl rounded-2xl border border-indigo-500/30 bg-slate-900 shadow-2xl shadow-indigo-500/10"
+        className="app-overlay-panel-content relative mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-indigo-500/30 bg-slate-900 shadow-2xl shadow-indigo-500/10"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-700/50 px-6 py-4">
@@ -286,7 +285,11 @@ export default function DecisionInboxModal({
                           )}
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-white">
-                              {isKorean ? item.agentNameKo : item.agentName}
+                              {localeName(uiLanguage, {
+                                name: item.agentName,
+                                name_ko: item.agentNameKo,
+                                name_id: item.agentNameId,
+                              })}
                             </p>
                             <p className="text-[11px] text-indigo-300/90">{getKindLabel(item.kind)}</p>
                             <p className="text-[11px] text-slate-400">{formatTime(item.createdAt, uiLanguage)}</p>

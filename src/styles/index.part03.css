@@ -354,13 +354,60 @@
 /* ─── Game Dashboard Styles ─── */
 .game-panel {
   background: var(--th-glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--th-glass-border);
   border-radius: 1rem;
   box-shadow:
     0 8px 32px var(--th-glass-shadow),
     inset 0 1px 0 var(--th-glass-highlight);
+}
+
+/* Dashboard keeps its live data and interactions, but avoids repaint-heavy decoration. */
+.dashboard-shell .game-panel {
+  content-visibility: auto;
+  contain-intrinsic-size: 280px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dashboard-shell,
+.dashboard-shell * {
+  box-sizing: border-box;
+}
+
+.dashboard-shell img,
+.dashboard-shell canvas,
+.dashboard-shell svg {
+  max-width: 100%;
+}
+
+@media (max-width: 639px) {
+  .dashboard-shell .game-panel {
+    padding: 0.85rem;
+  }
+
+  .dashboard-shell .dashboard-title-gradient {
+    max-width: min(68vw, 16rem);
+  }
+}
+.dashboard-shell .animate-drift-slow,
+.dashboard-shell .animate-drift-slow-rev {
+  animation: none;
+  opacity: 0.35;
+}
+.dashboard-shell .xp-bar-fill::after {
+  animation: none;
+  display: none;
+}
+.dashboard-shell .animate-bubble-float,
+.dashboard-shell .animate-status-glow,
+.dashboard-shell .animate-rank-float,
+.dashboard-shell .animate-crown-wiggle,
+.dashboard-shell .animate-podium-rise,
+.dashboard-shell .animate-neon-pulse-orange,
+.dashboard-shell .animate-cta-glow {
+  animation: none;
 }
 [data-theme="light"] .game-panel {
   background: rgba(255, 252, 246, 0.72);

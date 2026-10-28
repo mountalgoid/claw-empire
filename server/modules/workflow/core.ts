@@ -18,6 +18,7 @@ import { createWsHub } from "../../ws/hub.ts";
 import { createProjectContextTools } from "./core/project-context-tools.ts";
 import { createCliTools } from "./core/cli-tools.ts";
 import { createConversationContextTools } from "./core/conversation-context-tools.ts";
+import { createAgentMemoryTools } from "./core/agent-memory-tools.ts";
 import { createMeetingPromptTools } from "./core/meeting-prompt-tools.ts";
 import { createOneShotRunner } from "./core/one-shot-runner.ts";
 import { createReplyCoreTools } from "./core/reply-core-tools.ts";
@@ -283,12 +284,14 @@ export function initializeWorkflowPartA(ctx: RuntimeContext): WorkflowCoreExport
       normalizeStreamChunk,
       summarizeForMeetingBubble,
     });
+  const { getAgentMemoryContext } = createAgentMemoryTools({ db: db as any, nowMs });
 
   const { buildMeetingPrompt, buildDirectReplyPrompt, buildCliFailureMessage } = createMeetingPromptTools({
     getDeptName,
     getDeptRoleConstraint,
     getRoleLabel,
     getRecentConversationContext,
+    getAgentMemoryContext,
     getAgentDisplayName,
     formatMeetingTranscript,
     compactTaskDescriptionForMeeting,

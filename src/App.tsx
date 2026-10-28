@@ -53,7 +53,7 @@ import {
 export type { OAuthCallbackResult } from "./app/types";
 
 export default function App() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme, toggleTheme } = useTheme();
   const initialRoomThemes = useMemo(() => readStoredRoomThemes(), []);
   const hasLocalRoomThemesRef = useRef<boolean>(initialRoomThemes.hasStored);
 
@@ -149,7 +149,7 @@ export default function App() {
       return null;
     }
 
-    const locale = normalizeLanguage(sourceSettings.language) as "ko" | "en" | "ja" | "zh";
+    const locale = normalizeLanguage(sourceSettings.language);
     const presentation = buildOfficePackPresentation({
       packKey,
       locale,
@@ -411,6 +411,7 @@ export default function App() {
       setMobileHeaderMenuOpen={setMobileHeaderMenuOpen}
       theme={theme}
       toggleTheme={toggleTheme}
+      onSelectTheme={setTheme}
       decisionInboxLoading={decisionInboxLoading}
       decisionInboxCount={decisionInboxItems.length}
       activeMeetingTaskId={activeMeetingTaskId}

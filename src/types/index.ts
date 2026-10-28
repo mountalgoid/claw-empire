@@ -9,6 +9,7 @@ export interface Department {
   name_ko: string;
   name_ja?: string | null;
   name_zh?: string | null;
+  name_id?: string | null;
   icon: string;
   color: string;
   description: string | null;
@@ -30,6 +31,7 @@ export interface Agent {
   name_ko: string;
   name_ja?: string | null;
   name_zh?: string | null;
+  name_id?: string | null;
   department_id: string | null;
   workflow_pack_key?: WorkflowPackKey | null;
   department?: Department;
@@ -396,10 +398,10 @@ export const DEFAULT_SETTINGS: CompanySettings = {
   providerModelConfig: {
     claude: { model: "claude-opus-4-6", subModel: "claude-sonnet-4-6" },
     codex: {
-      model: "gpt-5.3-codex",
-      reasoningLevel: "xhigh",
-      subModel: "gpt-5.3-codex",
-      subModelReasoningLevel: "high",
+      model: "gpt-6-luna",
+      reasoningLevel: "medium",
+      subModel: "gpt-6-luna",
+      subModelReasoningLevel: "medium",
     },
     gemini: { model: "gemini-3-pro-preview" },
     opencode: { model: "github-copilot/claude-sonnet-4.6" },

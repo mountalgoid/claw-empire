@@ -57,6 +57,18 @@ export function registerAgentCrudRoutes(ctx: RuntimeContext): void {
     return parsed ?? DEFAULT_WORKFLOW_PACK_KEY;
   }
 
+  const AGENT_PERMISSION_KEYS = new Set([
+    "filesystem_read",
+    "filesystem_write",
+    "terminal",
+    "git",
+    "network",
+    "database",
+    "secrets",
+    "destructive_commands",
+    "external_resources",
+  ]);
+
   function readNonDevelopmentProfileAgentIds(): Set<string> {
     const out = new Set<string>();
     const row = db.prepare("SELECT value FROM settings WHERE key = 'officePackProfiles' LIMIT 1").get() as
@@ -288,6 +300,42 @@ export function registerAgentCrudRoutes(ctx: RuntimeContext): void {
       .all(id);
 
     res.json({ agent, recent_tasks: recentTasks });
+  });
+
+  app.get("/api/agents/:id/permissions", (req, res) => {
+    const id = String(req.params.id);
+    if (!db.prepare("SELECT id FROM agents WHERE id = ?").get(id)) return res.status(404).json({ error: "not_found" });
+    const permissions = db
+      .prepare("SELECT permission, enabled, updated_at FROM agent_permissions WHERE agent_id = ? ORDER BY permission")
+      .all(id);
+    res.json({ ok: true, permissions });
+  });
+
+  app.patch("/api/agents/:id/permissions", (req, res) => {
+    const id = String(req.params.id);
+    if (!db.prepare("SELECT id FROM agents WHERE id = ?").get(id)) return res.status(404).json({ error: "not_found" });
+    const permissions = (req.body as Record<string, unknown> | undefined)?.permissions;
+    if (!permissions || typeof permissions !== "object" || Array.isArray(permissions)) {
+      return res.status(400).json({ error: "permissions_object_required" });
+    }
+    const entries = Object.entries(permissions as Record<string, unknown>);
+    if (entries.some(([permission, enabled]) => !AGENT_PERMISSION_KEYS.has(permission) || typeof enabled !== "boolean")) {
+      return res.status(400).json({ error: "invalid_permission" });
+    }
+    runInTransaction(() => {
+      for (const [permission, enabled] of entries) {
+        db.prepare(
+          `INSERT INTO agent_permissions (agent_id, permission, enabled, updated_at)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(agent_id, permission) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at`,
+        ).run(id, permission, enabled ? 1 : 0, nowMs());
+      }
+    });
+    const updated = db
+      .prepare("SELECT permission, enabled, updated_at FROM agent_permissions WHERE agent_id = ? ORDER BY permission")
+      .all(id);
+    broadcast("agent_permissions_updated", { agent_id: id, permissions: updated });
+    res.json({ ok: true, permissions: updated });
   });
 
   app.post("/api/agents", (req, res) => {

@@ -3,7 +3,7 @@ import type { Agent, Department } from "../types";
 import type { TaskReportDetail, TaskReportDocument, TaskReportTeamSection } from "../api";
 import { archiveTaskReport, getTaskReportDetail } from "../api";
 import type { UiLanguage } from "../i18n";
-import { pickLang } from "../i18n";
+import { localeName, pickLang } from "../i18n";
 import AgentAvatar from "./AgentAvatar";
 import { resolveReportAgent } from "./task-report-agent";
 
@@ -104,14 +104,16 @@ export default function TaskReportPopup({ report, agents, departments, uiLanguag
   const taskDeptFromMap = currentReport.task.department_id
     ? departmentById.get(currentReport.task.department_id)
     : undefined;
-  const taskAgentName =
-    uiLanguage === "ko"
-      ? currentReport.task.agent_name_ko || currentReport.task.agent_name
-      : currentReport.task.agent_name;
-  const taskDeptName =
-    uiLanguage === "ko"
-      ? taskDeptFromMap?.name_ko || currentReport.task.dept_name_ko || currentReport.task.dept_name
-      : taskDeptFromMap?.name || currentReport.task.dept_name || currentReport.task.dept_name_ko;
+  const taskAgentName = localeName(uiLanguage, {
+    name: currentReport.task.agent_name,
+    name_ko: currentReport.task.agent_name_ko,
+  });
+  const taskDeptName = taskDeptFromMap
+    ? localeName(uiLanguage, taskDeptFromMap)
+    : localeName(uiLanguage, {
+        name: currentReport.task.dept_name || currentReport.task.dept_name_ko || "-",
+        name_ko: currentReport.task.dept_name_ko,
+      });
 
   const selectedTeam = useMemo(() => {
     if (activeTab === "planning") return null;
@@ -281,11 +283,16 @@ export default function TaskReportPopup({ report, agents, departments, uiLanguag
 
   const renderTeamReport = (team: TaskReportTeamSection) => {
     const teamDeptFromMap = team.department_id ? departmentById.get(team.department_id) : undefined;
-    const teamName =
-      uiLanguage === "ko"
-        ? teamDeptFromMap?.name_ko || team.department_name_ko || team.department_name
-        : teamDeptFromMap?.name || team.department_name || team.department_name_ko;
-    const teamAgent = uiLanguage === "ko" ? team.agent_name_ko || team.agent_name : team.agent_name;
+    const teamName = teamDeptFromMap
+      ? localeName(uiLanguage, teamDeptFromMap)
+      : localeName(uiLanguage, {
+          name: team.department_name || team.department_name_ko || "-",
+          name_ko: team.department_name_ko,
+        });
+    const teamAgent = localeName(uiLanguage, {
+      name: team.agent_name,
+      name_ko: team.agent_name_ko,
+    });
     const logs = team.logs ?? [];
     const keyLogs = logs.filter((lg) => lg.kind === "system" || lg.message.includes("Status")).slice(-20);
 
@@ -351,9 +358,9 @@ export default function TaskReportPopup({ report, agents, departments, uiLanguag
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="app-overlay-panel fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-2 backdrop-blur-sm sm:p-4" onClick={onClose}>
       <div
-        className="relative mx-4 w-full max-w-4xl rounded-2xl border border-emerald-500/30 bg-slate-900 shadow-2xl shadow-emerald-500/10"
+        className="app-overlay-panel-content relative mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-emerald-500/30 bg-slate-900 shadow-2xl shadow-emerald-500/10"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-700/50 px-6 py-4">
@@ -415,10 +422,10 @@ export default function TaskReportPopup({ report, agents, departments, uiLanguag
               {t({ ko: "기획팀장 취합본", en: "Planning Summary", ja: "企画サマリー", zh: "规划汇总" })}
             </button>
             {teamReports.map((team) => {
-              const label =
-                uiLanguage === "ko"
-                  ? team.department_name_ko || team.department_name || team.department_id || "팀"
-                  : team.department_name || team.department_id || "Team";
+              const label = localeName(uiLanguage, {
+                name: team.department_name || team.department_id || "Team",
+                name_ko: team.department_name_ko,
+              });
               return (
                 <button
                   key={team.id}

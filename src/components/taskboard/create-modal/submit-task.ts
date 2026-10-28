@@ -1,7 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { Project, TaskType, WorkflowPackKey } from "../../../types";
 import { checkProjectPath, createProject, getProjects, isApiRequestError } from "../../../api";
-import type { FormFeedback, Locale, MissingPathPrompt, TFunction } from "../constants";
+import type { FormFeedback, MissingPathPrompt, TFunction } from "../constants";
+import type { LanguageText } from "../../../i18n";
 
 type CreateTaskHandler = (input: {
   title: string;
@@ -15,7 +16,7 @@ type CreateTaskHandler = (input: {
   workflow_pack_key?: WorkflowPackKey;
 }) => void | Promise<void>;
 
-type ResolvePathHelperErrorMessage = (error: unknown, fallback: Record<Locale, string>) => string;
+type ResolvePathHelperErrorMessage = (error: unknown, fallback: LanguageText) => string;
 
 type SubmitTaskOptions = {
   allowCreateMissingPath?: boolean;

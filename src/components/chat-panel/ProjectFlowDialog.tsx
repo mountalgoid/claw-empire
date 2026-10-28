@@ -2,7 +2,7 @@ import type { Project } from "../../types";
 
 type ProjectFlowStep = "choose" | "existing" | "new" | "confirm";
 
-type Tr = (ko: string, en: string, ja?: string, zh?: string) => string;
+type Tr = (ko: string, en: string, ja?: string, zh?: string, id?: string) => string;
 
 interface ProjectFlowDialogProps {
   open: boolean;
@@ -67,7 +67,7 @@ export default function ProjectFlowDialog({
 
   return (
     <div className="absolute inset-0 z-[70] flex items-center justify-center bg-black/75 p-4">
-      <div className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
+      <div className="app-overlay-panel-content w-full max-w-md overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
           <h3 className="text-sm font-semibold text-white">
             {tr("프로젝트 분기", "Project Branch", "プロジェクト分岐", "项目分支")}

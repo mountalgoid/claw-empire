@@ -5,7 +5,7 @@ import * as api from "../api";
 import type { DecisionInboxItem } from "../components/chat/decision-inbox";
 import type { Agent, CompanyStats, Task } from "../types";
 import { mapWorkflowDecisionItemsRaw } from "./decision-inbox";
-import { areAgentListsEquivalent, areTaskListsEquivalent } from "./utils";
+import { areAgentListsEquivalent, areCompanyStatsEquivalent, areTaskListsEquivalent } from "./utils";
 
 type UseLiveSyncSchedulerParams = {
   setTasks: Dispatch<SetStateAction<Task[]>>;
@@ -42,7 +42,7 @@ export function useLiveSyncScheduler({
       .then(([nextTasks, nextAgents, nextStats, nextDecisionItems]) => {
         setTasks((prev) => (areTaskListsEquivalent(prev, nextTasks) ? prev : nextTasks));
         setAgents((prev) => (areAgentListsEquivalent(prev, nextAgents) ? prev : nextAgents));
-        setStats(nextStats);
+        setStats((prev) => (areCompanyStatsEquivalent(prev, nextStats) ? prev : nextStats));
         setDecisionInboxItems((prev) => {
           const preservedAgentRequests = prev.filter((item) => item.kind === "agent_request");
           const workflowItems = mapWorkflowDecisionItemsRaw(nextDecisionItems);

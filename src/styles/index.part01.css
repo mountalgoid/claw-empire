@@ -95,6 +95,151 @@
   --th-danger-text: #ffffff;
 }
 
+/* UI template themes: every surface consumes the same token set. */
+[data-theme="ocean"] {
+  --th-bg-primary: #071923;
+  --th-bg-secondary: #0b2633;
+  --th-bg-surface: rgba(10, 39, 52, 0.86);
+  --th-bg-surface-hover: rgba(14, 54, 70, 0.94);
+  --th-bg-header: rgba(7, 25, 35, 0.94);
+  --th-bg-sidebar: rgba(6, 28, 39, 0.94);
+  --th-border: rgba(45, 151, 177, 0.3);
+  --th-border-strong: rgba(56, 189, 214, 0.55);
+  --th-text-primary: #d9f4f7;
+  --th-text-secondary: #94cbd3;
+  --th-text-muted: #6396a3;
+  --th-text-heading: #ecfeff;
+  --th-scrollbar-thumb: #145568;
+  --th-scrollbar-thumb-hover: #1e8198;
+  --th-card-bg: rgba(8, 34, 46, 0.86);
+  --th-card-border: rgba(45, 151, 177, 0.3);
+  --th-card-bg-hover: rgba(12, 51, 65, 0.94);
+  --th-panel-bg: rgba(8, 34, 46, 0.78);
+  --th-panel-border: rgba(45, 151, 177, 0.3);
+  --th-label-color: #71b8c4;
+  --th-glass-bg: rgba(120, 220, 235, 0.04);
+  --th-glass-border: rgba(120, 220, 235, 0.1);
+  --th-glass-shadow: rgba(0, 10, 18, 0.52);
+  --th-glass-highlight: rgba(180, 250, 255, 0.06);
+  --th-modal-overlay: rgba(2, 17, 24, 0.72);
+  --th-input-bg: rgba(5, 27, 37, 0.92);
+  --th-input-border: rgba(45, 151, 177, 0.42);
+  --th-accent-glow: rgba(34, 211, 238, 0.1);
+  --th-focus-ring: #22d3ee;
+  --th-focus-ring-shadow: rgba(34, 211, 238, 0.25);
+  --th-danger-bg: #9f1239;
+  --th-danger-border: #fb7185;
+  --th-danger-text: #ffffff;
+}
+
+[data-theme="forest"] {
+  --th-bg-primary: #0b1712;
+  --th-bg-secondary: #12241a;
+  --th-bg-surface: rgba(19, 43, 29, 0.86);
+  --th-bg-surface-hover: rgba(25, 58, 38, 0.94);
+  --th-bg-header: rgba(10, 25, 16, 0.94);
+  --th-bg-sidebar: rgba(9, 29, 18, 0.94);
+  --th-border: rgba(84, 166, 104, 0.3);
+  --th-border-strong: rgba(110, 231, 132, 0.5);
+  --th-text-primary: #e2f7e6;
+  --th-text-secondary: #a7d3af;
+  --th-text-muted: #72967a;
+  --th-text-heading: #f0fdf4;
+  --th-scrollbar-thumb: #28633a;
+  --th-scrollbar-thumb-hover: #3a8b50;
+  --th-card-bg: rgba(15, 39, 24, 0.86);
+  --th-card-border: rgba(84, 166, 104, 0.3);
+  --th-card-bg-hover: rgba(21, 53, 32, 0.94);
+  --th-panel-bg: rgba(15, 39, 24, 0.78);
+  --th-panel-border: rgba(84, 166, 104, 0.3);
+  --th-label-color: #8bc995;
+  --th-glass-bg: rgba(150, 240, 160, 0.04);
+  --th-glass-border: rgba(150, 240, 160, 0.1);
+  --th-glass-shadow: rgba(0, 12, 4, 0.52);
+  --th-glass-highlight: rgba(210, 255, 215, 0.06);
+  --th-modal-overlay: rgba(4, 18, 8, 0.72);
+  --th-input-bg: rgba(9, 31, 17, 0.92);
+  --th-input-border: rgba(84, 166, 104, 0.42);
+  --th-accent-glow: rgba(74, 222, 128, 0.1);
+  --th-focus-ring: #4ade80;
+  --th-focus-ring-shadow: rgba(74, 222, 128, 0.25);
+  --th-danger-bg: #9f1239;
+  --th-danger-border: #fb7185;
+  --th-danger-text: #ffffff;
+}
+
+[data-theme="sunset"] {
+  --th-bg-primary: #21131a;
+  --th-bg-secondary: #321a1b;
+  --th-bg-surface: rgba(57, 28, 29, 0.86);
+  --th-bg-surface-hover: rgba(76, 36, 31, 0.94);
+  --th-bg-header: rgba(31, 17, 22, 0.94);
+  --th-bg-sidebar: rgba(35, 18, 23, 0.94);
+  --th-border: rgba(213, 126, 83, 0.32);
+  --th-border-strong: rgba(251, 167, 93, 0.55);
+  --th-text-primary: #fff0e4;
+  --th-text-secondary: #e5b8a0;
+  --th-text-muted: #ae7d6e;
+  --th-text-heading: #fff7ed;
+  --th-scrollbar-thumb: #78402f;
+  --th-scrollbar-thumb-hover: #a95d3e;
+  --th-card-bg: rgba(48, 24, 27, 0.88);
+  --th-card-border: rgba(213, 126, 83, 0.32);
+  --th-card-bg-hover: rgba(67, 31, 30, 0.96);
+  --th-panel-bg: rgba(48, 24, 27, 0.8);
+  --th-panel-border: rgba(213, 126, 83, 0.32);
+  --th-label-color: #d89573;
+  --th-glass-bg: rgba(255, 180, 120, 0.04);
+  --th-glass-border: rgba(255, 180, 120, 0.1);
+  --th-glass-shadow: rgba(18, 5, 4, 0.54);
+  --th-glass-highlight: rgba(255, 220, 190, 0.06);
+  --th-modal-overlay: rgba(21, 7, 9, 0.72);
+  --th-input-bg: rgba(39, 18, 22, 0.92);
+  --th-input-border: rgba(213, 126, 83, 0.44);
+  --th-accent-glow: rgba(251, 146, 60, 0.11);
+  --th-focus-ring: #fb923c;
+  --th-focus-ring-shadow: rgba(251, 146, 60, 0.25);
+  --th-danger-bg: #9f1239;
+  --th-danger-border: #fb7185;
+  --th-danger-text: #ffffff;
+}
+
+[data-theme="futuristic"] {
+  --th-bg-primary: #070817;
+  --th-bg-secondary: #101332;
+  --th-bg-surface: rgba(18, 24, 58, 0.9);
+  --th-bg-surface-hover: rgba(29, 39, 84, 0.96);
+  --th-bg-header: rgba(7, 8, 25, 0.96);
+  --th-bg-sidebar: rgba(8, 11, 31, 0.96);
+  --th-border: rgba(103, 232, 249, 0.32);
+  --th-border-strong: rgba(167, 139, 250, 0.7);
+  --th-text-primary: #e5f6ff;
+  --th-text-secondary: #a5b4fc;
+  --th-text-muted: #7182b8;
+  --th-text-heading: #f5f3ff;
+  --th-scrollbar-thumb: #4c4a9a;
+  --th-scrollbar-thumb-hover: #7269d6;
+  --th-card-bg: rgba(12, 17, 47, 0.9);
+  --th-card-border: rgba(103, 232, 249, 0.3);
+  --th-card-bg-hover: rgba(22, 31, 72, 0.96);
+  --th-panel-bg: rgba(12, 17, 47, 0.82);
+  --th-panel-border: rgba(103, 232, 249, 0.3);
+  --th-label-color: #67e8f9;
+  --th-glass-bg: rgba(103, 232, 249, 0.05);
+  --th-glass-border: rgba(167, 139, 250, 0.18);
+  --th-glass-shadow: rgba(2, 4, 20, 0.62);
+  --th-glass-highlight: rgba(224, 231, 255, 0.08);
+  --th-modal-overlay: rgba(3, 5, 20, 0.78);
+  --th-input-bg: rgba(8, 13, 36, 0.95);
+  --th-input-border: rgba(103, 232, 249, 0.42);
+  --th-accent-glow: rgba(103, 232, 249, 0.12);
+  --th-focus-ring: #67e8f9;
+  --th-focus-ring-shadow: rgba(103, 232, 249, 0.28);
+  --th-danger-bg: #be123c;
+  --th-danger-border: #fb7185;
+  --th-danger-text: #ffffff;
+}
+
 html,
 body,
 #root {
@@ -163,6 +308,191 @@ pre,
   background: var(--th-panel-bg);
   border-color: var(--th-panel-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.theme-template-select {
+  border: 1px solid var(--th-border);
+  background: var(--th-bg-surface);
+  color: var(--th-text-secondary);
+}
+
+.theme-template-select:hover {
+  border-color: var(--th-border-strong);
+  color: var(--th-text-primary);
+}
+
+.theme-template-select option {
+  background: var(--th-bg-primary);
+  color: var(--th-text-primary);
+}
+
+/* The Pixi office is a canvas, so it needs a visual bridge to the token-based
+   DOM themes. The scene is rebuilt with the matching light/night palette;
+   these filters add the identity of the three color templates cheaply. */
+.office-pan-viewport {
+  min-height: clamp(420px, 72vh, 780px);
+  height: auto;
+  overflow: visible;
+  overscroll-behavior: none;
+  touch-action: none;
+  background: var(--th-bg-secondary);
+  border: 1px solid var(--th-border);
+  border-radius: 0.75rem;
+  cursor: grab;
+}
+
+.office-pan-viewport:active {
+  cursor: grabbing;
+}
+
+.header-action-scroller {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+  scrollbar-color: var(--th-scrollbar-thumb) transparent;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.header-action-scroller::-webkit-scrollbar {
+  height: 3px;
+}
+
+.header-action-scroller::-webkit-scrollbar-thumb {
+  background: var(--th-scrollbar-thumb);
+  border-radius: 999px;
+}
+
+.header-action-scroller .header-action-btn,
+.header-action-scroller .theme-toggle-btn,
+.header-action-scroller .theme-template-select {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.office-pan-layer {
+  position: relative;
+  min-width: 100%;
+  transform: translate3d(0, 0, 0);
+  transform-origin: top left;
+  will-change: transform;
+}
+
+.office-pan-layer > div {
+  min-height: 0;
+}
+
+.office-pan-layer canvas {
+  display: block;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+[data-theme="ocean"] .office-pan-layer {
+  filter: none;
+}
+
+[data-theme="forest"] .office-pan-layer {
+  filter: none;
+}
+
+[data-theme="sunset"] .office-pan-layer {
+  filter: none;
+}
+
+[data-theme="dark"] .office-pan-layer {
+  filter: none;
+}
+
+[data-theme="futuristic"] .office-pan-layer {
+  filter: none;
+}
+
+.office-pan-layer::after {
+  display: none;
+}
+
+.office-view-controls {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border: 1px solid var(--th-border);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--th-bg-surface) 88%, transparent);
+  color: var(--th-text-primary);
+  box-shadow: 0 8px 24px var(--th-glass-shadow);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+
+.office-view-controls button,
+.office-view-controls select {
+  min-height: 1.85rem;
+  border: 1px solid var(--th-border);
+  border-radius: 0.4rem;
+  background: var(--th-bg-secondary);
+  color: var(--th-text-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.office-view-controls button {
+  width: 1.85rem;
+  cursor: pointer;
+}
+
+.office-view-controls button:hover,
+.office-view-controls select:hover {
+  border-color: var(--th-border-strong);
+}
+
+.office-view-controls span {
+  min-width: 2.5rem;
+  text-align: center;
+  font-size: 0.68rem;
+  color: var(--th-text-secondary);
+}
+
+.office-view-controls select {
+  max-width: 6.5rem;
+  padding: 0 0.3rem;
+}
+
+@media (max-width: 640px) {
+  .office-view-controls {
+    top: 0.45rem;
+    right: 0.45rem;
+  }
+
+  .office-view-controls select {
+    max-width: 5.3rem;
+  }
+}
+
+[data-theme="ocean"] :is(.bg-slate-950, .bg-slate-900),
+[data-theme="forest"] :is(.bg-slate-950, .bg-slate-900),
+[data-theme="sunset"] :is(.bg-slate-950, .bg-slate-900) {
+  background-color: var(--th-bg-primary) !important;
+}
+
+[data-theme="ocean"] .bg-slate-800,
+[data-theme="forest"] .bg-slate-800,
+[data-theme="sunset"] .bg-slate-800 {
+  background-color: var(--th-bg-surface) !important;
+}
+
+[data-theme="ocean"] :is(.border-slate-700, .border-slate-600),
+[data-theme="forest"] :is(.border-slate-700, .border-slate-600),
+[data-theme="sunset"] :is(.border-slate-700, .border-slate-600) {
+  border-color: var(--th-border) !important;
 }
 
 [data-theme="dark"] .decision-inbox-option,
@@ -696,4 +1026,31 @@ pre,
 }
 [data-theme="light"] [class*="text-amber-200"] {
   color: #a16207 !important;
+}
+
+/* Shared overlay guardrails: panels stay inside the viewport on touch devices. */
+.app-overlay-panel {
+  min-width: 0;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+.chat-panel-shell {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+body {
+  overflow-x: hidden;
+}
+.app-overlay-panel-content {
+  min-width: 0;
+  max-width: calc(100vw - 1rem);
+  max-height: calc(100dvh - 1rem);
+}
+.chat-message-list {
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+}
+@media (max-width: 639px) {
+  .app-overlay-panel-content {
+    width: calc(100vw - 1rem) !important;
+  }
 }

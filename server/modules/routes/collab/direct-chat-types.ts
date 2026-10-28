@@ -21,7 +21,7 @@ export interface AgentRow {
   cli_reasoning_level: string | null;
 }
 
-export type L10n = Record<Lang, string[]>;
+export type L10n = { ko: string[]; en: string[]; ja?: string[]; zh?: string[]; id?: string[] };
 
 export type DirectReplyPayload = {
   text?: string;

@@ -7,6 +7,7 @@ import AgentManager from "../components/AgentManager";
 import SkillsLibrary from "../components/SkillsLibrary";
 import SettingsPanel from "../components/SettingsPanel";
 import { I18nProvider } from "../i18n";
+import type { ThemeMode } from "../ThemeContext";
 import type {
   Agent,
   CeoOfficeCall,
@@ -82,8 +83,9 @@ interface AppMainLayoutProps {
   setMobileNavOpen: (open: boolean) => void;
   mobileHeaderMenuOpen: boolean;
   setMobileHeaderMenuOpen: (open: boolean) => void;
-  theme: "light" | "dark";
+  theme: ThemeMode;
   toggleTheme: () => void;
+  onSelectTheme: (theme: ThemeMode) => void;
   decisionInboxLoading: boolean;
   decisionInboxCount: number;
   activeMeetingTaskId: string | null;
@@ -155,6 +157,7 @@ export default function AppMainLayout({
   setMobileHeaderMenuOpen,
   theme,
   toggleTheme,
+  onSelectTheme,
   decisionInboxLoading,
   decisionInboxCount,
   activeMeetingTaskId,
@@ -195,7 +198,9 @@ export default function AppMainLayout({
   children,
 }: AppMainLayoutProps) {
   const uiLanguage =
-    labels.uiLanguage === "ko" || labels.uiLanguage === "ja" || labels.uiLanguage === "zh" ? labels.uiLanguage : "en";
+    labels.uiLanguage === "ko" || labels.uiLanguage === "ja" || labels.uiLanguage === "zh" || labels.uiLanguage === "id"
+      ? labels.uiLanguage
+      : "en";
   const officePackKey = normalizeOfficeWorkflowPack(activeOfficeWorkflowPack);
   const officePackOptions = useMemo(() => listOfficePackOptions(uiLanguage), [uiLanguage]);
   const officePackLabel =
@@ -205,12 +210,15 @@ export default function AppMainLayout({
         ? "オフィスパック"
         : labels.uiLanguage === "zh"
           ? "办公室包"
+          : labels.uiLanguage === "id"
+            ? "Paket Kantor"
           : "Office Pack";
   const officePackBootstrappingMessage = useMemo(() => {
     if (!officePackBootstrappingLabel) return null;
     if (uiLanguage === "ko") return `${officePackBootstrappingLabel} 오피스 팩 배치중...`;
     if (uiLanguage === "ja") return `${officePackBootstrappingLabel} オフィスパックを配置中...`;
     if (uiLanguage === "zh") return `${officePackBootstrappingLabel} 办公室包部署中...`;
+    if (uiLanguage === "id") return `Menyiapkan paket kantor ${officePackBootstrappingLabel}...`;
     return `Deploying ${officePackBootstrappingLabel} office pack...`;
   }, [officePackBootstrappingLabel, uiLanguage]);
   const generatedOfficePresentation = useMemo(
@@ -405,6 +413,7 @@ export default function AppMainLayout({
                 : null
             }
             onToggleTheme={toggleTheme}
+            onSelectTheme={onSelectTheme}
             onToggleMobileHeaderMenu={() => setMobileHeaderMenuOpen(!mobileHeaderMenuOpen)}
             onCloseMobileHeaderMenu={() => setMobileHeaderMenuOpen(false)}
           />
@@ -497,6 +506,7 @@ export default function AppMainLayout({
                 tasks={tasks}
                 companyName={settings.companyName}
                 onPrimaryCtaClick={() => setView("tasks")}
+                unreadAgentIds={unreadAgentIds}
               />
             )}
 
@@ -516,6 +526,7 @@ export default function AppMainLayout({
                 onResumeTask={onResumeTask}
                 onOpenTerminal={onOpenTerminal}
                 onOpenMeetingMinutes={onOpenMeetingMinutes}
+                onRefresh={onAgentsChange}
               />
             )}
 

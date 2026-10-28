@@ -32,6 +32,7 @@ interface AgentAnimItem {
   deskG?: Graphics;
   bedG?: Graphics;
   blanketG?: Graphics;
+  phase?: number;
 }
 
 interface SubCloneAnimItem {
@@ -205,7 +206,7 @@ export function runOfficeTickerStep(ctx: OfficeTickerContext): void {
     }
   }
 
-  for (const { sprite, status, baseX, baseY, particles, agentId, cliProvider, deskG, bedG, blanketG } of ctx
+  for (const { sprite, status, baseX, baseY, particles, agentId, cliProvider, deskG, bedG, blanketG, phase = 0 } of ctx
     .animItemsRef.current) {
     if (agentId) {
       const meetingNow = Date.now();
@@ -220,6 +221,23 @@ export function runOfficeTickerStep(ctx: OfficeTickerContext): void {
 
     sprite.position.x = baseX;
     sprite.position.y = baseY;
+
+    // Status-driven micro-routes keep the scene lively with only a few math
+    // operations per agent and no extra pathfinding or render objects.
+    if (status === "working") {
+      sprite.position.x = baseX + Math.sin(tick * 0.028 + phase) * 2.4;
+      sprite.position.y = baseY + Math.cos(tick * 0.041 + phase) * 0.8;
+      sprite.rotation = Math.sin(tick * 0.028 + phase) * 0.025;
+    } else if (status === "break") {
+      sprite.position.x = baseX + Math.sin(tick * 0.018 + phase) * 5.5;
+      sprite.position.y = baseY + Math.cos(tick * 0.024 + phase) * 1.8;
+      sprite.rotation = Math.sin(tick * 0.018 + phase) * 0.045;
+    } else if (status === "idle") {
+      sprite.position.y = baseY + Math.sin(tick * 0.035 + phase) * 0.9;
+      sprite.rotation = Math.sin(tick * 0.02 + phase) * 0.012;
+    } else {
+      sprite.rotation = 0;
+    }
 
     if (status === "working") {
       if (tick % 10 === 0) {

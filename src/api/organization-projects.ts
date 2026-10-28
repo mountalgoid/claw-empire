@@ -43,6 +43,7 @@ export async function createDepartment(data: {
   name_ko?: string;
   name_ja?: string;
   name_zh?: string;
+  name_id?: string;
   icon?: string;
   color?: string;
   description?: string;
@@ -62,7 +63,7 @@ export async function updateDepartment(
   data: Partial<
     Pick<
       Department,
-      "name" | "name_ko" | "name_ja" | "name_zh" | "icon" | "color" | "description" | "prompt" | "sort_order"
+      "name" | "name_ko" | "name_ja" | "name_zh" | "name_id" | "icon" | "color" | "description" | "prompt" | "sort_order"
     >
   > & { workflow_pack_key?: WorkflowPackKey },
 ): Promise<void> {
@@ -120,6 +121,7 @@ export async function updateAgent(
       | "name_ko"
       | "name_ja"
       | "name_zh"
+      | "name_id"
       | "status"
       | "current_task_id"
       | "department_id"
@@ -390,6 +392,60 @@ export async function createProject(input: {
   return j.project;
 }
 
+function projectSlugFromGoal(goal: string): string {
+  const cleaned = goal
+    .trim()
+    .replace(/^(buatkan|buat|bangun|kembangkan|create|build|develop)\s+(kan\s+)?/i, "")
+    .replace(/[.!?]+$/g, "")
+    .trim();
+  const slug = cleaned
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+  return slug || `project-${Date.now()}`;
+}
+
+/** Create or resume a project from one plain-language goal and start its main task. */
+export async function launchProjectFromGoal(goal: string): Promise<{ project: Project; taskId: string; resumed: boolean }> {
+  const normalizedGoal = goal.trim();
+  if (!normalizedGoal) throw new Error("project_goal_required");
+  const slug = projectSlugFromGoal(normalizedGoal);
+  const suggestedName = normalizedGoal
+    .replace(/^(buatkan|buat|bangun|kembangkan|create|build|develop)\s+(kan\s+)?/i, "")
+    .replace(/[.!?]+$/g, "")
+    .trim()
+    .slice(0, 100) || "Proyek Baru";
+  const suggestedPath = `/projects/${slug}`;
+  const existing = await getProjects({ page: 1, page_size: 50, search: suggestedName });
+  const project =
+    existing.projects.find(
+      (candidate) =>
+        candidate.project_path.toLowerCase() === suggestedPath.toLowerCase() ||
+        candidate.name.toLowerCase() === suggestedName.toLowerCase(),
+    ) ??
+    (await createProject({
+      name: suggestedName,
+      project_path: suggestedPath,
+      core_goal: normalizedGoal,
+      assignment_mode: "auto",
+      create_path_if_missing: true,
+    }));
+  const taskId = await createTask({
+    title: `Implementasi: ${suggestedName}`,
+    description: normalizedGoal,
+    project_id: project.id,
+    project_path: project.project_path,
+    priority: 5,
+    task_type: "development",
+    workflow_pack_key: project.default_pack_key ?? "development",
+  });
+  await runTask(taskId);
+  return { project, taskId, resumed: Boolean(project.id && existing.projects.some((item) => item.id === project.id)) };
+}
+
 export async function updateProject(
   id: string,
   patchData: Partial<Pick<Project, "name" | "project_path" | "core_goal" | "default_pack_key">> & {
@@ -477,6 +533,39 @@ export async function pickProjectPathNative(): Promise<{ cancelled: boolean; pat
 
 export async function deleteProject(id: string): Promise<void> {
   await del(`/api/projects/${id}`);
+}
+
+export interface ExternalResource {
+  id: string;
+  project_id: string | null;
+  agent_id: string | null;
+  name: string;
+  kind: string;
+  url: string;
+  status: "pending" | "available" | "error" | "disabled";
+  title?: string | null;
+  content_type?: string | null;
+  error_message?: string | null;
+  last_synced_at?: number | null;
+}
+
+export async function getExternalResources(projectId: string): Promise<ExternalResource[]> {
+  const response = await request<{ resources: ExternalResource[] }>(`/api/external-resources?project_id=${encodeURIComponent(projectId)}`);
+  return response.resources;
+}
+
+export async function addExternalResource(input: { project_id: string; name: string; kind: string; url: string }): Promise<ExternalResource> {
+  const response = (await post("/api/external-resources", input)) as { resource: ExternalResource };
+  return response.resource;
+}
+
+export async function syncExternalResource(id: string): Promise<ExternalResource> {
+  const response = (await post(`/api/external-resources/${encodeURIComponent(id)}/sync`)) as { resource: ExternalResource };
+  return response.resource;
+}
+
+export async function deleteExternalResource(id: string): Promise<void> {
+  await del(`/api/external-resources/${encodeURIComponent(id)}`);
 }
 
 export async function getProjectDetail(id: string): Promise<ProjectDetailResponse> {

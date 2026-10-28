@@ -20,6 +20,7 @@ import ManualPathPickerDialog from "./project-manager/ManualPathPickerDialog";
 import MissingPathPromptDialog from "./project-manager/MissingPathPromptDialog";
 import ProjectEditorPanel from "./project-manager/ProjectEditorPanel";
 import ProjectInsightsPanel from "./project-manager/ProjectInsightsPanel";
+import ExternalResourcePanel from "./project-manager/ExternalResourcePanel";
 import ProjectSidebar from "./project-manager/ProjectSidebar";
 import type {
   GroupedProjectTaskCard,
@@ -298,10 +299,10 @@ export default function ProjectManagerModal({ agents, departments = [], onClose 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="app-overlay-panel fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-2 backdrop-blur-sm sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="flex h-[86vh] w-[min(1180px,95vw)] flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl md:flex-row">
+      <div className="app-overlay-panel-content flex h-[calc(100dvh-1rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl sm:h-[86vh] md:flex-row">
         <div
           className={`w-full md:w-[330px] ${selectedProjectId || isCreating || githubImportMode ? "hidden md:block" : "block"}`}
         >
@@ -431,17 +432,20 @@ export default function ProjectManagerModal({ agents, departments = [], onClose 
                   }}
                 />
 
-                <ProjectInsightsPanel
-                  t={t as ProjectI18nTranslate}
-                  selectedProject={selectedProject}
-                  loadingDetail={loadingDetail}
-                  isCreating={isCreating}
-                  groupedTaskCards={groupedTaskCards}
-                  sortedReports={sortedReports}
-                  sortedDecisionEvents={sortedDecisionEvents}
-                  getDecisionEventLabel={getDecisionEventLabel}
-                  handleOpenTaskDetail={handleOpenTaskDetail}
-                />
+                <div className="min-w-0 space-y-4">
+                  <ProjectInsightsPanel
+                    t={t as ProjectI18nTranslate}
+                    selectedProject={selectedProject}
+                    loadingDetail={loadingDetail}
+                    isCreating={isCreating}
+                    groupedTaskCards={groupedTaskCards}
+                    sortedReports={sortedReports}
+                    sortedDecisionEvents={sortedDecisionEvents}
+                    getDecisionEventLabel={getDecisionEventLabel}
+                    handleOpenTaskDetail={handleOpenTaskDetail}
+                  />
+                  {selectedProject && !isCreating && <ExternalResourcePanel projectId={selectedProject.id} t={t as ProjectI18nTranslate} />}
+                </div>
               </div>
             </>
           )}

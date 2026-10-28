@@ -1,6 +1,9 @@
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import type { RuntimeContext } from "../../../types/runtime-context.ts";
 import type { CliUsageEntry } from "../shared/types.ts";
+import { createProjectGovernanceTools } from "../../workflow/core/project-governance-tools.ts";
 
 function readGitLines(cwd: string, args: string[], timeout = 8000): string[] {
   const output = execFileSync("git", args, { cwd, stdio: "pipe", timeout }).toString().trim();
@@ -170,6 +173,106 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
     fetchGeminiUsage,
     broadcast,
   } = ctx;
+  const { getProjectHealth } = createProjectGovernanceTools({ db: db as any, nowMs });
+
+  function resolvePreviewRoot(taskId: string, projectPath: string | null): string | null {
+    const active = taskWorktrees.get(taskId)?.worktreePath;
+    const candidates = [
+      active,
+      projectPath ? path.join(projectPath, ".climpire-worktrees", taskId.slice(0, 8)) : null,
+      projectPath ? path.join(projectPath, ".climpire-worktrees", `${taskId.slice(0, 8)}-1`) : null,
+      projectPath,
+    ].filter((candidate): candidate is string => Boolean(candidate));
+    for (const candidate of candidates) {
+      try {
+        if (fs.statSync(candidate).isDirectory()) return path.resolve(candidate);
+      } catch {
+        // Try the next safe candidate.
+      }
+    }
+    return null;
+  }
+
+  function sendProjectPreview(req: any, res: any): void {
+    const taskId = String(req.params.id ?? "").trim();
+    const task = db.prepare("SELECT id, project_path, status FROM tasks WHERE id = ?").get(taskId) as
+      | { id: string; project_path: string | null; status: string }
+      | undefined;
+    if (!task) return res.status(404).json({ error: "task_not_found" });
+    const root = resolvePreviewRoot(taskId, task.project_path);
+    if (!root) return res.status(404).json({ error: "preview_not_available" });
+    const requested = typeof req.params[0] === "string" ? req.params[0] : "index.html";
+    const relative = requested.trim() || "index.html";
+    if (relative.includes("\\") || relative.split("/").includes("..") || relative.startsWith(".")) {
+      return res.status(400).json({ error: "invalid_preview_path" });
+    }
+    const target = path.resolve(root, relative);
+    if (target !== root && !target.startsWith(`${root}${path.sep}`)) {
+      return res.status(400).json({ error: "invalid_preview_path" });
+    }
+    try {
+      if (!fs.statSync(target).isFile()) return res.status(404).json({ error: "preview_file_not_found" });
+    } catch {
+      return res.status(404).json({ error: "preview_file_not_found" });
+    }
+    try {
+      return res.type(path.extname(target) || "text/plain").send(fs.readFileSync(target));
+    } catch {
+      return res.status(404).json({ error: "preview_file_not_found" });
+    }
+  }
+
+  function sendProjectPreviewForProject(req: any, res: any): void {
+    const projectId = String(req.params.id ?? "").trim();
+    const task = db.prepare(
+      `SELECT id, project_path, status FROM tasks
+       WHERE project_id = ? AND status IN ('done', 'review')
+       ORDER BY CASE status WHEN 'done' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`,
+    ).get(projectId) as { id: string; project_path: string | null; status: string } | undefined;
+    if (!task) return res.status(404).json({ error: "preview_not_available" });
+    return sendProjectPreview({ ...req, params: { ...req.params, id: task.id, 0: "index.html" } }, res);
+  }
+
+  function sendProjectPreviewAssetForProject(req: any, res: any): void {
+    const projectId = String(req.params.id ?? req.params[0] ?? "").trim();
+    const task = db.prepare(
+      `SELECT id FROM tasks WHERE project_id = ? AND status IN ('done', 'review')
+       ORDER BY CASE status WHEN 'done' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`,
+    ).get(projectId) as { id: string } | undefined;
+    if (!task) return res.status(404).json({ error: "preview_not_available" });
+    const match = req.path.match(/^\/api\/projects\/[^/]+\/preview\/(.+)$/);
+    return sendProjectPreview({ ...req, params: { id: task.id, 0: match?.[1] ?? "" } }, res);
+  }
+
+  app.get("/api/tasks/:id/preview", (req, res) => sendProjectPreview({ ...req, params: { ...req.params, 0: "index.html" } }, res));
+  app.get("/api/tasks/:id/preview/index.html", (req, res) => sendProjectPreview({ ...req, params: { ...req.params, 0: "index.html" } }, res));
+  app.get("/api/projects/:id/preview", sendProjectPreviewForProject);
+  app.get("/api/projects/:id/preview/index.html", sendProjectPreviewForProject);
+  app.get(/^\/api\/projects\/([^/]+)\/preview\/(.+)$/, sendProjectPreviewAssetForProject);
+  app.get(/^\/api\/tasks\/([^/]+)\/preview\/(.+)$/, (req, res) => {
+    const match = req.path.match(/^\/api\/tasks\/([^/]+)\/preview\/(.+)$/);
+    return sendProjectPreview({ ...req, params: { id: match?.[1] ?? "", 0: match?.[2] ?? "" } }, res);
+  });
+
+  app.get("/api/projects/:id/health", (req, res) => {
+    const projectId = String(req.params.id ?? "").trim();
+    if (!projectId) return res.status(400).json({ error: "project_id_required" });
+    const project = db.prepare("SELECT id, name, project_path, core_goal FROM projects WHERE id = ?").get(projectId);
+    if (!project) return res.status(404).json({ error: "project_not_found" });
+    res.json({ ok: true, project, health: getProjectHealth(projectId) });
+  });
+
+  app.get("/api/projects/:id/checkpoints", (req, res) => {
+    const projectId = String(req.params.id ?? "").trim();
+    if (!projectId) return res.status(400).json({ error: "project_id_required" });
+    const rows = db
+      .prepare(
+        `SELECT id, task_id, branch_name, commit_sha, status, evidence_json, created_at
+         FROM project_checkpoints WHERE project_id = ? ORDER BY created_at DESC LIMIT 50`,
+      )
+      .all(projectId);
+    res.json({ ok: true, checkpoints: rows });
+  });
 
   app.get("/api/tasks/:id/diff", (req, res) => {
     const id = String(req.params.id);

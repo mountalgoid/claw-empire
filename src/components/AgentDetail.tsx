@@ -354,8 +354,8 @@ export default function AgentDetail({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-[calc(100vw-1.5rem)] max-w-[480px] max-h-[85vh] overflow-hidden rounded-2xl border border-slate-700 bg-slate-800 shadow-2xl">
+    <div className="app-overlay-panel fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-2 backdrop-blur-sm sm:p-4">
+      <div className="app-overlay-panel-content w-full max-w-[480px] overflow-hidden rounded-2xl border border-slate-700 bg-slate-800 shadow-2xl">
         <div
           className="relative px-6 py-5 border-b border-slate-700"
           style={{

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState, useMemo } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo, type PointerEvent as ReactPointerEvent, type MouseEvent as ReactMouseEvent, type WheelEvent as ReactWheelEvent } from "react";
 import {
   type Application,
   type Container,
@@ -17,8 +17,7 @@ import {
   type Delivery,
   type RoomRect,
   type WallClockVisual,
-  canScrollOnAxis,
-  findScrollContainer,
+  type OfficeMapMode,
   MIN_OFFICE_W,
   MOBILE_MOVE_CODES,
   type MobileMoveDirection,
@@ -63,6 +62,11 @@ export default function OfficeView({
   const initIdRef = useRef(0);
   const initDoneRef = useRef(false);
   const [sceneRevision, setSceneRevision] = useState(0);
+  const [officeMapMode, setOfficeMapMode] = useState<OfficeMapMode>(() => {
+    if (typeof window === "undefined") return "balanced";
+    const stored = window.localStorage.getItem("climpire.office.map_mode");
+    return stored === "wide" || stored === "focused" ? stored : "balanced";
+  });
 
   // Animation state refs
   const tickRef = useRef(0);
@@ -140,10 +144,35 @@ export default function OfficeView({
   const meetingMinutesOpenRef = useRef<typeof onOpenActiveMeetingMinutes>(onOpenActiveMeetingMinutes);
   meetingMinutesOpenRef.current = onOpenActiveMeetingMinutes;
   const [showVirtualPad, setShowVirtualPad] = useState(false);
-  const showVirtualPadRef = useRef(showVirtualPad);
-  showVirtualPadRef.current = showVirtualPad;
-  const scrollHostXRef = useRef<HTMLElement | null>(null);
-  const scrollHostYRef = useRef<HTMLElement | null>(null);
+  const [officeZoomPercent, setOfficeZoomPercent] = useState(100);
+  const officePanViewportRef = useRef<HTMLDivElement | null>(null);
+  const officePanLayerRef = useRef<HTMLDivElement | null>(null);
+  const officeZoomRef = useRef(1);
+  const officePanRef = useRef({ active: false, pointerId: -1, startX: 0, startY: 0, originX: 0, originY: 0 });
+  const officePanMovedRef = useRef(false);
+  const mapModeRef = useRef<OfficeMapMode>(officeMapMode);
+  mapModeRef.current = officeMapMode;
+
+  const applyOfficeTransform = useCallback((x: number, y: number, scale: number) => {
+    const layer = officePanLayerRef.current;
+    if (layer) layer.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+  }, []);
+
+  const setOfficeZoom = useCallback((nextScale: number, anchorX?: number, anchorY?: number) => {
+    const viewport = officePanViewportRef.current;
+    const oldScale = officeZoomRef.current;
+    const scale = Math.max(0.65, Math.min(1.8, nextScale));
+    const rect = viewport?.getBoundingClientRect();
+    const x = anchorX ?? (rect ? rect.width / 2 : 0);
+    const y = anchorY ?? (rect ? rect.height / 2 : 0);
+    const origin = officePanRef.current;
+    const nextX = x - (x - origin.originX) * (scale / oldScale);
+    const nextY = y - (y - origin.originY) * (scale / oldScale);
+    officeZoomRef.current = scale;
+    setOfficeZoomPercent(Math.round(scale * 100));
+    officePanRef.current = { ...origin, originX: nextX, originY: nextY };
+    applyOfficeTransform(nextX, nextY, scale);
+  }, [applyOfficeTransform]);
 
   const triggerDepartmentInteract = useCallback(() => {
     const cx = ceoPosRef.current.x;
@@ -169,67 +198,60 @@ export default function OfficeView({
   }, [setMoveDirectionPressed]);
 
   const followCeoInView = useCallback(() => {
-    if (!showVirtualPadRef.current) return;
-    const container = containerRef.current;
-    if (!container) return;
+    // The office is navigated by direct drag now. Do not force the page to
+    // scroll whenever the CEO moves; this keeps the view under user control.
+  }, []);
 
-    const containerRect = container.getBoundingClientRect();
-    const scaleX = officeWRef.current > 0 ? container.clientWidth / officeWRef.current : 1;
-    const scaleY = totalHRef.current > 0 ? container.clientHeight / totalHRef.current : scaleX;
+  const onOfficePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if ((event.target as HTMLElement).closest("button, a, input, textarea, select")) return;
+    const layer = officePanLayerRef.current;
+    if (!layer) return;
+    officePanRef.current = {
+      active: true,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: officePanRef.current.originX,
+      originY: officePanRef.current.originY,
+    };
+    officePanMovedRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }, []);
 
-    let hostX = scrollHostXRef.current;
-    if (!hostX || !canScrollOnAxis(hostX, "x")) {
-      hostX = findScrollContainer(container, "x") ?? (document.scrollingElement as HTMLElement | null);
-      scrollHostXRef.current = hostX;
-    }
+  const onOfficePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const pan = officePanRef.current;
+    const layer = officePanLayerRef.current;
+    if (!pan.active || pan.pointerId !== event.pointerId || !layer) return;
+    const dx = event.clientX - pan.startX;
+    const dy = event.clientY - pan.startY;
+    if (Math.abs(dx) + Math.abs(dy) > 4) officePanMovedRef.current = true;
+    applyOfficeTransform(pan.originX + dx, pan.originY + dy, officeZoomRef.current);
+    event.preventDefault();
+  }, [applyOfficeTransform]);
 
-    let hostY = scrollHostYRef.current;
-    if (!hostY || !canScrollOnAxis(hostY, "y")) {
-      hostY = findScrollContainer(container, "y") ?? (document.scrollingElement as HTMLElement | null);
-      scrollHostYRef.current = hostY;
-    }
+  const onOfficeWheel = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const direction = event.deltaY < 0 ? 1 : -1;
+    setOfficeZoom(officeZoomRef.current + direction * 0.1, event.clientX - rect.left, event.clientY - rect.top);
+  }, [setOfficeZoom]);
 
-    let nextLeft: number | null = null;
-    let movedX = false;
-    if (hostX) {
-      const hostRectX = hostX.getBoundingClientRect();
-      const ceoInHostX = containerRect.left - hostRectX.left + ceoPosRef.current.x * scaleX;
-      const ceoContentX = hostX.scrollLeft + ceoInHostX;
-      const targetLeft = ceoContentX - hostX.clientWidth * 0.45;
-      const maxLeft = Math.max(0, hostX.scrollWidth - hostX.clientWidth);
-      nextLeft = Math.max(0, Math.min(maxLeft, targetLeft));
-      movedX = Math.abs(hostX.scrollLeft - nextLeft) > 1;
-    }
+  const onOfficePointerEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const pan = officePanRef.current;
+    if (!pan.active || pan.pointerId !== event.pointerId) return;
+    const dx = event.clientX - pan.startX;
+    const dy = event.clientY - pan.startY;
+    officePanRef.current = { ...pan, active: false, originX: pan.originX + dx, originY: pan.originY + dy };
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  }, []);
 
-    let nextTop: number | null = null;
-    let movedY = false;
-    if (hostY) {
-      const hostRectY = hostY.getBoundingClientRect();
-      const ceoInHostY = containerRect.top - hostRectY.top + ceoPosRef.current.y * scaleY;
-      const ceoContentY = hostY.scrollTop + ceoInHostY;
-      const targetTop = ceoContentY - hostY.clientHeight * 0.45;
-      const maxTop = Math.max(0, hostY.scrollHeight - hostY.clientHeight);
-      nextTop = Math.max(0, Math.min(maxTop, targetTop));
-      movedY = Math.abs(hostY.scrollTop - nextTop) > 1;
-    }
-
-    if (hostX && hostY && hostX === hostY) {
-      if (movedX || movedY) {
-        hostX.scrollTo({
-          left: movedX && nextLeft !== null ? nextLeft : hostX.scrollLeft,
-          top: movedY && nextTop !== null ? nextTop : hostX.scrollTop,
-          behavior: "auto",
-        });
-      }
-      return;
-    }
-
-    if (hostX && movedX && nextLeft !== null) {
-      hostX.scrollTo({ left: nextLeft, top: hostX.scrollTop, behavior: "auto" });
-    }
-    if (hostY && movedY && nextTop !== null) {
-      hostY.scrollTo({ left: hostY.scrollLeft, top: nextTop, behavior: "auto" });
-    }
+  const onOfficeClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!officePanMovedRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    officePanMovedRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -265,6 +287,7 @@ export default function OfficeView({
       meetingMinutesOpenRef,
       localeRef,
       themeRef,
+      mapModeRef,
       animItemsRef,
       roomRectsRef,
       deliveriesRef,
@@ -292,6 +315,11 @@ export default function OfficeView({
       setSceneRevision,
     });
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("climpire.office.map_mode", officeMapMode);
+    if (initDoneRef.current && appRef.current) buildScene();
+  }, [officeMapMode, buildScene]);
 
   const { cliStatus, cliUsage, cliUsageRef, refreshing, handleRefreshUsage } = useCliUsage(tasks);
 
@@ -333,8 +361,6 @@ export default function OfficeView({
     initIdRef,
     initDoneRef,
     officeWRef,
-    scrollHostXRef,
-    scrollHostYRef,
     deliveriesRef,
     dataRef,
     buildScene,
@@ -391,14 +417,41 @@ export default function OfficeView({
   });
 
   return (
-    <div className="w-full overflow-auto" style={{ minHeight: "100%" }}>
-      <div className="relative mx-auto w-full">
-        <div
-          ref={containerRef}
-          className="mx-auto"
-          style={{ maxWidth: "100%", lineHeight: 0, outline: "none" }}
-          tabIndex={0}
-        />
+    <div className="w-full" style={{ minHeight: "100%" }}>
+      <div
+        ref={officePanViewportRef}
+        className="office-pan-viewport relative mx-auto w-full"
+        onPointerDown={onOfficePointerDown}
+        onPointerMove={onOfficePointerMove}
+        onPointerUp={onOfficePointerEnd}
+        onPointerCancel={onOfficePointerEnd}
+        onClick={onOfficeClick}
+        onWheel={onOfficeWheel}
+        aria-label="Kantor interaktif. Gunakan roda mouse untuk zoom dan seret untuk berpindah."
+      >
+        <div className="office-view-controls" role="toolbar" aria-label="Kontrol kantor">
+          <button type="button" onClick={() => setOfficeZoom(officeZoomRef.current + 0.1)} aria-label="Perbesar kantor">+</button>
+          <span>{officeZoomPercent}%</span>
+          <button type="button" onClick={() => setOfficeZoom(officeZoomRef.current - 0.1)} aria-label="Perkecil kantor">−</button>
+          <button type="button" onClick={() => setOfficeZoom(1)} aria-label="Atur ulang zoom">↺</button>
+          <select
+            value={officeMapMode}
+            onChange={(event) => setOfficeMapMode(event.target.value as OfficeMapMode)}
+            aria-label="Mode tata letak kantor"
+          >
+            <option value="balanced">Seimbang</option>
+            <option value="wide">Lebar</option>
+            <option value="focused">Fokus</option>
+          </select>
+        </div>
+        <div ref={officePanLayerRef} className="office-pan-layer" data-office-theme={currentTheme}>
+          <div
+            ref={containerRef}
+            className="mx-auto"
+            style={{ maxWidth: "100%", lineHeight: 0, outline: "none" }}
+            tabIndex={0}
+          />
+        </div>
 
         <VirtualPadOverlay
           showVirtualPad={showVirtualPad}

@@ -1,6 +1,6 @@
 import { isLang, type Lang } from "../../../types/lang.ts";
 
-export type L10n = Record<Lang, string[]>;
+export type L10n = { ko: string[]; en: string[]; ja?: string[]; zh?: string[]; id?: string[] };
 
 export type DirectivePolicy = {
   skipDelegation: boolean;
@@ -20,11 +20,11 @@ const ROLE_LABEL: Record<string, string> = {
   intern: "인턴",
 };
 
-const ROLE_LABEL_L10N: Record<string, Record<Lang, string>> = {
-  team_leader: { ko: "팀장", en: "Team Lead", ja: "チームリーダー", zh: "组长" },
-  senior: { ko: "시니어", en: "Senior", ja: "シニア", zh: "高级" },
-  junior: { ko: "주니어", en: "Junior", ja: "ジュニア", zh: "初级" },
-  intern: { ko: "인턴", en: "Intern", ja: "インターン", zh: "实习生" },
+const ROLE_LABEL_L10N: Record<string, Partial<Record<Lang, string>>> = {
+  team_leader: { ko: "팀장", en: "Team Lead", ja: "チームリーダー", zh: "组长", id: "Ketua Tim" },
+  senior: { ko: "시니어", en: "Senior", ja: "シニア", zh: "高级", id: "Senior" },
+  junior: { ko: "주니어", en: "Junior", ja: "ジュニア", zh: "初级", id: "Junior" },
+  intern: { ko: "인턴", en: "Intern", ja: "インターン", zh: "实习生", id: "Magang" },
 };
 
 const DEPT_KEYWORDS: Record<string, string[]> = {
@@ -130,22 +130,23 @@ export function initializeCollabLanguagePolicy(deps: LanguagePolicyDeps) {
     return fallback ?? getPreferredLanguage();
   }
 
-  function l(ko: string[], en: string[], ja?: string[], zh?: string[]): L10n {
+  function l(ko: string[], en: string[], ja?: string[], zh?: string[], id?: string[]): L10n {
     return {
       ko,
       en,
       ja: ja ?? en.map((s) => s),
       zh: zh ?? en.map((s) => s),
+      id: id ?? en.map((s) => s),
     };
   }
 
   function pickL(pool: L10n, lang: Lang): string {
-    const arr = pool[lang];
+    const arr = pool[lang] ?? pool.en;
     return arr[Math.floor(Math.random() * arr.length)];
   }
 
   function getFlairs(agentName: string, lang: Lang): string[] {
-    const flairs: Record<string, Record<Lang, string[]>> = {
+    const flairs: Record<string, Partial<Record<Lang, string[]>>> = {
       Aria: {
         ko: ["코드 리뷰 중에", "리팩토링 구상하면서", "PR 체크하면서"],
         en: ["reviewing code", "planning a refactor", "checking PRs"],
@@ -226,12 +227,13 @@ export function initializeCollabLanguagePolicy(deps: LanguagePolicyDeps) {
       },
     };
     const agentFlairs = flairs[agentName];
-    if (agentFlairs) return agentFlairs[lang] ?? agentFlairs.en;
+    if (agentFlairs) return agentFlairs[lang] ?? agentFlairs.en ?? [];
     const defaults: Record<Lang, string[]> = {
       ko: ["업무 처리하면서", "작업 진행하면서", "일하면서"],
       en: ["working on tasks", "making progress", "getting things done"],
       ja: ["業務処理中", "作業進行中", "仕事しながら"],
       zh: ["处理业务中", "推进工作时", "忙着干活时"],
+      id: ["mengerjakan tugas", "sedang membuat kemajuan", "menyelesaikan pekerjaan"],
     };
     return defaults[lang];
   }
@@ -310,7 +312,7 @@ export function initializeCollabLanguagePolicy(deps: LanguagePolicyDeps) {
       ],
     };
 
-    const langIdx = { ko: 0, en: 1, ja: 2, zh: 3 }[lang];
+    const langIdx = { ko: 0, en: 1, ja: 2, zh: 3, id: 4 }[lang];
     void langIdx;
 
     const result: Record<string, boolean> = {};

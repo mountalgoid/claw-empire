@@ -3,7 +3,7 @@ import type { Agent, Task, MeetingMinute } from "../types";
 import * as api from "../api";
 import type { TerminalProgressHint, TerminalProgressHintsPayload } from "../api";
 import AgentAvatar from "./AgentAvatar";
-import { useI18n } from "../i18n";
+import { localeName, useI18n } from "../i18n";
 import {
   INTERVENTION_PROMPT_MAX_LENGTH,
   STATUS_BADGES,
@@ -41,12 +41,11 @@ export default function TerminalPanel({
   const preRef = useRef<HTMLPreElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
-  const { t, locale } = useI18n();
+  const { t, language, locale } = useI18n();
 
   const tr = (ko: string, en: string, ja = en, zh = en) => t({ ko, en, ja, zh });
 
-  const isKorean = locale.startsWith("ko");
-  const agentName = agent ? (isKorean ? agent.name_ko || agent.name : agent.name || agent.name_ko) : null;
+  const agentName = agent ? localeName(language, agent) : null;
 
   const taskLogTimeFormatter = useMemo(
     () =>
@@ -415,7 +414,7 @@ export default function TerminalPanel({
       : null;
 
   return (
-    <div className="terminal-panel-shell fixed inset-0 z-50 flex w-full max-w-full flex-col shadow-2xl lg:inset-y-0 lg:right-0 lg:left-auto lg:w-[560px] lg:border-l">
+    <div className="terminal-panel-shell app-overlay-panel fixed inset-0 z-50 flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden shadow-2xl lg:inset-y-0 lg:right-0 lg:left-auto lg:h-full lg:w-[560px] lg:border-l">
       {/* Header */}
       <div className="terminal-panel-header flex items-center gap-3 border-b px-4 py-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">

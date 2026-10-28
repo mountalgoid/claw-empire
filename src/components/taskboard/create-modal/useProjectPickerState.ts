@@ -7,9 +7,10 @@ import {
   pickProjectPathNative,
 } from "../../../api";
 import type { Project } from "../../../types";
-import type { FormFeedback, Locale, ManualPathEntry, MissingPathPrompt } from "../constants";
+import type { LanguageText } from "../../../i18n";
+import type { FormFeedback, ManualPathEntry, MissingPathPrompt } from "../constants";
 
-type ResolvePathHelperErrorMessage = (error: unknown, fallback: Record<Locale, string>) => string;
+type ResolvePathHelperErrorMessage = (error: unknown, fallback: LanguageText) => string;
 
 interface UseProjectPickerStateParams {
   unsupportedPathApiMessage: string;

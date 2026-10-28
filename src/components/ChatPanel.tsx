@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { Agent, Message, Project } from "../types";
 import { buildSpriteMap } from "./AgentAvatar";
-import { useI18n } from "../i18n";
+import { localeName, useI18n } from "../i18n";
 import { createProject, getProjects } from "../api";
 import { parseDecisionRequest } from "./chat/decision-request";
 import type { DecisionOption } from "./chat/decision-request";
@@ -65,14 +65,13 @@ export function ChatPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const spriteMap = useMemo(() => buildSpriteMap(agents), [agents]);
-  const { t, locale } = useI18n();
-  const isKorean = locale.startsWith("ko");
+  const { t, language, locale } = useI18n();
 
-  const tr = (ko: string, en: string, ja = en, zh = en) => t({ ko, en, ja, zh });
+  const tr = (ko: string, en: string, ja = en, zh = en, id = en) => t({ ko, en, ja, zh, id });
 
   const getAgentName = (agent: Agent | null | undefined) => {
     if (!agent) return "";
-    return isKorean ? agent.name_ko || agent.name : agent.name || agent.name_ko;
+    return localeName(language, agent);
   };
 
   const getRoleLabel = (role: string) => {
@@ -86,9 +85,7 @@ export function ChatPanel({
   };
 
   const selectedDeptName = selectedAgent?.department
-    ? isKorean
-      ? selectedAgent.department.name_ko || selectedAgent.department.name
-      : selectedAgent.department.name || selectedAgent.department.name_ko
+    ? localeName(language, selectedAgent.department)
     : selectedAgent?.department_id;
   const selectedTaskId = selectedAgent?.current_task_id;
 
@@ -412,7 +409,7 @@ export function ChatPanel({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex h-full w-full flex-col bg-gray-900 shadow-2xl lg:relative lg:inset-auto lg:z-auto lg:w-96 lg:border-l lg:border-gray-700">
+    <div className="chat-panel-shell app-overlay-panel fixed inset-0 z-50 flex h-[100dvh] max-h-[100dvh] min-w-0 max-w-[100vw] flex-col overflow-hidden bg-gray-900 shadow-2xl lg:inset-y-0 lg:right-0 lg:left-auto lg:h-[100dvh] lg:max-h-[100dvh] lg:w-96 lg:border-l lg:border-gray-700">
       <ChatPanelHeader
         selectedAgent={selectedAgent}
         selectedDeptName={selectedDeptName}

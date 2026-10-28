@@ -11,7 +11,13 @@ import {
   SLOT_W,
   detachNode,
 } from "./model";
-import { DEFAULT_BREAK_THEME, DEFAULT_CEO_THEME, applyOfficeThemeMode } from "./themes-locale";
+import {
+  DEFAULT_BREAK_THEME,
+  DEFAULT_CEO_THEME,
+  DEPT_THEME,
+  applyOfficeThemeMode,
+  resolveOfficeRoomTheme,
+} from "./themes-locale";
 import type { BuildOfficeSceneContext } from "./buildScene-types";
 import { buildCeoAndHallway } from "./buildScene-ceo-hallway";
 import { buildDepartmentRooms } from "./buildScene-departments";
@@ -28,6 +34,7 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
     meetingMinutesOpenRef,
     localeRef,
     themeRef,
+    mapModeRef,
     animItemsRef,
     roomRectsRef,
     deliveriesRef,
@@ -113,10 +120,26 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
   const nextSubSnapshot = new Map<string, { parentAgentId: string; x: number; y: number }>();
 
   const activeLocale = localeRef.current;
-  const isDark = themeRef.current === "dark";
-  applyOfficeThemeMode(isDark);
-  const ceoTheme = customThemes?.ceoOffice ?? DEFAULT_CEO_THEME;
-  const breakTheme = customThemes?.breakRoom ?? DEFAULT_BREAK_THEME;
+  // Keep the pixel office on the same visual mode as the global UI.
+  const isDark = themeRef.current !== "light";
+  applyOfficeThemeMode(themeRef.current);
+  const activeTheme = themeRef.current;
+  const ceoTheme = resolveOfficeRoomTheme(activeTheme, customThemes?.ceoOffice ?? DEFAULT_CEO_THEME);
+  const breakTheme = resolveOfficeRoomTheme(activeTheme, customThemes?.breakRoom ?? DEFAULT_BREAK_THEME);
+  const themedDepartmentThemes = Object.fromEntries(
+    departments.map((department) => [
+      department.id,
+      resolveOfficeRoomTheme(activeTheme, DEPT_THEME[department.id] ?? DEPT_THEME.dev),
+    ]),
+  );
+  const themedCustomThemes = {
+    ...themedDepartmentThemes,
+    ...(customThemes
+      ? Object.fromEntries(
+          Object.entries(customThemes).map(([key, roomTheme]) => [key, resolveOfficeRoomTheme(activeTheme, roomTheme)]),
+        )
+      : {}),
+  };
 
   const spriteMap = buildSpriteMap(agents);
   spriteMapRef.current = spriteMap;
@@ -124,8 +147,9 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
   const OFFICE_W = officeWRef.current;
   const deptCount = departments.length || 1;
   const baseRoomW = COLS_PER_ROW * SLOT_W + ROOM_PAD * 2;
-  const roomGap = 12;
-  let gridCols = Math.min(deptCount, 3);
+  const mapMode = mapModeRef.current;
+  const roomGap = mapMode === "wide" ? 20 : mapMode === "focused" ? 10 : 12;
+  let gridCols = mapMode === "focused" ? 1 : mapMode === "wide" ? Math.min(deptCount, 2) : Math.min(deptCount, 3);
   while (gridCols > 1 && gridCols * baseRoomW + (gridCols - 1) * roomGap + 24 > OFFICE_W) {
     gridCols -= 1;
   }
@@ -172,7 +196,7 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
     tasks,
     subAgents,
     unread,
-    customThemes,
+    customThemes: themedCustomThemes,
     activeLocale,
     gridCols,
     roomStartX,

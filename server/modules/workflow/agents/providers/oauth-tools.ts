@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
   BUILTIN_GOOGLE_CLIENT_ID,
   BUILTIN_GOOGLE_CLIENT_SECRET,
@@ -241,7 +244,61 @@ export function createOAuthTools(deps: CreateOAuthToolsDeps) {
     const row = db.prepare("SELECT value FROM settings WHERE key = 'providerModelConfig'").get() as
       | { value: string }
       | undefined;
-    return row ? JSON.parse(row.value) : {};
+    if (!row) return {};
+
+    let config: Record<string, { model: string; subModel?: string; reasoningLevel?: string; subModelReasoningLevel?: string }>;
+    try {
+      config = JSON.parse(row.value);
+    } catch {
+      return {};
+    }
+
+    // Codex model availability changes independently from the app's seeded settings.
+    // Resolve stale values from the local Codex cache before starting a task, then
+    // persist the correction so future runs and the settings screen stay aligned.
+    const codex = config.codex;
+    if (!codex) return config;
+    try {
+      const cachePath = path.join(os.homedir(), ".codex", "models_cache.json");
+      if (!fs.existsSync(cachePath)) return config;
+      const raw = JSON.parse(fs.readFileSync(cachePath, "utf8"));
+      const models = (Array.isArray(raw) ? raw : raw.models || raw.data || []).filter(
+        (model: any) => model?.visibility === "list" && typeof model.slug === "string",
+      );
+      if (models.length === 0) return config;
+
+      const bySlug = new Map(models.map((model: any) => [model.slug, model]));
+      const main = bySlug.get(codex.model) || models[0];
+      const sub = bySlug.get(codex.subModel) || main;
+      const supportedReasoning = Array.isArray(main.supported_reasoning_levels)
+        ? main.supported_reasoning_levels.map((level: any) => level?.effort).filter(Boolean)
+        : [];
+      const supportedSubReasoning = Array.isArray(sub.supported_reasoning_levels)
+        ? sub.supported_reasoning_levels.map((level: any) => level?.effort).filter(Boolean)
+        : [];
+      const nextReasoning =
+        supportedReasoning.length > 0 && !supportedReasoning.includes(codex.reasoningLevel)
+          ? main.default_reasoning_level || supportedReasoning[0]
+          : codex.reasoningLevel;
+      const nextSubReasoning =
+        supportedSubReasoning.length > 0 && !supportedSubReasoning.includes(codex.subModelReasoningLevel)
+          ? sub.default_reasoning_level || supportedSubReasoning[0]
+          : codex.subModelReasoningLevel;
+      const normalized = {
+        ...codex,
+        model: main.slug,
+        subModel: sub.slug,
+        ...(nextReasoning ? { reasoningLevel: nextReasoning } : {}),
+        ...(nextSubReasoning ? { subModelReasoningLevel: nextSubReasoning } : {}),
+      };
+      if (JSON.stringify(normalized) !== JSON.stringify(codex)) {
+        config = { ...config, codex: normalized };
+        db.prepare("UPDATE settings SET value = ? WHERE key = 'providerModelConfig'").run(JSON.stringify(config));
+      }
+    } catch {
+      // A stale or unreadable cache must not prevent the normal settings path.
+    }
+    return config;
   }
 
   async function refreshGoogleToken(credential: DecryptedOAuthToken): Promise<string> {

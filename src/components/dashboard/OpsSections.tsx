@@ -1,6 +1,7 @@
 import { localeName, type UiLanguage } from "../../i18n";
 import type { Agent, Task } from "../../types";
 import AgentAvatar from "../AgentAvatar";
+import type { SpriteMap } from "../AgentAvatar";
 import { getRankTier, STATUS_LABELS, STATUS_LEFT_BORDER, taskStatusLabel, timeAgo, type TFunction } from "./model";
 
 export interface DepartmentPerformance {
@@ -21,9 +22,11 @@ interface DashboardDeptAndSquadProps {
   workingAgents: Agent[];
   idleAgentsList: Agent[];
   agents: Agent[];
+  spriteMap: SpriteMap;
   language: UiLanguage;
   numberFormatter: Intl.NumberFormat;
   t: TFunction;
+  unreadAgentIds: Set<string>;
 }
 
 export function DashboardDeptAndSquad({
@@ -31,12 +34,14 @@ export function DashboardDeptAndSquad({
   workingAgents,
   idleAgentsList,
   agents,
+  spriteMap,
   language,
   numberFormatter,
   t,
+  unreadAgentIds,
 }: DashboardDeptAndSquadProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
+    <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
       <div className="game-panel p-5">
         <h2
           className="mb-4 flex items-center gap-2 text-sm font-black uppercase tracking-wider"
@@ -81,7 +86,7 @@ export function DashboardDeptAndSquad({
                       {dept.icon}
                     </span>
                     <span className="text-sm font-bold" style={{ color: "var(--th-text-primary)" }}>
-                      {dept.name}
+                      {localeName(language, { name: dept.name })}
                     </span>
                   </div>
                   <span className={`rounded-md border px-2 py-0.5 text-[10px] font-black ${dept.color.badge}`}>
@@ -169,14 +174,8 @@ export function DashboardDeptAndSquad({
                       border: isWorking ? `2px solid ${tier.color}60` : "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
-                    <AgentAvatar agent={agent} agents={agents} size={40} rounded="2xl" />
+                    <AgentAvatar agent={agent} spriteMap={spriteMap} size={40} rounded="2xl" notificationCount={unreadAgentIds.has(agent.id) ? 1 : 0} />
                   </div>
-                  <span
-                    className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 ${
-                      isWorking ? "bg-emerald-400 animate-status-glow" : "bg-slate-600"
-                    }`}
-                    style={{ borderColor: "var(--th-bg-primary)" }}
-                  />
                 </div>
                 <span
                   className="max-w-[52px] truncate text-center text-[9px] font-bold leading-tight"
@@ -197,6 +196,7 @@ interface DashboardMissionLogProps {
   recentTasks: Task[];
   agentMap: Map<string, Agent>;
   agents: Agent[];
+  spriteMap: SpriteMap;
   language: UiLanguage;
   localeTag: string;
   idleAgents: number;
@@ -208,6 +208,7 @@ export function DashboardMissionLog({
   recentTasks,
   agentMap,
   agents,
+  spriteMap,
   language,
   localeTag,
   idleAgents,
@@ -270,10 +271,10 @@ export function DashboardMissionLog({
             return (
               <article
                 key={task.id}
-                className={`group grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl border border-white/[0.06] border-l-[3px] ${leftBorder} bg-white/[0.02] p-3 transition-all duration-200 hover:bg-white/[0.04] hover:translate-x-1`}
+                className={`group grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-white/[0.06] border-l-[3px] ${leftBorder} bg-white/[0.02] p-3 transition-all duration-200 hover:bg-white/[0.04] hover:translate-x-1 sm:gap-3`}
               >
                 {assignedAgent ? (
-                  <AgentAvatar agent={assignedAgent} agents={agents} size={36} rounded="xl" />
+                  <AgentAvatar agent={assignedAgent} spriteMap={spriteMap} size={36} rounded="xl" />
                 ) : (
                   <div
                     className="flex h-9 w-9 items-center justify-center rounded-xl border text-base"

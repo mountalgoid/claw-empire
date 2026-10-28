@@ -1,5 +1,6 @@
 import { type Graphics, type Text, TextStyle } from "pixi.js";
 import type { UiLanguage } from "../../i18n";
+import type { ThemeMode } from "../../ThemeContext";
 import type { MeetingReviewDecision } from "../../types";
 import type { RoomTheme } from "./model";
 
@@ -71,83 +72,95 @@ const LOCALE_TEXT = {
     en: "CEO OFFICE",
     ja: "CEOオフィス",
     zh: "CEO办公室",
+    id: "KANTOR CEO",
   },
   collabTable: {
     ko: "6인 협업 테이블",
     en: "6P COLLAB TABLE",
     ja: "6人コラボテーブル",
     zh: "6人协作桌",
+    id: "MEJA KOLABORASI 6 ORANG",
   },
-  statsEmployees: { ko: "직원", en: "Staff", ja: "スタッフ", zh: "员工" },
-  statsWorking: { ko: "작업중", en: "Working", ja: "作業中", zh: "处理中" },
-  statsProgress: { ko: "진행", en: "In Progress", ja: "進行", zh: "进行中" },
-  statsDone: { ko: "완료", en: "Done", ja: "完了", zh: "已完成" },
+  statsEmployees: { ko: "직원", en: "Staff", ja: "スタッフ", zh: "员工", id: "Staf" },
+  statsWorking: { ko: "작업중", en: "Working", ja: "作業中", zh: "处理中", id: "Bekerja" },
+  statsProgress: { ko: "진행", en: "In Progress", ja: "進行", zh: "进行中", id: "Berjalan" },
+  statsDone: { ko: "완료", en: "Done", ja: "完了", zh: "已完成", id: "Selesai" },
   hint: {
-    ko: "WASD/방향키/가상패드: CEO 이동  |  Enter: 상호작용",
-    en: "WASD/Arrow/Virtual Pad: CEO Move  |  Enter: Interact",
-    ja: "WASD/矢印キー/仮想パッド: CEO移動  |  Enter: 操作",
-    zh: "WASD/方向键/虚拟手柄: CEO移动  |  Enter: 交互",
+    ko: "드래그/WASD/방향키/가상패드: CEO 이동  |  Enter: 상호작용",
+    en: "Drag/WASD/Arrow/Virtual Pad: Move CEO  |  Enter: Interact",
+    ja: "ドラッグ/WASD/矢印キー/仮想パッド: CEO移動  |  Enter: 操作",
+    zh: "拖动/WASD/方向键/虚拟手柄: CEO移动  |  Enter: 交互",
+    id: "Seret/WASD/Panah/Panel Virtual: Gerakkan CEO  |  Enter: Interaksi",
   },
   mobileEnter: {
     ko: "Enter",
     en: "Enter",
     ja: "Enter",
     zh: "Enter",
+    id: "Enter",
   },
   noAssignedAgent: {
     ko: "배정된 직원 없음",
     en: "No assigned staff",
     ja: "担当スタッフなし",
     zh: "暂无分配员工",
+    id: "Tidak ada staf yang ditugaskan",
   },
   breakRoom: {
     ko: "☕ 휴게실",
     en: "☕ Break Room",
     ja: "☕ 休憩室",
     zh: "☕ 休息室",
+    id: "☕ Ruang Istirahat",
   },
   role: {
-    team_leader: { ko: "팀장", en: "Lead", ja: "リーダー", zh: "组长" },
-    senior: { ko: "시니어", en: "Senior", ja: "シニア", zh: "资深" },
-    junior: { ko: "주니어", en: "Junior", ja: "ジュニア", zh: "初级" },
-    intern: { ko: "인턴", en: "Intern", ja: "インターン", zh: "实习" },
-    part_time: { ko: "알바", en: "Part-time", ja: "アルバイト", zh: "兼职" },
+    team_leader: { ko: "팀장", en: "Lead", ja: "リーダー", zh: "组长", id: "Ketua Tim" },
+    senior: { ko: "시니어", en: "Senior", ja: "シニア", zh: "资深", id: "Senior" },
+    junior: { ko: "주니어", en: "Junior", ja: "ジュニア", zh: "初级", id: "Junior" },
+    intern: { ko: "인턴", en: "Intern", ja: "インターン", zh: "实习", id: "Magang" },
+    part_time: { ko: "알바", en: "Part-time", ja: "アルバイト", zh: "兼职", id: "Paruh Waktu" },
   },
   partTime: {
     ko: "알바",
     en: "Part-time",
     ja: "アルバイト",
     zh: "兼职",
+    id: "Paruh Waktu",
   },
   collabBadge: {
     ko: "🤝 협업",
     en: "🤝 Collaboration",
     ja: "🤝 協業",
     zh: "🤝 协作",
+    id: "🤝 Kolaborasi",
   },
   meetingBadgeKickoff: {
     ko: "📣 회의",
     en: "📣 Meeting",
     ja: "📣 会議",
     zh: "📣 会议",
+    id: "📣 Rapat",
   },
   meetingBadgeReviewing: {
     ko: "🔎 검토중",
     en: "🔎 Reviewing",
     ja: "🔎 検討中",
     zh: "🔎 评审中",
+    id: "🔎 Sedang Ditinjau",
   },
   meetingBadgeApproved: {
     ko: "✅ 승인",
     en: "✅ Approval",
     ja: "✅ 承認",
     zh: "✅ 审批",
+    id: "✅ Disetujui",
   },
   meetingBadgeHold: {
     ko: "⚠ 보류",
     en: "⚠ Hold",
     ja: "⚠ 保留",
     zh: "⚠ 暂缓",
+    id: "⚠ Ditunda",
   },
   kickoffLines: {
     ko: ["유관부서 영향도 확인중", "리스크/의존성 공유중", "일정/우선순위 조율중", "담당 경계 정의중"],
@@ -159,6 +172,7 @@ const LOCALE_TEXT = {
     ],
     ja: ["関連部署への影響を確認中", "リスク/依存関係を共有中", "日程/優先度を調整中", "担当境界を定義中"],
     zh: ["正在确认跨团队影响", "正在共享风险/依赖关系", "正在协调排期/优先级", "正在定义职责边界"],
+    id: ["Memeriksa dampak lintas tim", "Membagikan risiko/dependensi", "Menyelaraskan jadwal/prioritas", "Menentukan batas tanggung jawab"],
   },
   reviewLines: {
     ko: ["보완사항 반영 확인중", "최종안 Approved 검토중", "수정 아이디어 공유중", "결과물 교차 검토중"],
@@ -170,76 +184,90 @@ const LOCALE_TEXT = {
     ],
     ja: ["補完事項の反映を確認中", "最終承認案を確認中", "修正アイデアを共有中", "成果物を相互レビュー中"],
     zh: ["正在确认补充项是否反映", "正在审阅最终审批方案", "正在共享修改思路", "正在交叉评审交付物"],
+    id: ["Memastikan perbaikan sudah diterapkan", "Meninjau draf persetujuan akhir", "Membagikan ide revisi", "Meninjau hasil kerja bersama"],
   },
   meetingTableHint: {
     ko: "📝 회의 중: 테이블 클릭해 회의록 보기",
     en: "📝 Meeting live: click table for minutes",
     ja: "📝 会議中: テーブルをクリックして会議録を見る",
     zh: "📝 会议进行中：点击桌子查看纪要",
+    id: "📝 Rapat berlangsung: klik meja untuk melihat notulen",
   },
   cliUsageTitle: {
     ko: "CLI 사용량",
     en: "CLI Usage",
     ja: "CLI使用量",
     zh: "CLI 使用量",
+    id: "Penggunaan CLI",
   },
   cliConnected: {
     ko: "연결됨",
     en: "connected",
     ja: "接続中",
     zh: "已连接",
+    id: "terhubung",
   },
   cliRefreshTitle: {
     ko: "사용량 새로고침",
     en: "Refresh usage data",
     ja: "使用量を更新",
     zh: "刷新用量数据",
+    id: "Segarkan data penggunaan",
   },
   cliNotSignedIn: {
     ko: "로그인되지 않음",
     en: "not signed in",
     ja: "未サインイン",
     zh: "未登录",
+    id: "belum masuk",
   },
   cliNoApi: {
     ko: "사용량 API 없음",
     en: "no usage API",
     ja: "使用量APIなし",
     zh: "无用量 API",
+    id: "tidak ada API penggunaan",
   },
   cliUnavailable: {
     ko: "사용 불가",
     en: "unavailable",
     ja: "利用不可",
     zh: "不可用",
+    id: "tidak tersedia",
   },
   cliLoading: {
     ko: "불러오는 중...",
     en: "loading...",
     ja: "読み込み中...",
     zh: "加载中...",
+    id: "memuat...",
   },
   cliResets: {
     ko: "리셋까지",
     en: "resets",
     ja: "リセットまで",
     zh: "重置剩余",
+    id: "diatur ulang dalam",
   },
   cliNoData: {
     ko: "데이터 없음",
     en: "no data",
     ja: "データなし",
     zh: "无数据",
+    id: "tidak ada data",
   },
   soon: {
     ko: "곧",
     en: "soon",
     ja: "まもなく",
     zh: "即将",
+    id: "segera",
   },
 };
 
-const BREAK_CHAT_MESSAGES: Record<SupportedLocale, string[]> = {
+type LocaleMap<T> = { ko: T; en: T; ja?: T; zh?: T; id?: T };
+
+const BREAK_CHAT_MESSAGES: LocaleMap<string[]> = {
   ko: [
     "커피 한 잔 더~",
     "오늘 점심 뭐 먹지?",
@@ -312,9 +340,27 @@ const BREAK_CHAT_MESSAGES: Record<SupportedLocale, string[]> = {
     "正在补充能量...",
     "想回家了~",
   ],
+  id: [
+    "Tambah secangkir kopi~",
+    "Makan siang apa hari ini?",
+    "Mengantuk...",
+    "Ada rencana akhir pekan?",
+    "Proyek ini cukup berat haha",
+    "Latte memang terbaik!",
+    "Cuaca hari ini bagus~",
+    "Aku benci lembur...",
+    "Ingin makan sesuatu yang enak",
+    "Istirahat sebentar yuk~",
+    "Hahaha",
+    "Camilan datang!",
+    "Lima menit lagi~",
+    "Ayo semangat!",
+    "Mengisi energi...",
+    "Ingin pulang~",
+  ],
 };
 
-function pickLocale<T>(locale: SupportedLocale, map: Record<SupportedLocale, T>): T {
+function pickLocale<T>(locale: SupportedLocale, map: LocaleMap<T>): T {
   return map[locale] ?? map.ko;
 }
 
@@ -424,9 +470,42 @@ const DEPT_THEME_DARK: Record<string, RoomTheme> = {
   qa: { floor1: 0x1a0c10, floor2: 0x180a0e, wall: 0x401c1c, accent: 0x782828 },
   devsecops: { floor1: 0x18100c, floor2: 0x160e0a, wall: 0x3a241c, accent: 0x783828 },
 };
+
+const OFFICE_THEME_PALETTES: Record<Exclude<ThemeMode, "light" | "dark">, RoomTheme> = {
+  ocean: { floor1: 0x123447, floor2: 0x0d2938, wall: 0x26758a, accent: 0x4fd1c5 },
+  forest: { floor1: 0x173326, floor2: 0x10251c, wall: 0x3f7652, accent: 0x8bd17c },
+  sunset: { floor1: 0x3a2528, floor2: 0x281b22, wall: 0x985540, accent: 0xf09a63 },
+  futuristic: { floor1: 0x111b32, floor2: 0x0a1224, wall: 0x315b78, accent: 0x67e8f9 },
+};
+
+function mixRoomTheme(base: RoomTheme, palette: RoomTheme, amount: number): RoomTheme {
+  const mix = (from: number, to: number) => {
+    const r = (value: number) => (value >> 16) & 0xff;
+    const g = (value: number) => (value >> 8) & 0xff;
+    const b = (value: number) => value & 0xff;
+    return (
+      (Math.round(r(from) + (r(to) - r(from)) * amount) << 16) |
+      (Math.round(g(from) + (g(to) - g(from)) * amount) << 8) |
+      Math.round(b(from) + (b(to) - b(from)) * amount)
+    );
+  };
+  return {
+    floor1: mix(base.floor1, palette.floor1),
+    floor2: mix(base.floor2, palette.floor2),
+    wall: mix(base.wall, palette.wall),
+    accent: mix(base.accent, palette.accent),
+  };
+}
+
+function resolveOfficeRoomTheme(theme: ThemeMode, base: RoomTheme, strength = 0.86): RoomTheme {
+  if (theme === "light") return base;
+  if (theme === "dark") return mixRoomTheme(base, DEPT_THEME_DARK.dev, 0.62);
+  return mixRoomTheme(base, OFFICE_THEME_PALETTES[theme], strength);
+}
 let DEPT_THEME = DEPT_THEME_LIGHT;
 
-function applyOfficeThemeMode(isDark: boolean): void {
+function applyOfficeThemeMode(theme: ThemeMode): void {
+  const isDark = theme !== "light";
   OFFICE_PASTEL = isDark ? OFFICE_PASTEL_DARK : OFFICE_PASTEL_LIGHT;
   DEFAULT_CEO_THEME = isDark ? DEFAULT_CEO_THEME_DARK : DEFAULT_CEO_THEME_LIGHT;
   DEFAULT_BREAK_THEME = isDark ? DEFAULT_BREAK_THEME_DARK : DEFAULT_BREAK_THEME_LIGHT;
@@ -456,4 +535,5 @@ export {
   DEPT_THEME_DARK,
   DEPT_THEME,
   applyOfficeThemeMode,
+  resolveOfficeRoomTheme,
 };

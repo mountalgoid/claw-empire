@@ -36,6 +36,20 @@ type CreateApiProviderToolsDeps = {
   ) => Promise<void>;
 };
 
+function readOutputTokenBudget(db: { prepare: (sql: string) => { get: (...args: any[]) => unknown } }, prompt: string): number {
+  const fallback = /\[Task\]|\[Workflow Pack Execution Rules\]/.test(prompt) ? 8192 : 2048;
+  try {
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'tokenBudgetConfig'").get() as
+      | { value?: string }
+      | undefined;
+    const config = row?.value ? JSON.parse(row.value) : null;
+    const value = Number(config?.maxOutputTokens);
+    return Number.isFinite(value) ? Math.max(512, Math.min(value, 16384)) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
   const {
     db,
@@ -124,6 +138,7 @@ export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
   ): { url: string; headers: Record<string, string>; body: string } {
     const apiKey = provider.api_key_enc ? decryptSecret(provider.api_key_enc) : "";
     const baseUrl = normalizeApiBaseUrl(provider.base_url);
+    const maxOutputTokens = readOutputTokenBudget(db, prompt);
 
     if (provider.type === "anthropic") {
       const messagesUrl = baseUrl.endsWith("/v1") ? `${baseUrl}/messages` : `${baseUrl}/v1/messages`;
@@ -136,7 +151,7 @@ export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
         },
         body: JSON.stringify({
           model,
-          max_tokens: 16384,
+          max_tokens: maxOutputTokens,
           stream: true,
           messages: [{ role: "user", content: prompt }],
           system: `You are a coding assistant. Project path: ${projectPath}`,
@@ -155,6 +170,7 @@ export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           systemInstruction: { parts: [{ text: `You are a coding assistant. Project path: ${projectPath}` }] },
+          generationConfig: { maxOutputTokens },
         }),
       };
     }
@@ -180,6 +196,7 @@ export function createApiProviderTools(deps: CreateApiProviderToolsDeps) {
           { role: "system", content: `You are a coding assistant. Project path: ${projectPath}` },
           { role: "user", content: prompt },
         ],
+        max_tokens: maxOutputTokens,
         stream: true,
       }),
     };

@@ -1,4 +1,5 @@
 import AgentAvatar from "../AgentAvatar";
+import type { SpriteMap } from "../AgentAvatar";
 import type { Agent } from "../../types";
 import { getRankTier, RankBadge, XpBar, type TFunction } from "./model";
 
@@ -50,10 +51,10 @@ export function DashboardHeroHeader({
     <div className="game-panel relative overflow-hidden p-5">
       <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.03)_2px,rgba(0,0,0,0.03)_4px)]" />
 
-      <div className="relative flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-3">
-            <h1 className="dashboard-title-gradient text-2xl font-black tracking-tight sm:text-3xl">{companyName}</h1>
+      <div className="relative flex min-w-0 flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex min-w-0 items-center gap-3">
+            <h1 className="dashboard-title-gradient min-w-0 truncate text-2xl font-black tracking-tight sm:text-3xl">{companyName}</h1>
             <span className="flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-emerald-300">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
               {t({ ko: "실시간", en: "LIVE", ja: "ライブ", zh: "实时" })}
@@ -69,7 +70,7 @@ export function DashboardHeroHeader({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
           <div className="flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-500/[0.06] px-4 py-2">
             <span className="text-xs text-cyan-400/60">⏰</span>
             <span className="dashboard-time-display font-mono text-xl font-bold tracking-tight">{time}</span>
@@ -170,6 +171,7 @@ interface DashboardRankingBoardProps {
   podiumOrder: RankedAgent[];
   agentMap: Map<string, Agent>;
   agents: Agent[];
+  spriteMap: SpriteMap;
   maxXp: number;
   numberFormatter: Intl.NumberFormat;
   t: TFunction;
@@ -180,6 +182,7 @@ export function DashboardRankingBoard({
   podiumOrder,
   agentMap,
   agents,
+  spriteMap,
   maxXp,
   numberFormatter,
   t,
@@ -241,7 +244,7 @@ export function DashboardRankingBoard({
       ) : (
         <div className="relative space-y-5">
           {topAgents.length >= 2 && (
-            <div className="flex items-end justify-center gap-4 pb-3 pt-2 sm:gap-6">
+            <div className="grid min-w-0 grid-cols-3 items-end justify-items-center gap-2 pb-3 pt-2 sm:flex sm:justify-center sm:gap-6">
               {podiumOrder.map((agent, visualIdx) => {
                 const ranks = topAgents.length >= 3 ? [2, 1, 3] : [2, 1];
                 const rank = ranks[visualIdx];
@@ -253,7 +256,7 @@ export function DashboardRankingBoard({
                 return (
                   <div
                     key={agent.id}
-                    className={`flex flex-col items-center gap-2 ${isFirst ? "animate-rank-float" : ""}`}
+                    className={`min-w-0 max-w-full flex flex-col items-center gap-2 ${isFirst ? "animate-rank-float" : ""}`}
                   >
                     {rank === 1 && (
                       <span
@@ -281,7 +284,7 @@ export function DashboardRankingBoard({
                         border: `2px solid ${tier.color}80`,
                       }}
                     >
-                      <AgentAvatar agent={agentMap.get(agent.id)} agents={agents} size={avatarSize} rounded="2xl" />
+                      <AgentAvatar agent={agentMap.get(agent.id)} spriteMap={spriteMap} size={avatarSize} rounded="2xl" />
                     </div>
 
                     <span
@@ -302,7 +305,7 @@ export function DashboardRankingBoard({
                     </div>
 
                     <div
-                      className={`${podiumHeight} flex w-20 items-center justify-center rounded-t-xl sm:w-24 animate-podium-rise`}
+                      className={`${podiumHeight} flex w-full max-w-20 items-center justify-center rounded-t-xl sm:w-24 animate-podium-rise`}
                       style={{
                         background: `linear-gradient(to bottom, ${tier.color}30, ${tier.color}10)`,
                         border: `1px solid ${tier.color}40`,
@@ -338,7 +341,7 @@ export function DashboardRankingBoard({
                       className="flex-shrink-0 overflow-hidden rounded-xl"
                       style={{ border: `1px solid ${tier.color}40` }}
                     >
-                      <AgentAvatar agent={agentMap.get(agent.id)} agents={agents} size={36} rounded="xl" />
+                      <AgentAvatar agent={agentMap.get(agent.id)} spriteMap={spriteMap} size={36} rounded="xl" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold" style={{ color: "var(--th-text-primary)" }}>
@@ -383,7 +386,7 @@ export function DashboardRankingBoard({
                     className="overflow-hidden rounded-2xl"
                     style={{ border: `2px solid ${tier.color}60`, boxShadow: `0 0 15px ${tier.glow}` }}
                   >
-                    <AgentAvatar agent={agentMap.get(agent.id)} agents={agents} size={52} rounded="2xl" />
+                    <AgentAvatar agent={agentMap.get(agent.id)} spriteMap={spriteMap} size={52} rounded="2xl" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-base font-black" style={{ color: tier.color }}>

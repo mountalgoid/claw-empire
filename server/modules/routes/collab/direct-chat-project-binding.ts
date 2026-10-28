@@ -137,11 +137,13 @@ export async function inferProjectKindWithModel(
   const localeInstruction =
     lang === "en"
       ? "Respond in English."
-      : lang === "ja"
-        ? "Respond in Japanese."
-        : lang === "zh"
-          ? "Respond in Chinese."
-          : "Respond in Korean.";
+        : lang === "ja"
+          ? "Respond in Japanese."
+            : lang === "zh"
+              ? "Respond in Chinese."
+                : lang === "id"
+                  ? "Respond in Indonesian (Bahasa Indonesia)."
+                  : "Respond in Korean.";
 
   const prompt = [
     "[Project Kind Classifier]",

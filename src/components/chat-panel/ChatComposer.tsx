@@ -3,7 +3,7 @@ import type { Agent } from "../../types";
 import ChatModeHint from "./ChatModeHint";
 
 type ChatMode = "chat" | "task" | "announcement" | "report";
-type Tr = (ko: string, en: string, ja?: string, zh?: string) => string;
+type Tr = (ko: string, en: string, ja?: string, zh?: string, id?: string) => string;
 
 interface ChatComposerProps {
   mode: ChatMode;
@@ -36,41 +36,41 @@ export default function ChatComposer({
 }: ChatComposerProps) {
   return (
     <>
-      <div className="flex flex-shrink-0 gap-2 border-t border-gray-700/50 px-4 pb-1 pt-3">
+      <div className="flex min-w-0 flex-shrink-0 gap-1.5 border-t border-gray-700/50 px-2 pb-1 pt-3 sm:gap-2 sm:px-4">
         <button
           onClick={() => onModeChange(mode === "task" ? "chat" : "task")}
           disabled={!selectedAgent}
-          className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${
+          className={`min-w-0 flex flex-1 items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-xs font-medium transition-colors sm:px-2 ${
             mode === "task"
               ? "bg-blue-600 text-white"
               : "bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
           }`}
         >
           <span>📋</span>
-          <span>{tr("업무 지시", "Task", "タスク指示", "任务指示")}</span>
+          <span className="truncate">{tr("업무 지시", "Task", "タスク指示", "任务指示", "Tugas")}</span>
         </button>
 
         <button
           onClick={() => onModeChange(mode === "announcement" ? "chat" : "announcement")}
-          className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${
+          className={`min-w-0 flex flex-1 items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-xs font-medium transition-colors sm:px-2 ${
             mode === "announcement" ? "bg-yellow-500 text-gray-900" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
           }`}
         >
           <span>📢</span>
-          <span>{tr("전사 공지", "Announcement", "全体告知", "全员公告")}</span>
+          <span className="truncate">{tr("전사 공지", "Announcement", "全体告知", "全员公告", "Pengumuman")}</span>
         </button>
 
         <button
           onClick={() => onModeChange(mode === "report" ? "chat" : "report")}
           disabled={!selectedAgent}
-          className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${
+          className={`min-w-0 flex flex-1 items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-xs font-medium transition-colors sm:px-2 ${
             mode === "report"
               ? "bg-emerald-600 text-white"
               : "bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
           }`}
         >
           <span>📊</span>
-          <span>{tr("보고 요청", "Report", "レポート依頼", "报告请求")}</span>
+          <span className="truncate">{tr("보고 요청", "Report", "レポート依頼", "报告请求", "Laporan")}</span>
         </button>
       </div>
 
@@ -102,20 +102,23 @@ export default function ChatComposer({
                     "Write an announcement...",
                     "全体告知内容を入力してください...",
                     "请输入公告内容...",
+                    "Tulis pengumuman...",
                   )
                 : mode === "task"
                   ? tr(
                       "업무 지시 내용을 입력하세요...",
                       "Write a task instruction...",
-                      "タスク指示内容を入力してください...",
-                      "请输入任务指示内容...",
+                    "タスク指示内容を入力してください...",
+                    "请输入任务指示内容...",
+                    "Tulis instruksi tugas...",
                     )
                   : mode === "report"
                     ? tr(
                         "보고 요청 내용을 입력하세요...",
                         "Write a report request...",
-                        "レポート依頼内容を入力してください...",
-                        "请输入报告请求内容...",
+                    "レポート依頼内容を入力してください...",
+                    "请输入报告请求内容...",
+                    "Tulis permintaan laporan...",
                       )
                     : selectedAgent
                       ? tr(
@@ -123,12 +126,14 @@ export default function ChatComposer({
                           `Send a message to ${getAgentName(selectedAgent)}...`,
                           `${getAgentName(selectedAgent)}にメッセージを送る...`,
                           `向 ${getAgentName(selectedAgent)} 发送消息...`,
+                          `Kirim pesan ke ${getAgentName(selectedAgent)}...`,
                         )
                       : tr(
                           "메시지를 입력하세요...",
                           "Type a message...",
-                          "メッセージを入力してください...",
-                          "请输入消息...",
+                        "メッセージを入力してください...",
+                        "请输入消息...",
+                        "Ketik pesan...",
                         )
             }
             rows={1}
@@ -169,6 +174,7 @@ export default function ChatComposer({
             "Press Enter to send, Shift+Enter for a new line",
             "Enterで送信、Shift+Enterで改行",
             "按 Enter 发送，Shift+Enter 换行",
+            "Enter untuk mengirim, Shift+Enter untuk baris baru",
           )}
         </p>
       </div>

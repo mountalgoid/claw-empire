@@ -1,8 +1,10 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import type { CSSProperties } from "react";
 import type { Agent } from "../types";
 
 /** Map agent IDs to sprite numbers (stable order, same as OfficeView) */
+export type SpriteMap = Map<string, number>;
+
 export function buildSpriteMap(agents: Agent[]): Map<string, number> {
   const map = new Map<string, number>();
   // 1) sprite_number가 DB에 지정된 에이전트 우선
@@ -54,10 +56,11 @@ interface AgentAvatarProps {
   rounded?: "full" | "xl" | "2xl";
   imageFit?: "cover" | "contain";
   imagePosition?: CSSProperties["objectPosition"];
+  notificationCount?: number;
 }
 
 /** Sprite-based avatar — pass either `agents` or `spriteMap` */
-export default function AgentAvatar({
+function AgentAvatar({
   agent,
   agents,
   spriteMap,
@@ -66,33 +69,50 @@ export default function AgentAvatar({
   rounded = "full",
   imageFit = "cover",
   imagePosition = "center",
+  notificationCount = 0,
 }: AgentAvatarProps) {
-  const map = spriteMap ?? (agents ? buildSpriteMap(agents) : new Map());
+  const fallbackMap = useMemo(() => (agents ? buildSpriteMap(agents) : new Map<string, number>()), [agents]);
+  const map = spriteMap ?? fallbackMap;
   const spriteNum = resolveSpriteNum(agent, map);
 
   const roundedClass = rounded === "full" ? "rounded-full" : rounded === "xl" ? "rounded-xl" : "rounded-2xl";
 
+  const statusClass =
+    agent?.status === "working"
+      ? "bg-emerald-400"
+      : agent?.status === "break"
+        ? "bg-amber-400"
+        : agent?.status === "offline"
+          ? "bg-slate-500"
+          : "bg-sky-400";
+  const statusText = agent?.status === "working" ? "working" : agent?.status === "break" ? "break" : agent?.status === "offline" ? "offline" : "idle";
+
   if (spriteNum) {
     return (
       <div
-        className={`${roundedClass} overflow-hidden bg-gray-700 flex-shrink-0 ${className}`}
+        className={`relative flex-shrink-0 ${className}`}
         style={{ width: size, height: size }}
+        title={agent ? `${agent.name} · ${statusText}` : undefined}
       >
-        <img
-          src={`/sprites/${spriteNum}-D-1.png`}
-          alt={agent?.name ?? ""}
-          className={`w-full h-full ${imageFit === "contain" ? "object-contain" : "object-cover"}`}
-          style={{ imageRendering: "pixelated", objectPosition: imagePosition }}
-        />
+        <div className={`${roundedClass} h-full w-full overflow-hidden bg-gray-700`}>
+          <img src={`/sprites/${spriteNum}-D-1.png`} alt={agent?.name ?? ""} className={`h-full w-full ${imageFit === "contain" ? "object-contain" : "object-cover"}`} style={{ imageRendering: "pixelated", objectPosition: imagePosition }} />
+        </div>
+        {agent && <span aria-label={statusText} className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 ${statusClass}`} style={{ borderColor: "var(--th-card-bg, #0f172a)" }} />}
+        {notificationCount > 0 && <span aria-label={`${notificationCount} notifications`} className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-white/70 bg-rose-500 px-1 text-[9px] font-black leading-none text-white shadow-sm">{notificationCount > 9 ? "9+" : notificationCount}</span>}
       </div>
     );
   }
   return (
     <div
-      className={`${roundedClass} bg-gray-700 flex items-center justify-center flex-shrink-0 ${className}`}
+      className={`relative flex-shrink-0 ${className}`}
       style={{ width: size, height: size, fontSize: size * 0.6 }}
+      title={agent ? `${agent.name} · ${statusText}` : undefined}
     >
-      {agent?.avatar_emoji ?? "🤖"}
+      <div className={`${roundedClass} flex h-full w-full items-center justify-center bg-gray-700`}>{agent?.avatar_emoji ?? "🤖"}</div>
+      {agent && <span aria-label={statusText} className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 ${statusClass}`} style={{ borderColor: "var(--th-card-bg, #0f172a)" }} />}
+      {notificationCount > 0 && <span aria-label={`${notificationCount} notifications`} className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-white/70 bg-rose-500 px-1 text-[9px] font-black leading-none text-white shadow-sm">{notificationCount > 9 ? "9+" : notificationCount}</span>}
     </div>
   );
 }
+
+export default memo(AgentAvatar);

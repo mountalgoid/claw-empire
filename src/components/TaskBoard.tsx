@@ -5,6 +5,7 @@ import type { Agent, Department, SubTask, Task, WorkflowPackKey } from "../types
 import ProjectManagerModal from "./ProjectManagerModal";
 import BulkHideModal from "./taskboard/BulkHideModal";
 import CreateTaskModal from "./taskboard/CreateTaskModal";
+import QuickProjectLaunchModal from "./taskboard/QuickProjectLaunchModal";
 import FilterBar from "./taskboard/FilterBar";
 import TaskCard from "./taskboard/TaskCard";
 import { COLUMNS, isHideableStatus, taskStatusLabel, type HideableStatus } from "./taskboard/constants";
@@ -36,6 +37,7 @@ interface TaskBoardProps {
   onOpenMeetingMinutes?: (taskId: string) => void;
   onMergeTask?: (id: string) => void;
   onDiscardTask?: (id: string) => void;
+  onRefresh?: () => void;
 }
 
 export function TaskBoard({
@@ -55,9 +57,11 @@ export function TaskBoard({
   onOpenMeetingMinutes,
   onMergeTask,
   onDiscardTask,
+  onRefresh,
 }: TaskBoardProps) {
   const { t } = useI18n();
   const [showCreate, setShowCreate] = useState(false);
+  const [showQuickProject, setShowQuickProject] = useState(false);
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [showBulkHideModal, setShowBulkHideModal] = useState(false);
   const [filterDept, setFilterDept] = useState("");
@@ -65,6 +69,7 @@ export function TaskBoard({
   const [filterType, setFilterType] = useState("");
   const [search, setSearch] = useState("");
   const [showAllTasks, setShowAllTasks] = useState(false);
+  const [sortMode, setSortMode] = useState<"updated" | "created" | "priority">("updated");
 
   const hiddenTaskIds = useMemo(
     () => new Set(tasks.filter((task) => task.hidden === 1).map((task) => task.id)),
@@ -104,13 +109,22 @@ export function TaskBoard({
 
   const tasksByStatus = useMemo(() => {
     const grouped: Record<string, Task[]> = {};
+    const taskTime = (task: Task, field: "updated_at" | "created_at") => Number(task[field] || task.created_at || 0);
+    const compareTasks = (a: Task, b: Task) => {
+      if (sortMode === "priority" && b.priority !== a.priority) return b.priority - a.priority;
+      const primary = sortMode === "created" ? "created_at" : "updated_at";
+      const timeDelta = taskTime(b, primary) - taskTime(a, primary);
+      if (timeDelta !== 0) return timeDelta;
+      if (sortMode !== "priority" && b.priority !== a.priority) return b.priority - a.priority;
+      return String(a.id).localeCompare(String(b.id));
+    };
     for (const column of COLUMNS) {
       grouped[column.status] = filteredTasks
         .filter((task) => task.status === column.status)
-        .sort((a, b) => b.priority - a.priority || b.created_at - a.created_at);
+        .sort(compareTasks);
     }
     return grouped;
-  }, [filteredTasks]);
+  }, [filteredTasks, sortMode]);
 
   const subtasksByTask = useMemo(() => {
     const grouped: Record<string, SubTask[]> = {};
@@ -148,6 +162,22 @@ export function TaskBoard({
             })})`}
         </span>
         <div className="ml-auto flex items-center gap-2">
+          <button onClick={() => setShowQuickProject(true)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-500">
+            {t({ ko: "자동 프로젝트", en: "Auto Project", ja: "自動プロジェクト", zh: "自动项目", id: "Proyek Otomatis" })}
+          </button>
+          <label className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-400">
+            <span className="hidden lg:inline">{t({ ko: "정렬", en: "Sort", ja: "並べ替え", zh: "排序", id: "Urutan" })}</span>
+            <select
+              value={sortMode}
+              onChange={(event) => setSortMode(event.target.value as typeof sortMode)}
+              className="bg-transparent text-xs font-medium text-slate-200 outline-none"
+              aria-label={t({ ko: "업무 정렬 순서", en: "Task sort order", ja: "タスクの並び順", zh: "任务排序", id: "Urutan tugas" })}
+            >
+              <option value="updated">{t({ ko: "최근 변경", en: "Recently updated", ja: "最近更新", zh: "最近更新", id: "Perubahan terbaru" })}</option>
+              <option value="created">{t({ ko: "최근 생성", en: "Recently created", ja: "最近作成", zh: "最近创建", id: "Dibuat terbaru" })}</option>
+              <option value="priority">{t({ ko: "Prioritas", en: "Priority", ja: "優先度", zh: "优先级", id: "Prioritas" })}</option>
+            </select>
+          </label>
           {activeFilterCount > 0 && (
             <button
               onClick={() => {
@@ -235,13 +265,13 @@ export function TaskBoard({
         onSearch={setSearch}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-2 sm:flex-row sm:overflow-x-auto sm:overflow-y-hidden">
+      <div className="taskboard-columns flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-2 sm:flex-row sm:overflow-x-auto sm:overflow-y-hidden">
         {COLUMNS.map((column) => {
           const columnTasks = tasksByStatus[column.status] ?? [];
           return (
             <div
               key={column.status}
-              className={`taskboard-column flex w-full flex-col rounded-xl border sm:w-72 sm:flex-shrink-0 ${column.borderColor} bg-slate-900`}
+              className={`taskboard-column flex min-h-[280px] w-full flex-col rounded-xl border ${column.borderColor} bg-slate-900 sm:h-full sm:min-h-0 sm:w-72 sm:flex-shrink-0`}
             >
               <div className={`flex items-center justify-between rounded-t-xl ${column.headerBg} px-3.5 py-2.5`}>
                 <div className="flex items-center gap-2">
@@ -255,7 +285,7 @@ export function TaskBoard({
                 </span>
               </div>
 
-              <div className="flex flex-col gap-2.5 p-2.5 sm:flex-1 sm:overflow-y-auto">
+              <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto p-2.5 sm:flex-1">
                 {columnTasks.length === 0 ? (
                   <div className="flex min-h-24 items-center justify-center py-8 text-xs text-slate-600 sm:flex-1">
                     {t({ ko: "업무 없음", en: "No tasks", ja: "タスクなし", zh: "暂无任务" })}
@@ -300,6 +330,7 @@ export function TaskBoard({
           onAssign={onAssignTask}
         />
       )}
+      {showQuickProject && <QuickProjectLaunchModal onClose={() => setShowQuickProject(false)} onRefresh={onRefresh ?? (() => undefined)} />}
 
       {showProjectManager && (
         <ProjectManagerModal agents={agents} departments={departments} onClose={() => setShowProjectManager(false)} />

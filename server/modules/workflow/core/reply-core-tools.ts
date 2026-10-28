@@ -75,6 +75,8 @@ export function createReplyCoreTools(deps: CreateReplyCoreToolsDeps) {
         return "Respond in Chinese.";
       case "en":
         return "Respond in English.";
+      case "id":
+        return "Respond in Indonesian (Bahasa Indonesia).";
       case "ko":
       default:
         return "Respond in Korean.";

@@ -1,5 +1,6 @@
 import type { ComponentProps, FormEventHandler } from "react";
 import type { Agent, Department, TaskType } from "../../../types";
+import { localeName } from "../../../i18n";
 import { TASK_TYPE_OPTIONS, taskTypeLabel, type FormFeedback, type TFunction } from "../constants";
 import CreateTaskModalOverlays from "./Overlays";
 import type { CreateTaskModalOverlaysProps } from "./overlay-types";
@@ -159,7 +160,7 @@ export default function CreateTaskModalView({
                     </option>
                     {departments.map((department) => (
                       <option key={department.id} value={department.id}>
-                        {department.icon} {locale === "ko" ? department.name_ko : department.name}
+                        {department.icon} {localeName(locale, department)}
                       </option>
                     ))}
                   </select>

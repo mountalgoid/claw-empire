@@ -32,6 +32,14 @@ export function createProjectContextTools(deps: CreateProjectContextToolsDeps) {
     "[Git Workflow Guardrail / Git 워크플로우 가드레일]",
     "- Do NOT run git merge/rebase/cherry-pick/push during task execution. Merge is performed only by the system after final review approval / 작업 실행 중 git merge/rebase/cherry-pick/push 금지. 병합은 최종 리뷰 승인 후 시스템이 수행",
   ];
+  const QUALITY_GATE_POLICY_LINES = [
+    "[Quality Gate / Gerbang Kualitas]",
+    "- Before reporting completion, detect the project's actual test, build, lint, type-check, and security commands.",
+    "- Run the smallest relevant verification commands for the files changed; do not skip verification without recording why.",
+    "- Fix failures caused by your changes before completion. Separate pre-existing failures from regressions with evidence.",
+    "- Report exact verification commands and concise outcomes in the final response.",
+    "- Never claim a feature is complete when the required verification is still running or failed.",
+  ];
 
   const WARNING_FIX_OVERRIDE_LINE =
     "- Exception override: User explicitly requested warning-level fixes for this task. You may fix the requested MEDIUM/LOW items / 예외: 이 작업에서 사용자 요청 시 MEDIUM/LOW도 해당 요청 범위 내에서 수정 가능";
@@ -65,6 +73,7 @@ export function createProjectContextTools(deps: CreateProjectContextToolsDeps) {
     return [
       ...parts,
       EXECUTION_CONTINUITY_POLICY_LINES.join("\n"),
+      QUALITY_GATE_POLICY_LINES.join("\n"),
       buildMvpCodeReviewPolicyBlock(Boolean(opts.allowWarningFix)),
     ]
       .filter(Boolean)

@@ -2,14 +2,14 @@ import type { RuntimeContext } from "../../../types/runtime-context.ts";
 import type { Lang } from "../../../types/lang.ts";
 import type { AgentRow } from "./direct-chat.ts";
 
-type L10n = Record<Lang, string[]>;
+type L10n = { ko: string[]; en: string[]; ja?: string[]; zh?: string[]; id?: string[] };
 
 type AnnouncementReplyDeps = {
   db: RuntimeContext["db"];
   resolveLang: (text?: string, fallback?: Lang) => Lang;
   getDeptName: (deptId: string) => string;
   getRoleLabel: (role: string, lang: Lang) => string;
-  l: (ko: string[], en: string[], ja?: string[], zh?: string[]) => L10n;
+  l: (ko: string[], en: string[], ja?: string[], zh?: string[], id?: string[]) => L10n;
   pickL: (pool: L10n, lang: Lang) => string;
   sendAgentMessage: (
     agent: AgentRow,
@@ -52,6 +52,7 @@ export function createAnnouncementReplyScheduler(deps: AnnouncementReplyDeps): {
           ],
           [`${dept}の${name}、確認しました！チームにすぐ伝達します！🚨`],
           [`${dept}${name}收到！立即传达给团队！🚨`],
+          [`${dept} ${name} — sudah dikonfirmasi! Akan segera saya sampaikan ke tim! 🚨`],
         ),
         lang,
       );
@@ -70,6 +71,7 @@ export function createAnnouncementReplyScheduler(deps: AnnouncementReplyDeps): {
           ],
           [`おめでとうございます！${dept}も喜んでいます！🎉`],
           [`恭喜！${dept}也很高兴！🎉`],
+          [`Selamat! Tim ${dept} ikut senang! 🎉`],
         ),
         lang,
       );
@@ -88,6 +90,7 @@ export function createAnnouncementReplyScheduler(deps: AnnouncementReplyDeps): {
           ],
           [`${name}確認しました！スケジュール押さえます 📅`],
           [`${name}收到！会安排时间 📅`],
+          [`${name} dari ${dept} — siap, waktunya akan saya jadwalkan 📅`],
         ),
         lang,
       );
@@ -104,6 +107,7 @@ export function createAnnouncementReplyScheduler(deps: AnnouncementReplyDeps): {
           ],
           [`${name}確認しました。チーム内に共有し反映します 📋`],
           [`${name}收到，会在团队内传达并落实 📋`],
+          [`${name} dari ${dept} — dipahami. Akan saya bagikan dan terapkan di tim 📋`],
         ),
         lang,
       );
@@ -123,6 +127,7 @@ export function createAnnouncementReplyScheduler(deps: AnnouncementReplyDeps): {
         ],
         [`${dept}の${name}、確認しました！👍`, `承知しました！チームに共有します！`],
         [`${dept}${name}收到！👍`, `明白了！会传达给团队！`],
+        [`${dept} ${name}, sudah dikonfirmasi! 👍`, `Baik, akan saya sampaikan kepada tim!`],
       ),
       lang,
     );

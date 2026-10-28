@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import type { Agent, CompanyStats, Task } from "../types";
 import { localeName, useI18n } from "../i18n";
 import {
@@ -10,6 +10,7 @@ import {
 } from "./dashboard/HeroSections";
 import { DashboardDeptAndSquad, DashboardMissionLog, type DepartmentPerformance } from "./dashboard/OpsSections";
 import { DEPT_COLORS, useNow } from "./dashboard/model";
+import { useSpriteMap } from "./AgentAvatar";
 
 interface DashboardProps {
   stats: CompanyStats | null;
@@ -17,12 +18,14 @@ interface DashboardProps {
   tasks: Task[];
   companyName: string;
   onPrimaryCtaClick: () => void;
+  unreadAgentIds?: Set<string>;
 }
 
-export default function Dashboard({ stats, agents, tasks, companyName, onPrimaryCtaClick }: DashboardProps) {
+function Dashboard({ stats, agents, tasks, companyName, onPrimaryCtaClick, unreadAgentIds = new Set() }: DashboardProps) {
   const { t, language, locale: localeTag } = useI18n();
   const { date, time, briefing } = useNow(localeTag, t);
   const agentMap = useMemo(() => new Map(agents.map((agent) => [agent.id, agent])), [agents]);
+  const spriteMap = useSpriteMap(agents);
   const numberFormatter = useMemo(() => new Intl.NumberFormat(localeTag), [localeTag]);
 
   const totalTasks = stats?.tasks?.total ?? tasks.length;
@@ -170,7 +173,10 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
   ];
 
   return (
-    <section className="relative isolate space-y-4" style={{ color: "var(--th-text-primary)" }}>
+    <section
+      className="dashboard-shell relative isolate min-w-0 w-full max-w-full space-y-4"
+      style={{ color: "var(--th-text-primary)" }}
+    >
       <div className="pointer-events-none absolute -left-40 -top-32 h-96 w-96 rounded-full bg-violet-600/10 blur-[100px] animate-drift-slow" />
       <div className="pointer-events-none absolute -right-32 top-20 h-80 w-80 rounded-full bg-cyan-500/10 blur-[100px] animate-drift-slow-rev" />
       <div className="pointer-events-none absolute left-1/3 bottom-32 h-72 w-72 rounded-full bg-amber-500/[0.05] blur-[80px]" />
@@ -187,6 +193,7 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
         primaryCtaLabel={primaryCtaLabel}
         onPrimaryCtaClick={onPrimaryCtaClick}
         t={t}
+        unreadAgentIds={unreadAgentIds}
       />
 
       <DashboardHudStats hudStats={hudStats} numberFormatter={numberFormatter} />
@@ -196,6 +203,7 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
         podiumOrder={podiumOrder}
         agentMap={agentMap}
         agents={agents}
+        spriteMap={spriteMap}
         maxXp={maxXp}
         numberFormatter={numberFormatter}
         t={t}
@@ -206,6 +214,7 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
         workingAgents={workingAgents}
         idleAgentsList={idleAgentsList}
         agents={agents}
+        spriteMap={spriteMap}
         language={language}
         numberFormatter={numberFormatter}
         t={t}
@@ -215,6 +224,7 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
         recentTasks={recentTasks}
         agentMap={agentMap}
         agents={agents}
+        spriteMap={spriteMap}
         language={language}
         localeTag={localeTag}
         idleAgents={idleAgents}
@@ -224,3 +234,10 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
     </section>
   );
 }
+
+export default memo(Dashboard, (prev, next) =>
+  prev.stats === next.stats &&
+  prev.agents === next.agents &&
+  prev.tasks === next.tasks &&
+  prev.companyName === next.companyName,
+);

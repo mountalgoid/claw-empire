@@ -113,6 +113,7 @@ export default function GeneralSettingsTab({ t, form, setForm, saved, onSave }: 
               en: "Auto Update (Global)",
               ja: "Auto Update（全体）",
               zh: "自动更新（全局）",
+              id: "Pembaruan Otomatis (Global)",
             })}
             checked={form.autoUpdateEnabled}
             onToggle={() => setForm({ ...form, autoUpdateEnabled: !form.autoUpdateEnabled })}
@@ -125,7 +126,7 @@ export default function GeneralSettingsTab({ t, form, setForm, saved, onSave }: 
           />
 
           <ToggleSettingCard
-            label={t({ ko: "OAuth 자동 스왑", en: "OAuth Auto Swap", ja: "OAuth 自動スワップ", zh: "OAuth 自动切换" })}
+            label={t({ ko: "OAuth 자동 스왑", en: "OAuth Auto Swap", ja: "OAuth 自動スワップ", zh: "OAuth 自动切换", id: "Penggantian OAuth Otomatis" })}
             checked={form.oauthAutoSwap !== false}
             onToggle={() => setForm({ ...form, oauthAutoSwap: !(form.oauthAutoSwap !== false) })}
             title={t({
@@ -144,6 +145,7 @@ export default function GeneralSettingsTab({ t, form, setForm, saved, onSave }: 
               en: "Default CLI Provider",
               ja: "デフォルト CLI プロバイダ",
               zh: "默认 CLI 提供方",
+              id: "Penyedia CLI Bawaan",
             })}
           </label>
           <select
@@ -165,7 +167,7 @@ export default function GeneralSettingsTab({ t, form, setForm, saved, onSave }: 
 
         <div>
           <label className="block text-xs mb-1" style={{ color: "var(--th-text-secondary)" }}>
-            {t({ ko: "언어", en: "Language", ja: "言語", zh: "语言" })}
+            {t({ ko: "언어", en: "Language", ja: "言語", zh: "语言", id: "Bahasa" })}
           </label>
           <select
             value={form.language}
@@ -180,7 +182,8 @@ export default function GeneralSettingsTab({ t, form, setForm, saved, onSave }: 
             <option value="ko">{t({ ko: "한국어", en: "Korean", ja: "韓国語", zh: "韩语" })}</option>
             <option value="en">{t({ ko: "영어", en: "English", ja: "英語", zh: "英语" })}</option>
             <option value="ja">{t({ ko: "일본어", en: "Japanese", ja: "日本語", zh: "日语" })}</option>
-            <option value="zh">{t({ ko: "중국어", en: "Chinese", ja: "中国語", zh: "中文" })}</option>
+        <option value="zh">{t({ ko: "중국어", en: "Chinese", ja: "中国語", zh: "中文", id: "Mandarin" })}</option>
+        <option value="id">{t({ ko: "인도네시아어", en: "Indonesian", ja: "インドネシア語", zh: "印度尼西亚语", id: "Bahasa Indonesia" })}</option>
           </select>
         </div>
       </section>
@@ -188,14 +191,14 @@ export default function GeneralSettingsTab({ t, form, setForm, saved, onSave }: 
       <div className="flex justify-end gap-3">
         {saved && (
           <span className="text-green-400 text-sm self-center">
-            ✅ {t({ ko: "저장 완료", en: "Saved", ja: "保存完了", zh: "已保存" })}
+            ✅ {t({ ko: "저장 완료", en: "Saved", ja: "保存完了", zh: "已保存", id: "Tersimpan" })}
           </span>
         )}
         <button
           onClick={onSave}
           className="px-8 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-600/20 hover:shadow-blue-500/30"
         >
-          {t({ ko: "저장", en: "Save", ja: "保存", zh: "保存" })}
+          {t({ ko: "저장", en: "Save", ja: "保存", zh: "保存", id: "Simpan" })}
         </button>
       </div>
     </>

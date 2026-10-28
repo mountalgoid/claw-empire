@@ -2,7 +2,7 @@ import { useEffect, type MutableRefObject } from "react";
 import { Application, Assets, TextureStyle, type Texture } from "pixi.js";
 import type { Agent, Department, SubAgent, Task } from "../../types";
 import { buildSpriteMap } from "../AgentAvatar";
-import { type Delivery, MIN_OFFICE_W, findScrollContainer } from "./model";
+import { type Delivery, MIN_OFFICE_W } from "./model";
 import { runOfficeTickerStep, type OfficeTickerContext } from "./officeTicker";
 
 interface UseOfficePixiRuntimeParams {
@@ -13,8 +13,6 @@ interface UseOfficePixiRuntimeParams {
   initIdRef: MutableRefObject<number>;
   initDoneRef: MutableRefObject<boolean>;
   officeWRef: MutableRefObject<number>;
-  scrollHostXRef: MutableRefObject<HTMLElement | null>;
-  scrollHostYRef: MutableRefObject<HTMLElement | null>;
   deliveriesRef: MutableRefObject<Delivery[]>;
   dataRef: MutableRefObject<{ agents: Agent[] }>;
   buildScene: () => void;
@@ -41,8 +39,6 @@ export function useOfficePixiRuntime({
   initIdRef,
   initDoneRef,
   officeWRef,
-  scrollHostXRef,
-  scrollHostYRef,
   deliveriesRef,
   dataRef,
   buildScene,
@@ -66,8 +62,6 @@ export function useOfficePixiRuntime({
 
     destroyedRef.current = false;
     const currentInitId = ++initIdRef.current;
-    scrollHostXRef.current = findScrollContainer(element, "x");
-    scrollHostYRef.current = findScrollContainer(element, "y");
 
     async function init() {
       if (!element) return;
@@ -210,8 +204,6 @@ export function useOfficePixiRuntime({
       window.removeEventListener("keyup", onKeyUp);
       deliveriesRef.current = [];
       initDoneRef.current = false;
-      scrollHostXRef.current = null;
-      scrollHostYRef.current = null;
 
       if (appRef.current) {
         appRef.current.destroy(true, { children: true });
@@ -226,8 +218,6 @@ export function useOfficePixiRuntime({
     initIdRef,
     initDoneRef,
     officeWRef,
-    scrollHostXRef,
-    scrollHostYRef,
     deliveriesRef,
     dataRef,
     buildScene,

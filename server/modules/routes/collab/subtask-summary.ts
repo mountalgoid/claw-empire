@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { Lang } from "../../../types/lang.ts";
 
-type L10n = Record<Lang, string[]>;
+type L10n = { ko: string[]; en: string[]; ja?: string[]; zh?: string[]; id?: string[] };
 type LocalizeFactory = (ko: string[], en: string[], ja?: string[], zh?: string[]) => L10n;
 type PickLocalized = (pool: L10n, lang: Lang) => string;
 

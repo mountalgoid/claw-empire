@@ -1,5 +1,5 @@
 import type { Agent, Department } from "../../types";
-import { useI18n } from "../../i18n";
+import { localeName, useI18n } from "../../i18n";
 import AgentSelect from "../AgentSelect";
 import { TASK_TYPE_OPTIONS, taskTypeLabel } from "./constants";
 
@@ -51,7 +51,7 @@ export default function FilterBar({
         <option value="">{t({ ko: "전체 부서", en: "All Departments", ja: "全部署", zh: "全部门" })}</option>
         {departments.map((department) => (
           <option key={department.id} value={department.id}>
-            {department.icon} {locale === "ko" ? department.name_ko : department.name}
+            {department.icon} {localeName(locale, department)}
           </option>
         ))}
       </select>

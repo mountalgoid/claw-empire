@@ -1,6 +1,7 @@
 import type {
   Agent,
   CompanySettings,
+  CompanyStats,
   MessengerChannelConfig,
   MessengerChannelsConfig,
   RoomTheme,
@@ -195,6 +196,18 @@ export function areTaskListsEquivalent(prev: Task[], next: Task[]): boolean {
     if (!areTasksEquivalent(prev[i], next[i])) return false;
   }
   return true;
+}
+
+/** Stats are polled frequently; avoid replacing the object when Dashboard data is unchanged. */
+export function areCompanyStatsEquivalent(prev: CompanyStats | null, next: CompanyStats | null): boolean {
+  if (prev === next) return true;
+  if (!prev || !next) return prev === next;
+  return (
+    JSON.stringify(prev.tasks) === JSON.stringify(next.tasks) &&
+    JSON.stringify(prev.agents) === JSON.stringify(next.agents) &&
+    JSON.stringify(prev.top_agents) === JSON.stringify(next.top_agents) &&
+    JSON.stringify(prev.tasks_by_department) === JSON.stringify(next.tasks_by_department)
+  );
 }
 
 export function mergeSettingsWithDefaults(settings?: Partial<CompanySettings> | null): CompanySettings {

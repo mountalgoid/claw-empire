@@ -87,6 +87,7 @@ export function applyDefaultSeeds(db: DbLike): void {
       insertSetting.run("autoUpdateEnabled", "false");
       insertSetting.run("autoUpdateNoticePending", "false");
       insertSetting.run("oauthAutoSwap", "true");
+      insertSetting.run("tokenBudgetConfig", JSON.stringify({ maxOutputTokens: 8192 }));
       insertSetting.run("language", "en");
       insertSetting.run("defaultProvider", "claude");
       insertSetting.run(
@@ -94,10 +95,10 @@ export function applyDefaultSeeds(db: DbLike): void {
         JSON.stringify({
           claude: { model: "claude-opus-4-6", subModel: "claude-sonnet-4-6" },
           codex: {
-            model: "gpt-5.3-codex",
-            reasoningLevel: "xhigh",
-            subModel: "gpt-5.3-codex",
-            subModelReasoningLevel: "high",
+            model: "gpt-6-luna",
+            reasoningLevel: "medium",
+            subModel: "gpt-6-luna",
+            subModelReasoningLevel: "medium",
           },
           gemini: { model: "gemini-3-pro-preview" },
           opencode: { model: "github-copilot/claude-sonnet-4.6" },
@@ -114,6 +115,16 @@ export function applyDefaultSeeds(db: DbLike): void {
       | undefined;
     if (!hasLanguageSetting) {
       db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("language", "en");
+    }
+
+    const hasTokenBudgetSetting = db.prepare("SELECT 1 FROM settings WHERE key = 'tokenBudgetConfig' LIMIT 1").get() as
+      | { 1: number }
+      | undefined;
+    if (!hasTokenBudgetSetting) {
+      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+        "tokenBudgetConfig",
+        JSON.stringify({ maxOutputTokens: 8192 }),
+      );
     }
 
     const hasOAuthAutoSwapSetting = db.prepare("SELECT 1 FROM settings WHERE key = 'oauthAutoSwap' LIMIT 1").get() as

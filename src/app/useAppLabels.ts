@@ -46,6 +46,7 @@ export function useAppLabels({
           en: "Office",
           ja: "オフィス",
           zh: "办公室",
+          id: "Kantor",
         })}`;
       case "dashboard":
         return `📊 ${pickLang(uiLanguage, {
@@ -53,6 +54,7 @@ export function useAppLabels({
           en: "Dashboard",
           ja: "ダッシュボード",
           zh: "仪表盘",
+          id: "Dasbor",
         })}`;
       case "tasks":
         return `📋 ${pickLang(uiLanguage, {
@@ -60,6 +62,7 @@ export function useAppLabels({
           en: "Tasks",
           ja: "タスク管理",
           zh: "任务管理",
+          id: "Tugas",
         })}`;
       case "agents":
         return `${pickLang(uiLanguage, {
@@ -67,6 +70,7 @@ export function useAppLabels({
           en: "Agents",
           ja: "社員管理",
           zh: "员工管理",
+          id: "Agen",
         })}`;
       case "skills":
         return `📚 ${pickLang(uiLanguage, {
@@ -74,6 +78,7 @@ export function useAppLabels({
           en: "Skills",
           ja: "スキル資料室",
           zh: "技能库",
+          id: "Perpustakaan",
         })}`;
       case "settings":
         return `⚙️ ${pickLang(uiLanguage, {
@@ -81,6 +86,7 @@ export function useAppLabels({
           en: "Settings",
           ja: "設定",
           zh: "设置",
+          id: "Pengaturan",
         })}`;
       default:
         return "";
@@ -91,12 +97,14 @@ export function useAppLabels({
     en: "Announcement",
     ja: "全社告知",
     zh: "全员公告",
+    id: "Pengumuman",
   })}`;
   const roomManagerLabel = `🏢 ${pickLang(uiLanguage, {
     ko: "사무실 관리",
     en: "Office Manager",
     ja: "オフィス管理",
-    zh: "办公室管理",
+        zh: "办公室管理",
+        id: "Pengelola Kantor",
   })}`;
   const roomManagerDepartments = useMemo(
     () => [
@@ -127,24 +135,28 @@ export function useAppLabels({
     en: "Reports",
     ja: "レポート",
     zh: "报告",
+    id: "Laporan",
   })}`;
   const tasksPrimaryLabel = pickLang(uiLanguage, {
     ko: "업무",
     en: "Tasks",
     ja: "タスク",
     zh: "任务",
+    id: "Tugas",
   });
   const agentStatusLabel = pickLang(uiLanguage, {
     ko: "에이전트",
     en: "Agents",
     ja: "エージェント",
     zh: "代理",
+    id: "Agen",
   });
   const decisionLabel = pickLang(uiLanguage, {
     ko: "의사결정",
     en: "Decisions",
     ja: "意思決定",
     zh: "决策",
+    id: "Keputusan",
   });
   const effectiveUpdateStatus = forceUpdateBanner
     ? {

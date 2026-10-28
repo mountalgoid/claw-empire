@@ -1,6 +1,6 @@
 import { DEFAULT_WORKFLOW_PACK_KEY, isWorkflowPackKey, type WorkflowPackKey } from "./definitions.ts";
 
-type SupportedLang = "ko" | "en" | "ja" | "zh";
+type SupportedLang = "ko" | "en" | "ja" | "zh" | "id";
 
 function normalizeLang(raw: string | null | undefined): SupportedLang {
   const value = String(raw ?? "")
@@ -9,6 +9,7 @@ function normalizeLang(raw: string | null | undefined): SupportedLang {
   if (value.startsWith("ko")) return "ko";
   if (value.startsWith("ja")) return "ja";
   if (value.startsWith("zh")) return "zh";
+  if (value.startsWith("id")) return "id";
   return "en";
 }
 
@@ -186,6 +187,7 @@ export function buildWorkflowPackExecutionGuidance(
       "- 需要换行时请使用真实布局换行，不要输出转义字符串字面量。",
       "- 最终报告需附带按秒场景时间线与质量检查结果。",
     ],
+    id: [],
   };
 
   return ruleLines[lang].join("\n");

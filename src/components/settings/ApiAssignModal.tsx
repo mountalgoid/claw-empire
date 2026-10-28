@@ -1,6 +1,7 @@
 import { getOfficePackMeta } from "../../app/office-workflow-pack";
 import AgentAvatar, { buildSpriteMap } from "../AgentAvatar";
 import type { Agent, WorkflowPackKey } from "../../types";
+import type { LanguageText } from "../../i18n";
 import type { ApiStateBundle, TFunction } from "./types";
 
 interface ApiAssignModalProps {
@@ -16,13 +17,14 @@ export default function ApiAssignModal({ t, localeTag, apiState }: ApiAssignModa
   if (!apiAssignTarget) return null;
 
   const spriteMap = buildSpriteMap(apiAssignAgents);
-  const localName = (nameEn: string, nameKo: string) => (localeTag === "ko" ? nameKo || nameEn : nameEn || nameKo);
+  const localName = (nameEn: string, nameKo: string) =>
+    localeTag.startsWith("ko") ? nameKo || nameEn : nameEn || nameKo;
   const normalizeWorkflowPackKey = (value: unknown): WorkflowPackKey =>
     typeof value === "string" &&
     ["development", "novel", "report", "video_preprod", "web_research_report", "roleplay"].includes(value)
       ? (value as WorkflowPackKey)
       : "development";
-  const ROLE_LABELS: Record<string, Record<string, string>> = {
+  const ROLE_LABELS: Record<string, LanguageText> = {
     team_leader: { ko: "팀장", en: "Team Leader", ja: "チームリーダー", zh: "组长" },
     senior: { ko: "시니어", en: "Senior", ja: "シニア", zh: "高级" },
     junior: { ko: "주니어", en: "Junior", ja: "ジュニア", zh: "初级" },
@@ -31,7 +33,7 @@ export default function ApiAssignModal({ t, localeTag, apiState }: ApiAssignModa
 
   const roleBadge = (role: string) => {
     const label = ROLE_LABELS[role];
-    const text = label ? t(label as Record<"ko" | "en" | "ja" | "zh", string>) : role;
+    const text = label ? t(label) : role;
     const color =
       role === "team_leader"
         ? "text-amber-400 bg-amber-500/15"

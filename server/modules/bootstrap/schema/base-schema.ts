@@ -60,6 +60,25 @@ CREATE TABLE IF NOT EXISTS agents (
   created_at INTEGER DEFAULT (unixepoch()*1000)
 );
 
+CREATE TABLE IF NOT EXISTS agent_memories (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+  memory_type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  source_task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+  confidence REAL NOT NULL DEFAULT 0.75,
+  created_at INTEGER DEFAULT (unixepoch()*1000),
+  updated_at INTEGER DEFAULT (unixepoch()*1000),
+  last_used_at INTEGER,
+  use_count INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(agent_id, source_task_id, memory_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_memories_lookup
+  ON agent_memories(agent_id, project_id, updated_at DESC);
+
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -375,5 +394,64 @@ CREATE TABLE IF NOT EXISTS api_providers (
   created_at INTEGER DEFAULT (unixepoch()*1000),
   updated_at INTEGER DEFAULT (unixepoch()*1000)
 );
+
+CREATE TABLE IF NOT EXISTS project_checkpoints (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+  branch_name TEXT,
+  commit_sha TEXT,
+  status TEXT NOT NULL DEFAULT 'captured'
+    CHECK(status IN ('captured','review','approved','failed')),
+  evidence_json TEXT,
+  created_at INTEGER DEFAULT (unixepoch()*1000)
+);
+
+CREATE TABLE IF NOT EXISTS agent_execution_metrics (
+  id TEXT PRIMARY KEY,
+  task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+  agent_id TEXT REFERENCES agents(id) ON DELETE SET NULL,
+  project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+  provider TEXT,
+  exit_code INTEGER,
+  duration_ms INTEGER,
+  input_tokens INTEGER,
+  output_tokens INTEGER,
+  created_at INTEGER DEFAULT (unixepoch()*1000)
+);
+
+CREATE TABLE IF NOT EXISTS agent_permissions (
+  agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  permission TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
+  updated_at INTEGER DEFAULT (unixepoch()*1000),
+  PRIMARY KEY(agent_id, permission)
+);
+
+CREATE TABLE IF NOT EXISTS external_resources (
+  id TEXT PRIMARY KEY,
+  project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+  agent_id TEXT REFERENCES agents(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'url'
+    CHECK(kind IN ('url','repository','skill','plugin','app','dataset','document')),
+  url TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK(status IN ('pending','available','error','disabled')),
+  title TEXT,
+  content_type TEXT,
+  etag TEXT,
+  last_modified TEXT,
+  metadata_json TEXT,
+  error_message TEXT,
+  last_synced_at INTEGER,
+  created_at INTEGER DEFAULT (unixepoch()*1000),
+  updated_at INTEGER DEFAULT (unixepoch()*1000)
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_checkpoints_project ON project_checkpoints(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_execution_metrics_agent ON agent_execution_metrics(agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_execution_metrics_project ON agent_execution_metrics(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_external_resources_project ON external_resources(project_id, status, updated_at DESC);
 `);
 }

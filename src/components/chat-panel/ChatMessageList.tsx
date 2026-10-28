@@ -4,7 +4,7 @@ import type { DecisionOption } from "../chat/decision-request";
 import AgentAvatar from "../AgentAvatar";
 import MessageContent from "../MessageContent";
 
-type Tr = (ko: string, en: string, ja?: string, zh?: string) => string;
+type Tr = (ko: string, en: string, ja?: string, zh?: string, id?: string) => string;
 
 interface StreamingMessageLike {
   message_id: string;
@@ -100,7 +100,7 @@ export default function ChatMessageList({
   );
 
   return (
-    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+    <div className="chat-message-list min-h-0 min-w-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-3 py-4 sm:px-4">
       {visibleMessages.length === 0 ? (
         <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
           <div className="text-6xl">💬</div>

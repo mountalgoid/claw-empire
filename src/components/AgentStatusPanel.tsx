@@ -149,9 +149,9 @@ export default function AgentStatusPanel({ agents, uiLanguage, onClose }: AgentS
       : cliProcesses.filter((proc) => proc.provider !== "node" && proc.provider !== "python");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="app-overlay-panel fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-2 backdrop-blur-sm sm:p-4" onClick={onClose}>
       <div
-        className={`relative mx-4 w-full rounded-2xl border border-blue-500/30 bg-slate-900 shadow-2xl shadow-blue-500/10 ${
+        className={`app-overlay-panel-content relative mx-auto w-full rounded-2xl border border-blue-500/30 bg-slate-900 shadow-2xl shadow-blue-500/10 ${
           inspectorMode ? "max-w-3xl" : "max-w-lg"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -293,8 +293,10 @@ export default function AgentStatusPanel({ agents, uiLanguage, onClose }: AgentS
                 <div className="max-h-56 divide-y divide-slate-800 overflow-y-auto rounded-lg border border-slate-800/80 bg-slate-900/50">
                   {visibleCliProcesses.map((proc) => {
                     const isKilling = killingCliPids.has(proc.pid);
-                    const agentName =
-                      uiLanguage === "ko" ? proc.agent_name_ko || proc.agent_name || "-" : proc.agent_name || "-";
+                    const agentName = localeName(uiLanguage, {
+                      name: proc.agent_name || "-",
+                      name_ko: proc.agent_name_ko,
+                    });
                     const commandText = proc.command || proc.executable;
                     const displayTitle = proc.task_title && proc.task_title !== commandText ? proc.task_title : null;
                     return (

@@ -1,6 +1,6 @@
 type ChatMode = "chat" | "task" | "announcement" | "report";
 
-type Tr = (ko: string, en: string, ja?: string, zh?: string) => string;
+type Tr = (ko: string, en: string, ja?: string, zh?: string, id?: string) => string;
 
 interface ChatModeHintProps {
   mode: ChatMode;
@@ -20,6 +20,7 @@ export default function ChatModeHint({ mode, isDirectiveMode, tr }: ChatModeHint
             "Directive mode - Planning team auto-coordinates",
             "業務指示モード — 企画チームが自動的に主管します",
             "业务指示模式 — 企划组自动主管",
+            "Mode instruksi — tim perencanaan akan mengoordinasikan secara otomatis",
           )}
         </p>
       ) : (
@@ -32,6 +33,7 @@ export default function ChatModeHint({ mode, isDirectiveMode, tr }: ChatModeHint
                 "Task mode - assign work to the agent",
                 "タスク指示モード — エージェントに作業を割り当てます",
                 "任务指示模式 — 向代理分配工作",
+                "Mode tugas — tetapkan pekerjaan kepada agen",
               )}
             </p>
           )}
@@ -43,6 +45,7 @@ export default function ChatModeHint({ mode, isDirectiveMode, tr }: ChatModeHint
                 "Announcement mode - sent to all agents",
                 "全体告知モード — すべてのエージェントに送信",
                 "全员公告模式 — 将发送给所有代理",
+                "Mode pengumuman — dikirim ke semua agen",
               )}
             </p>
           )}
@@ -54,6 +57,7 @@ export default function ChatModeHint({ mode, isDirectiveMode, tr }: ChatModeHint
                 "Report mode - request report/deck authoring",
                 "レポート依頼モード — レポート/資料作成を依頼します",
                 "报告请求模式 — 请求撰写报告/演示资料",
+                "Mode laporan — minta pembuatan laporan/materi presentasi",
               )}
             </p>
           )}

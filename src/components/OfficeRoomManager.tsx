@@ -12,7 +12,7 @@ export interface OfficeRoomManagerProps {
   onThemeChange: (themes: Record<string, DeptTheme>) => void;
   onActiveDeptChange?: (deptId: string | null) => void;
   onClose: () => void;
-  language: "ko" | "en" | "ja" | "zh";
+  language: "ko" | "en" | "ja" | "zh" | "id";
 }
 
 /* ================================================================== */
@@ -33,13 +33,13 @@ const DEFAULT_THEMES: Record<string, DeptTheme> = {
 const DEFAULT_TONE = 50;
 
 const labels = {
-  title: { ko: "사무실 관리", en: "Office Manager", ja: "オフィス管理", zh: "办公室管理" },
-  accent: { ko: "메인 색상", en: "Main Color", ja: "メインカラー", zh: "主色调" },
-  tone: { ko: "톤 (밝기)", en: "Tone (Brightness)", ja: "トーン（明るさ）", zh: "色调（亮度）" },
-  reset: { ko: "초기화", en: "Reset", ja: "リセット", zh: "重置" },
-  resetAll: { ko: "전체 초기화", en: "Reset All", ja: "全てリセット", zh: "全部重置" },
-  close: { ko: "닫기", en: "Close", ja: "閉じる", zh: "关闭" },
-  presets: { ko: "프리셋", en: "Presets", ja: "プリセット", zh: "预设" },
+  title: { ko: "사무실 관리", en: "Office Manager", ja: "オフィス管理", zh: "办公室管理", id: "Pengelola Kantor" },
+  accent: { ko: "메인 색상", en: "Main Color", ja: "メインカラー", zh: "主色调", id: "Warna Utama" },
+  tone: { ko: "톤 (밝기)", en: "Tone (Brightness)", ja: "トーン（明るさ）", zh: "色调（亮度）", id: "Nada (Kecerahan)" },
+  reset: { ko: "초기화", en: "Reset", ja: "リセット", zh: "重置", id: "Atur Ulang" },
+  resetAll: { ko: "전체 초기화", en: "Reset All", ja: "全てリセット", zh: "全部重置", id: "Atur Ulang Semua" },
+  close: { ko: "닫기", en: "Close", ja: "閉じる", zh: "关闭", id: "Tutup" },
+  presets: { ko: "프리셋", en: "Presets", ja: "プリセット", zh: "预设", id: "Prasetel" },
 };
 
 /* ================================================================== */
@@ -121,7 +121,7 @@ interface DeptCardProps {
   deptId: string;
   deptName: string;
   state: DeptState;
-  language: "ko" | "en" | "ja" | "zh";
+  language: "ko" | "en" | "ja" | "zh" | "id";
   onActivate: () => void;
   onAccentChange: (accent: number) => void;
   onToneChange: (tone: number) => void;
@@ -314,14 +314,14 @@ export default function OfficeRoomManager({
   return (
     /* Overlay */
     <div
-      className="fixed inset-0 z-50 flex items-stretch justify-end"
+      className="app-overlay-panel fixed inset-0 z-50 flex items-stretch justify-end"
       style={{ backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)", backgroundColor: "rgba(0,0,0,0.5)" }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       {/* Panel */}
-      <div className="w-full md:max-w-md bg-slate-900 flex flex-col h-full shadow-2xl border-l border-slate-700">
+      <div className="app-overlay-panel-content w-full bg-slate-900 flex h-full max-w-md flex-col overflow-hidden shadow-2xl border-l border-slate-700">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700 shrink-0">
           <h2 className="text-base font-semibold text-slate-100">{labels.title[language]}</h2>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Agent, Department } from "../types";
 import type { TaskReportSummary, TaskReportDetail } from "../api";
 import type { UiLanguage } from "../i18n";
-import { pickLang } from "../i18n";
+import { localeName, pickLang } from "../i18n";
 import { getTaskReports, getTaskReportDetail } from "../api";
 import AgentAvatar from "./AgentAvatar";
 import TaskReportPopup from "./TaskReportPopup";
@@ -104,9 +104,9 @@ export default function ReportHistory({ agents, departments, uiLanguage, onClose
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="app-overlay-panel fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-2 backdrop-blur-sm sm:p-4" onClick={onClose}>
       <div
-        className="relative mx-4 w-full max-w-2xl rounded-2xl border border-emerald-500/30 bg-slate-900 shadow-2xl shadow-emerald-500/10"
+        className="app-overlay-panel-content relative mx-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-emerald-500/30 bg-slate-900 shadow-2xl shadow-emerald-500/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -165,8 +165,14 @@ export default function ReportHistory({ agents, departments, uiLanguage, onClose
                     <div className="divide-y divide-slate-700/30">
                       {visibleRows.map((r) => {
                         const agent = resolveReportAgent(agents, r);
-                        const agentName = uiLanguage === "ko" ? r.agent_name_ko || r.agent_name : r.agent_name;
-                        const deptName = uiLanguage === "ko" ? r.dept_name_ko || r.dept_name : r.dept_name;
+                        const agentName = localeName(uiLanguage, {
+                          name: r.agent_name,
+                          name_ko: r.agent_name_ko,
+                        });
+                        const deptName = localeName(uiLanguage, {
+                          name: r.dept_name,
+                          name_ko: r.dept_name_ko,
+                        });
                         return (
                           <button
                             key={r.id}

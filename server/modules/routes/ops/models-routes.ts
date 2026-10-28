@@ -229,7 +229,7 @@ export function registerModelRoutes(ctx: RuntimeContext): void {
     models.codex =
       codexModels.length > 0
         ? codexModels
-        : ["gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-max", "gpt-5.2", "gpt-5.1-codex-mini"].map(toModelInfo);
+        : ["gpt-6-luna", "gpt-5.6-terra", "gpt-5.6-luna"].map(toModelInfo);
 
     try {
       const ocModels = await fetchOpenCodeModels();

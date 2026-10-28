@@ -129,10 +129,56 @@ function buildSkillRuntimePolicyLines(providerScoped: boolean): string[] {
   ];
 }
 
+function buildCapabilityRoutingLines(taskText: string): string[] {
+  const text = taskText.toLowerCase();
+  const capabilities: string[] = [];
+  const add = (label: string) => {
+    if (!capabilities.includes(label)) capabilities.push(label);
+  };
+
+  if (/(web|browser|website|frontend|ui|ux|e2e|playwright|screenshot)/i.test(text)) {
+    add("Browser/UI verification and Playwright MCP when available");
+  }
+  if (/(report|laporan|presentation|presentasi|ppt|slide|document|dokumen)/i.test(text)) {
+    add("Document/report generation and presentation tooling when available");
+  }
+  if (/(database|sql|data|analytics|analitik|csv|inventory|stok|kasir)/i.test(text)) {
+    add("Database, spreadsheet, and data-analysis tooling when available");
+  }
+  if (/(deploy|deployment|docker|server|infra|devops|ci\/cd)/i.test(text)) {
+    add("Deployment, container, and infrastructure tooling when available");
+  }
+  if (/(design|desain|image|gambar|logo|figma|asset)/i.test(text)) {
+    add("Design and visual-asset tooling when available");
+  }
+  if (capabilities.length === 0) add("General project tooling selected by the task requirements");
+
+  return [
+    `[Capability Router] ${capabilities.join("; ")}.`,
+    "[Capability Router] Prefer the smallest capable tool and reuse installed/configured apps and skills.",
+    "[Capability Router] Never claim a plugin, app, MCP server, or skill is available unless the runtime exposes it.",
+  ];
+}
+
+function queryConfiguredApps(db: DatabaseSync): string[] {
+  try {
+    const rows = db
+      .prepare("SELECT name, type FROM api_providers WHERE enabled = 1 ORDER BY updated_at DESC LIMIT 12")
+      .all() as Array<{ name?: string; type?: string }>;
+    return rows
+      .map((row) => `${String(row.name ?? "Provider").trim()} (${String(row.type ?? "custom").trim()})`)
+      .filter((value) => value.length > 3);
+  } catch {
+    return [];
+  }
+}
+
 export function createPromptSkillsHelper(db: DatabaseSync): {
-  buildAvailableSkillsPromptBlock: (provider: string) => string;
+  buildAvailableSkillsPromptBlock: (provider: string, taskText?: string) => string;
 } {
-  function buildAvailableSkillsPromptBlock(provider: string): string {
+  function buildAvailableSkillsPromptBlock(provider: string, taskText = ""): string {
+    const configuredApps = queryConfiguredApps(db);
+    const appLine = configuredApps.length > 0 ? `[Available Apps/Providers] ${configuredApps.join(", ")}` : "";
     const providerDisplay = getPromptSkillProviderDisplayName(provider);
     try {
       const providerKey = isPromptSkillProvider(provider) ? provider : null;
@@ -146,6 +192,8 @@ export function createPromptSkillsHelper(db: DatabaseSync): {
           `[Available Skills][provider=${providerDisplay}][source=skills-library-db][scope=provider]${formatPromptSkillTagLine(providerLearnedSkills)}`,
           `[Available Skills][provider=${providerDisplay}][source=skills-library-db][scope=global]${formatPromptSkillTagLine(globalLearnedSkills)}`,
           ...buildSkillRuntimePolicyLines(true),
+          appLine,
+          ...buildCapabilityRoutingLines(taskText),
         ].join("\n");
       }
 
@@ -153,6 +201,8 @@ export function createPromptSkillsHelper(db: DatabaseSync): {
         return [
           `[Available Skills][provider=${providerDisplay}][source=skills-library-db][scope=global]${formatPromptSkillTagLine(globalLearnedSkills)}`,
           ...buildSkillRuntimePolicyLines(false),
+          appLine,
+          ...buildCapabilityRoutingLines(taskText),
         ].join("\n");
       }
 
@@ -160,12 +210,16 @@ export function createPromptSkillsHelper(db: DatabaseSync): {
         `[Available Skills][provider=${providerDisplay}][source=skills-library-db][scope=global][empty]${formatPromptSkillTagLine([])}`,
         "[Skills Rule] No learned skills recorded in DB yet.",
         ...buildSkillRuntimePolicyLines(false),
+        appLine,
+        ...buildCapabilityRoutingLines(taskText),
       ].join("\n");
     } catch {
       return [
         `[Available Skills][provider=${providerDisplay}][source=skills-library-db][fallback=unavailable]${formatPromptSkillTagLine([])}`,
         "[Skills Rule] Skills history lookup failed.",
         ...buildSkillRuntimePolicyLines(false),
+        appLine,
+        ...buildCapabilityRoutingLines(taskText),
       ].join("\n");
     }
   }

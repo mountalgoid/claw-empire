@@ -129,6 +129,7 @@ export function renderDeskAgentAndSubClones({
     deskG,
     bedG,
     blanketG,
+    phase: (hashStr(`${agent.id}:walk`) % 360) / 57.2958,
   });
 
   const activeTask = tasks.find((task) => task.assigned_agent_id === agent.id && task.status === "in_progress");

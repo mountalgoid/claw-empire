@@ -1,3 +1,4 @@
+import { localeName } from "../../i18n";
 import type { Agent, Message } from "../../types";
 import { parseDecisionRequest } from "./decision-request";
 import type { DecisionOption } from "./decision-request";
@@ -8,6 +9,7 @@ export interface DecisionInboxItem {
   agentId: string | null;
   agentName: string;
   agentNameKo: string;
+  agentNameId?: string;
   agentAvatar?: string | null;
   requestContent: string;
   options: DecisionOption[];
@@ -62,6 +64,7 @@ export function buildDecisionInboxItems(messages: Message[], agents: Agent[]): D
       agentId: msg.sender_id,
       agentName: matchedAgent?.name || senderName || msg.sender_id,
       agentNameKo: matchedAgent?.name_ko || matchedAgent?.name || senderName || msg.sender_id,
+      agentNameId: matchedAgent?.name_id || matchedAgent?.name || senderName || msg.sender_id,
       agentAvatar: matchedAgent?.avatar_emoji || senderAvatar,
       requestContent: msg.content,
       options: parsed.options,

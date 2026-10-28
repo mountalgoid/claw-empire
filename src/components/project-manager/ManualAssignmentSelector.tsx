@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ProjectDetailResponse } from "../../api";
 import type { Agent, Department, Project, AssignmentMode } from "../../types";
+import { localeName } from "../../i18n";
 import AgentAvatar from "../AgentAvatar";
 import type { ManualAssignmentWarning, ProjectI18nTranslate, ProjectManualSelectionStats } from "./types";
 
@@ -98,7 +99,7 @@ export default function ManualAssignmentSelector({
                     <option value="all">{t({ ko: "전체 부서", en: "All Depts", ja: "全部署", zh: "所有部门" })}</option>
                     {departments.map((dept) => (
                       <option key={dept.id} value={dept.id}>
-                        {dept.icon} {language === "ko" ? dept.name_ko || dept.name : dept.name}
+                        {dept.icon} {localeName(language, dept)}
                       </option>
                     ))}
                   </select>
@@ -162,37 +163,31 @@ export default function ManualAssignmentSelector({
                         />
                         <AgentAvatar agent={agent} spriteMap={spriteMap} size={24} />
                         <span className="text-xs font-medium text-slate-200">
-                          {language === "ko" ? agent.name_ko || agent.name : agent.name}
+                          {localeName(language, agent)}
                         </span>
                         {dept && (
                           <span
                             className="rounded-full px-1.5 py-0.5 text-[10px]"
                             style={{ background: `${dept.color}22`, color: dept.color }}
                           >
-                            {language === "ko" ? dept.name_ko || dept.name : dept.name}
+                            {localeName(language, dept)}
                           </span>
                         )}
                         <span
                           className="ml-auto rounded px-1.5 py-0.5 text-[10px]"
                           style={{ color: "var(--th-text-muted)", background: "rgba(255,255,255,0.05)" }}
                         >
-                          {agent.role === "team_leader"
-                            ? language === "ko"
-                              ? "팀장"
-                              : "Leader"
-                            : agent.role === "senior"
-                              ? language === "ko"
-                                ? "시니어"
-                                : "Senior"
-                              : agent.role === "junior"
-                                ? language === "ko"
-                                  ? "주니어"
-                                  : "Junior"
-                                : agent.role === "intern"
-                                  ? language === "ko"
-                                    ? "인턴"
-                                    : "Intern"
-                                  : ""}
+                          {t(
+                            agent.role === "team_leader"
+                              ? { ko: "팀장", en: "Leader", ja: "リーダー", zh: "负责人", id: "Ketua Tim" }
+                              : agent.role === "senior"
+                                ? { ko: "시니어", en: "Senior", ja: "シニア", zh: "高级", id: "Senior" }
+                                : agent.role === "junior"
+                                  ? { ko: "주니어", en: "Junior", ja: "ジュニア", zh: "初级", id: "Junior" }
+                                  : agent.role === "intern"
+                                    ? { ko: "인턴", en: "Intern", ja: "インターン", zh: "实习", id: "Magang" }
+                                    : { ko: "", en: "", ja: "", zh: "", id: "" },
+                          )}
                         </span>
                       </label>
                     );
@@ -222,7 +217,7 @@ export default function ManualAssignmentSelector({
                   className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300"
                 >
                   <AgentAvatar agent={agent} spriteMap={spriteMap} size={16} />
-                  {language === "ko" ? agent.name_ko || agent.name : agent.name}
+                  {localeName(language, agent)}
                 </span>
               ))}
             </div>
