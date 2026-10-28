@@ -1049,6 +1049,12 @@ body {
   overflow-wrap: anywhere;
   overscroll-behavior: contain;
 }
+.report-popup-content {
+  max-height: calc(100dvh - 1rem - env(safe-area-inset-bottom));
+}
+.report-popup-footer {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
 @media (max-width: 639px) {
   .app-overlay-panel-content {
     width: calc(100vw - 1rem) !important;

@@ -225,9 +225,12 @@ export function runOfficeTickerStep(ctx: OfficeTickerContext): void {
     // Status-driven micro-routes keep the scene lively with only a few math
     // operations per agent and no extra pathfinding or render objects.
     if (status === "working") {
-      sprite.position.x = baseX + Math.sin(tick * 0.028 + phase) * 2.4;
-      sprite.position.y = baseY + Math.cos(tick * 0.041 + phase) * 0.8;
-      sprite.rotation = Math.sin(tick * 0.028 + phase) * 0.025;
+      // A short desk-to-console route communicates active work without
+      // adding pathfinding or extra sprites to the scene.
+      const workStep = Math.sin(tick * 0.028 + phase);
+      sprite.position.x = baseX + workStep * 6;
+      sprite.position.y = baseY + Math.abs(Math.cos(tick * 0.028 + phase)) * 0.9;
+      sprite.rotation = workStep * 0.035;
     } else if (status === "break") {
       sprite.position.x = baseX + Math.sin(tick * 0.018 + phase) * 5.5;
       sprite.position.y = baseY + Math.cos(tick * 0.024 + phase) * 1.8;

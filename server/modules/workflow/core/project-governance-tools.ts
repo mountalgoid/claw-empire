@@ -34,22 +34,29 @@ export function createProjectGovernanceTools(deps: { db: DbLike; nowMs: () => nu
   }
 
   function getProjectExternalResourceContext(projectId: string | null, agentId?: string | null, taskText = ""): string {
-    if (!projectId) return "";
-    const rows = db.prepare(
-      `SELECT name, kind, url, title FROM external_resources
-       WHERE project_id = ? AND status = 'available'
-         AND (agent_id IS NULL OR agent_id = ?)
-       ORDER BY updated_at DESC LIMIT 20`,
-    ).all(projectId, agentId ?? "") as Array<{ name?: unknown; kind?: unknown; url?: unknown; title?: unknown }>;
-    if (rows.length === 0) return "";
+    const rows = projectId
+      ? (db.prepare(
+          `SELECT name, kind, url, title FROM external_resources
+           WHERE project_id = ? AND status = 'available'
+             AND (agent_id IS NULL OR agent_id = ?)
+           ORDER BY updated_at DESC LIMIT 20`,
+        ).all(projectId, agentId ?? "") as Array<{ name?: unknown; kind?: unknown; url?: unknown; title?: unknown }>)
+      : [];
+    const safeTaskHint = taskText
+      .replace(/(?:token|secret|password|api[_ -]?key|private[_ -]?key)\s*[:=]\s*\S+/gi, "$1=[redacted]")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 240);
     return [
       "[External Resources / Sumber Daya Eksternal]",
-      "Automatically inspect this complete approved list before starting. Use every resource relevant to the task and cite which ones were used in the result; skip only resources that are clearly unrelated.",
-      "All employees working on this project may use these verified public resources. Agent-specific resources are visible only to their assigned agent.",
-      "Use only this approved list. Do not visit arbitrary domains, upload project data, expose secrets, or invent access to unlisted resources.",
-      `[Task relevance hint] ${taskText.trim() || "No additional hint; inspect each resource type and description."}`,
+      "Automatically inspect the approved project list first. If it is empty or insufficient, perform controlled public discovery without waiting for the user to register a resource.",
+      "Discovery allowlist: api.github.com and github.com, registry.npmjs.org and npmjs.com, pypi.org, crates.io, rubygems.org, developer.mozilla.org, and official documentation domains of the selected tool/vendor.",
+      "Use GET/HEAD only, at most 3 focused searches and 5 MB per downloaded resource. Prefer official repositories, signed releases, stable versions, clear licenses, and recent security advisories.",
+      "Search with generic task keywords only. Never send source code, credentials, private paths, personal data, or unredacted task contents to external sites. Never execute downloaded code before inspection.",
+      "Validate hostname, HTTPS, redirect target, package/repository identity, license, checksum or release signature when available, and relevance. Record discovered URLs and why each was used in the final report.",
+      `[Task relevance hint - sanitized] ${safeTaskHint || "No additional hint; infer the smallest required resource search from the task."}`,
       ...rows.map((row) => `- [APPROVED] ${String(row.name ?? "Resource")} (${String(row.kind ?? "url")}): ${String(row.url ?? "")}${row.title ? ` — ${String(row.title)}` : ""}`),
-      "Before completion, report: resources consulted, resources skipped with a short reason, and any resource that could not be reached.",
+      "Before completion, report: approved resources consulted, automatically discovered resources used, resources skipped with a short reason, and any resource that could not be reached.",
     ].join("\n");
   }
 

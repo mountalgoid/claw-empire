@@ -39,11 +39,10 @@ export default function ChatComposer({
       <div className="flex min-w-0 flex-shrink-0 gap-1.5 border-t border-gray-700/50 px-2 pb-1 pt-3 sm:gap-2 sm:px-4">
         <button
           onClick={() => onModeChange(mode === "task" ? "chat" : "task")}
-          disabled={!selectedAgent}
           className={`min-w-0 flex flex-1 items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-xs font-medium transition-colors sm:px-2 ${
             mode === "task"
               ? "bg-blue-600 text-white"
-              : "bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
           }`}
         >
           <span>📋</span>
@@ -62,11 +61,10 @@ export default function ChatComposer({
 
         <button
           onClick={() => onModeChange(mode === "report" ? "chat" : "report")}
-          disabled={!selectedAgent}
           className={`min-w-0 flex flex-1 items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-xs font-medium transition-colors sm:px-2 ${
             mode === "report"
               ? "bg-emerald-600 text-white"
-              : "bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
           }`}
         >
           <span>📊</span>

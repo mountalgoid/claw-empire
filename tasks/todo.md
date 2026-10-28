@@ -1,0 +1,300 @@
+# Optimasi Dashboard
+
+- [x] Petakan komponen Dashboard, polling, listener, dan render mahal.
+- [x] Reproduksi/ukur sumber macet di browser atau lewat test/build.
+- [x] Terapkan optimasi minimal tanpa menghapus fitur.
+- [x] Jalankan build dan tes relevan.
+- [x] Catat hasil review dan regresi yang perlu diperhatikan.
+
+## Review
+
+- Build produksi berhasil (`pnpm build`).
+- `git diff --check` bersih.
+
+## Efisiensi token dan mode offline
+
+- [x] Tambahkan batas output token terpusat untuk provider API (default 8.192 token untuk task, 2.048 untuk percakapan).
+- [x] Gunakan provider Ollama yang sudah kompatibel OpenAI untuk eksekusi lokal tanpa internet.
+- [x] Tahan task pada status `pending` ketika provider/jaringan tidak tersedia.
+- [x] Pertahankan checkpoint proyek agar task dapat dilanjutkan tanpa memulai ulang dari nol.
+
+## Review efisiensi dan offline
+
+- TypeScript langsung lulus (`pnpm exec tsc --noEmit`).
+- `git diff --check` bersih.
+- API sehat di port 8800/8790 setelah reload.
+- Task toko buah sudah mencapai status Review dengan output aplikasi tersimpan.
+- Lint khusus file berubah dicoba, tetapi proses ESLint macet di environment dan dihentikan; tidak ada output lint.
+- Tidak ada fitur Dashboard yang dihapus; perubahan hanya mengurangi render/painter yang tidak perlu.
+
+## Lokalisasi nama dan percakapan
+
+- [x] Satukan pemilihan nama agen/departemen berdasarkan bahasa aktif.
+- [x] Tambahkan fallback nama departemen Indonesia dan dukungan `name_id`.
+- [x] Lokalkan teks workflow pack dan label peran pada percakapan/panel terkait.
+- [x] Periksa panel tugas, assignment proyek, laporan, dashboard, chat, dan terminal.
+- [x] Validasi build produksi dan kebersihan diff.
+
+## Review lokalisasi
+
+- Build produksi berhasil (`pnpm build`, 883 modul).
+- `git diff --check` bersih.
+- Pesan bebas yang berasal dari pengguna/agen tetap dipertahankan apa adanya; UI hanya menerjemahkan pesan sistem dan memakai nama locale yang tersedia.
+
+## Koreksi lokalisasi Indonesia dari screenshot
+
+- [x] Perbaiki label navigasi, status koneksi, dan tab Pengaturan.
+- [x] Tambahkan fallback terjemahan Indonesia untuk label lama yang belum memiliki `id`.
+- [x] Lengkapi teks Office/Pixi dan percakapan ruang istirahat dengan Bahasa Indonesia.
+- [x] Build ulang dan pastikan `git diff --check` bersih.
+
+## Pengumuman dan bahasa balasan AI
+
+- [x] Lengkapi label judul/mode pengumuman Bahasa Indonesia.
+- [x] Tambahkan `id` sebagai bahasa server yang valid untuk kebijakan kolaborasi.
+- [x] Tambahkan instruksi prompt agar balasan AI langsung merespons dalam Bahasa Indonesia.
+- [x] Tambahkan balasan canned pengumuman Indonesia dan fallback aman untuk pesan sistem.
+- [x] Build produksi, TypeScript server, health check API, dan `git diff --check` berhasil.
+
+## Proyek otomatis berbasis tujuan
+
+- [x] Tambahkan satu input tujuan proyek tanpa form teknis panjang.
+- [x] Cocokkan proyek lama berdasarkan nama/path agar bisa dilanjutkan.
+- [x] Buat proyek baru otomatis di `/projects/<slug>` jika belum ada.
+- [x] Simpan tujuan sebagai konteks proyek, buat task utama, dan jalankan dengan penugasan otomatis.
+- [x] Segarkan data Task Board setelah proyek dimulai dan validasi TypeScript.
+
+## Stabilitas eksekusi proyek otomatis
+
+- [x] Identifikasi kegagalan task toko buah pada log terminal.
+- [x] Normalisasi model Codex tersimpan terhadap model yang tersedia di cache lokal.
+- [x] Simpan koreksi model dan tingkat penalaran agar task berikutnya tidak mengulang error model.
+- [x] Uji ulang task: agen berhasil melewati error model dan mulai membuat proyek di worktree.
+
+## Review stabilitas eksekusi
+
+- TypeScript langsung lulus (`pnpm exec tsc --noEmit`).
+- `git diff --check` bersih.
+- Build penuh sempat tertahan pada `tsc -b` yang tidak selesai di environment; tidak ada error TypeScript pada pemeriksaan langsung.
+- Task toko buah kembali `in_progress` dan sudah menghasilkan perubahan file pertama di worktree.
+
+## Memori individual agen dan pembentukan talenta
+
+- [x] Tambahkan penyimpanan memori jangka panjang per agen dan per proyek.
+- [x] Masukkan memori agen ke prompt task, rapat, dan percakapan langsung.
+- [x] Simpan hasil pekerjaan berhasil maupun gagal sebagai memori yang dapat dipakai ulang.
+- [x] Gunakan Planning sebagai arsitek talenta untuk saat ini; karyawan khusus baru diperlukan ketika volume rekrutmen sudah tinggi.
+
+## Review memori agen
+
+- Tabel `agent_memories` sudah dibuat dan tervalidasi pada database aktif.
+- TypeScript langsung lulus (`pnpm exec tsc --noEmit`).
+- `git diff --check` bersih.
+
+## Capability Router kantor
+
+- [x] Petakan kebutuhan task ke kategori kemampuan: browser/UI, laporan, data, deployment, dan desain.
+- [x] Tampilkan skill, app/provider API, dan aturan MCP yang benar-benar tersedia kepada agen.
+- [x] Instruksikan agen memilih tool terkecil yang cukup dan tidak mengklaim kemampuan yang tidak tersedia.
+- [x] Validasi TypeScript, diff, dan health check setelah integrasi.
+
+## Quality Gate eksekusi
+
+- [x] Tambahkan kebijakan quality gate ke setiap prompt eksekusi agen.
+- [x] Wajibkan deteksi dan eksekusi verifikasi yang relevan: test, build, lint, type-check, dan security check.
+- [x] Wajibkan bukti perintah dan hasil verifikasi sebelum agen menyatakan proyek selesai.
+
+## Tata kelola proyek dan keamanan eksekusi
+
+- [x] Simpan checkpoint per task/proyek beserta branch, commit, status, dan bukti eksekusi.
+- [x] Simpan metrik durasi, provider, exit code, dan token input/output per eksekusi.
+- [x] Sediakan endpoint kesehatan proyek dan riwayat checkpoint untuk monitoring serta pemulihan.
+- [x] Tambahkan izin agent terkontrol untuk filesystem, terminal, git, jaringan, database, secrets, dan perintah destruktif.
+- [x] Masukkan batasan izin dan perlindungan secrets ke prompt eksekusi setiap task.
+
+## Akses hasil proyek
+
+- [x] Sajikan hasil task selesai/review dari worktree proyek secara aman melalui endpoint preview.
+- [x] Tambahkan tombol Preview/Hasil pada kartu task agar proyek bisa langsung dicoba di browser.
+- [x] Sajikan asset HTML, CSS, JavaScript, dan file pendukung dengan validasi path untuk mencegah traversal.
+- [x] Izinkan task `Review` dan `Selesai` dijalankan kembali sebagai perbaikan lanjutan dengan konteks proyek yang sama.
+
+## Paket kantor otomatis dan mode lanjutan
+
+- [x] Route paket kantor otomatis dari task aktif menggunakan classifier workflow yang sudah tersedia.
+- [x] Jangan menimpa paket ketika pengguna memilih paket secara manual.
+- [x] Tambahkan tombol `Otomatis` untuk mengaktifkan kembali routing cerdas pada desktop dan mobile.
+- [x] Terapkan ambang confidence dan guard race request agar perpindahan paket stabil serta ringan.
+
+## Review paket kantor otomatis
+
+- TypeScript langsung lulus (`pnpm exec tsc --noEmit --pretty false`).
+- `git diff --check` bersih.
+- Mode manual disimpan di localStorage; mode otomatis tetap memakai pengaturan paket kantor yang tersimpan.
+
+## Paket studio lanjutan
+
+- [x] Tambahkan Clipper Studio dan routing klip pendek/highlight.
+- [x] Tambahkan Content Studio dan routing strategi/produksi konten.
+- [x] Tambahkan Art Drawing Studio dan routing ilustrasi/asset visual.
+- [x] Tambahkan Game Developer Studio dengan QA playtest dan build.
+- [x] Tambahkan Developer Apps Studio dengan QA keamanan, build, dan acceptance test.
+- [x] Tambahkan seed server, preset UI, departemen, peran, tema, dan aturan keluaran untuk semua paket.
+
+## Review paket studio lanjutan
+
+- TypeScript langsung lulus (`pnpm exec tsc --noEmit --pretty false`).
+- `git diff --check` bersih.
+- Health API lulus setelah server memuat ulang seed paket.
+
+## Revisi task berbasis instruksi pengguna
+
+- [x] Tambahkan input revisi langsung pada task berstatus `Review` atau `Selesai`.
+- [x] Simpan instruksi natural-language sebagai konteks `[REVISION REQUEST]` tanpa menghapus hasil sebelumnya.
+- [x] Jalankan ulang task setelah instruksi revisi dikirim.
+- [x] Sediakan dukungan shortcut Ctrl/Cmd+Enter serta lokalisasi Bahasa Indonesia.
+
+## Review revisi task
+
+- TypeScript langsung lulus (`pnpm exec tsc --noEmit --pretty false`).
+- `git diff --check` bersih.
+
+## Pusat sumber daya eksternal
+
+- [x] Tambahkan registry sumber daya publik untuk URL, repository, skill, plugin, app, dataset, dan dokumen.
+- [x] Validasi URL dan blokir localhost serta rentang jaringan privat untuk mencegah SSRF.
+- [x] Simpan status, metadata HTTP, waktu sinkronisasi, dan pesan error per sumber.
+- [x] Sediakan API daftar, tambah, sinkronisasi, ubah status, dan hapus sumber daya.
+- [x] Masukkan sumber daya yang sudah terverifikasi ke konteks agent sesuai proyek.
+- [x] Tambahkan panel Project Manager untuk menambah, melihat status, sinkronisasi ulang, dan menghapus sumber daya.
+- [x] Terapkan akses resource berbasis proyek/agent: resource proyek dibagikan ke tim proyek, resource agent dibatasi ke pemiliknya.
+- [x] Masukkan daftar resource yang disetujui dan aturan anti-domain liar ke prompt setiap agent.
+- [x] Wajibkan agent melakukan pemilihan resource otomatis sebelum bekerja dan melaporkan resource yang digunakan/dilewati.
+
+## Perapian Task Board
+
+- [x] Tambahkan pilihan urutan: perubahan terbaru, pembuatan terbaru, atau prioritas.
+- [x] Gunakan `updated_at` sebagai waktu utama agar urutan sesuai aktivitas terakhir.
+- [x] Samakan tinggi kolom desktop dan scroll internal agar papan tidak melompat atau memanjang tidak terkendali.
+- [x] Pertahankan kolom satu per satu pada layar kecil agar kartu tetap mudah dibaca.
+
+## Stabilitas error dan tindak lanjut laporan
+
+- [x] Hentikan pengulangan otomatis saat eksekusi gagal dengan menjeda task dan mempertahankan checkpoint.
+- [x] Lokalkan pesan arsip laporan yang sudah tersimpan dalam riwayat ke Bahasa Indonesia.
+- [x] Tambahkan aksi Buka hasil, Jalankan lagi, dan Revisi & jalankan pada laporan.
+- [x] Teruskan aksi laporan ke Riwayat Laporan agar hasil lama dapat ditindaklanjuti.
+
+## Review stabilitas error dan laporan
+
+- TypeScript langsung lulus (`pnpm exec tsc --noEmit --pretty false`).
+- `git diff --check` bersih.
+- Kegagalan provider tidak lagi dikembalikan ke Inbox; task dijeda pada `pending` untuk mencegah loop.
+
+## Alur CEO review yang sederhana
+
+- [x] Hentikan persetujuan otomatis setelah agen mengirim hasil.
+- [x] Tampilkan hasil task pada status Review untuk keputusan CEO.
+- [x] Tambahkan aksi Tandai selesai atau Revisi & jalankan.
+- [x] Masukkan task Review ke Riwayat Laporan agar tetap bisa ditindaklanjuti.
+
+## Template tema dan indikator agent
+
+- [x] Tambahkan template UI global: Daylight, Midnight, Ocean, Forest, dan Sunset.
+- [x] Simpan pilihan tema dan terapkan token warna ke header, sidebar, panel, input, modal, dan Task Board.
+- [x] Tambahkan indikator status pada setiap avatar agent.
+- [x] Tambahkan badge notifikasi pada avatar agent di Dashboard dan tooltip status yang jelas.
+
+## Sinkronisasi tema kantor dan navigasi bebas
+
+- [x] Selaraskan pembangunan scene Pixi kantor dengan template tema global.
+- [x] Tambahkan identitas visual Ocean, Forest, Sunset pada kanvas kantor tanpa mengubah sprite pixel-art.
+- [x] Ganti area scroll kantor menjadi viewport drag langsung untuk mouse, touch, dan stylus.
+- [x] Pertahankan keyboard, tombol arah virtual, serta interaksi Enter tanpa auto-scroll paksa.
+
+## Zoom, tema futuristik, dan kustomisasi map kantor
+
+- [x] Tambahkan zoom GPU ringan dengan kontrol plus/minus, reset, dan roda mouse.
+- [x] Pertahankan pan drag setelah zoom tanpa memindahkan scroll halaman.
+- [x] Tambahkan template tema Futuristic yang ikut mengubah UI dan kanvas kantor.
+- [x] Tambahkan mode map Seimbang, Lebar, dan Fokus yang tersimpan di perangkat.
+- [x] Tambahkan gerak mikro berbasis status agent tanpa membuat objek render tambahan.
+- [x] Pertahankan kustomisasi warna setiap ruangan melalui konfigurasi tema kantor yang sudah ada.
+
+## Responsivitas Dashboard
+
+- [x] Kunci lebar Dashboard agar tidak melampaui viewport.
+- [x] Izinkan seluruh grid Dashboard menyusut dengan aman pada tablet dan ponsel.
+- [x] Cegah header, podium ranking, avatar, dan log misi terpotong pada layar sempit.
+- [x] Tambahkan batas ukuran media dan panel tanpa menambah beban rendering.
+- [x] Pastikan kanvas kantor mengikuti tinggi scene agar departemen bawah tidak terpotong.
+
+## Penyelarasan visual kantor dengan tema
+
+- [x] Kurangi karakter pastel pada Midnight dan template tema berwarna.
+- [x] Tambahkan kontras teknis dan palet cyan-violet pada tampilan Futuristic.
+- [x] Siapkan identitas Futuristic melalui token UI dan palet scene tanpa memengaruhi warna karakter.
+
+## Kontrol zoom dan menu header kantor
+
+- [x] Aktifkan roda mouse PC untuk zoom kantor dengan titik fokus kursor.
+- [x] Jadikan menu aksi header dapat digeser horizontal pada layar sempit.
+- [x] Pertahankan tombol header tetap utuh tanpa terpotong atau memaksa lebar halaman.
+
+## Warna karakter tetap konsisten
+
+- [x] Hapus filter warna global dari kanvas kantor agar sprite karakter tidak berubah saat tema diganti.
+- [x] Pertahankan perubahan tema melalui palet scene dan elemen UI, bukan pewarnaan ulang karakter.
+- [x] Terapkan palet tema langsung ke lantai, dinding, ruang, dan aksen Pixi agar kantor tetap berubah.
+
+## Pemulihan model Copilot
+
+- [x] Deteksi model Copilot yang tersimpan tetapi sudah tidak tersedia.
+- [x] Pilih model aktif dari endpoint `/models` sebelum task dijalankan.
+- [x] Tampilkan fallback model di log agar kegagalan tidak berulang tanpa penjelasan.
+## Respons awal eksekusi tugas
+
+- [x] Tampilkan konfirmasi segera saat tugas diterima.
+- [x] Tampilkan bahwa eksekusi tim sudah dimulai setelah task berhasil dibuat.
+- [x] Tampilkan kegagalan pendaftaran atau pengiriman tugas di UI, bukan hanya console.
+- [x] Berlakukan umpan balik untuk Task Board dan pengiriman tugas melalui percakapan.
+- [x] Verifikasi TypeScript, format diff, dan health server.
+
+## Gerak karakter berdasarkan aktivitas kantor
+
+- [x] Karakter bekerja memiliki gerak kerja pendek yang ringan di sekitar meja.
+- [x] Karakter yang dipanggil rapat berjalan dari posisi kerja menuju kursi rapat.
+- [x] Karakter tetap berada di kursi selama presence rapat aktif dan kembali setelah selesai.
+- [x] Verifikasi TypeScript, format diff, dan health server.
+
+## Membuka hasil laporan
+
+- [x] Coba preview web hasil terlebih dahulu.
+- [x] Coba buka file artefak yang tercantum pada laporan.
+- [x] Sediakan halaman hasil laporan sebagai fallback jika preview tidak tersedia.
+- [x] Tampilkan pesan jika browser memblokir pop-up.
+- [x] Verifikasi TypeScript dan format diff.
+
+## Penemuan sumber daya external otomatis
+
+- [x] Agen otomatis mencari resource publik bila daftar proyek kosong atau kurang.
+- [x] Batasi pencarian pada allowlist katalog dan dokumentasi resmi.
+- [x] Redaksi rahasia dan cegah pengiriman source code ke situs external.
+- [x] Validasi HTTPS, redirect, identitas paket/repository, lisensi, dan checksum/signature bila tersedia.
+- [x] Catat resource yang ditemukan dan digunakan pada laporan akhir.
+
+## Perbaikan Dashboard layar blank
+
+- [x] Telusuri crash saat komponen daftar agen dirender.
+- [x] Teruskan prop notifikasi agen ke komponen Dashboard.
+- [x] Tambahkan fallback defensif agar data notifikasi kosong tidak merusak halaman.
+- [x] Verifikasi build, TypeScript, diff, dan health server.
+- [x] Normalisasi path artefak dari worktree lama ke folder proyek utama.
+
+## Pemulihan otomatis saat bahan atau tool tidak tersedia
+
+- [x] Agen wajib mendiagnosis kekurangan sebelum berhenti.
+- [x] Agen diarahkan memakai resource proyek yang disetujui.
+- [x] Agen boleh membuat bahan lokal/sintetis yang aman dan diberi label bila task mengizinkan.
+- [x] Agen wajib mengulang verifikasi setelah pemulihan dan berhenti terkontrol jika tetap tidak memungkinkan.
+- [x] Verifikasi TypeScript dan format diff.

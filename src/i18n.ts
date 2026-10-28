@@ -47,6 +47,36 @@ const INDONESIAN_FALLBACKS: Record<string, string> = {
   "No assigned staff": "Tidak ada staf yang ditugaskan",
   "Meeting live: click table for minutes": "Rapat berlangsung: klik meja untuk melihat notulen",
   Interact: "Berinteraksi",
+  "Pending Decisions": "Keputusan Menunggu",
+  Refresh: "Segarkan",
+  "Loading pending decisions...": "Memuat keputusan yang menunggu...",
+  "No pending decisions right now.": "Tidak ada keputusan yang menunggu saat ini.",
+  "Project Decision": "Keputusan Proyek",
+  "Timeout Resume": "Lanjutkan Tugas Terhenti",
+  "Review Round Decision": "Keputusan Putaran Tinjauan",
+  "Agent Request": "Permintaan Agen",
+  "Open Chat": "Buka Percakapan",
+  "Start Team-Lead Meeting": "Mulai Rapat Ketua Tim",
+  "Keep Waiting": "Tetap Menunggu",
+  "Add Follow-up Request": "Tambahkan Permintaan Lanjutan",
+  "Resume Task": "Lanjutkan Tugas",
+  "Keep in Inbox": "Tetap di Kotak Masuk",
+  "Skip to Next Round": "Lewati ke Putaran Berikutnya",
+  "Sending...": "Mengirim...",
+  "Run Selected": "Jalankan Pilihan",
+  "Additional Follow-up Request": "Permintaan Lanjutan Tambahan",
+  "Enter your request details.": "Masukkan detail permintaan.",
+  "Submit Request": "Kirim Permintaan",
+  "Pick at least one option or enter an extra note.": "Pilih setidaknya satu opsi atau masukkan catatan tambahan.",
+  "Planning consolidation complete": "Konsolidasi perencanaan selesai",
+  "Planning lead is consolidating opinions...": "Ketua perencanaan sedang menggabungkan pendapat...",
+  "Available options now:": "Opsi yang tersedia saat ini:",
+  "Choose how to proceed from the options below.": "Pilih cara melanjutkan dari opsi di bawah.",
+  "CLI execution failed (spawn claude ENOENT).": "Eksekusi CLI gagal karena penyedia AI tidak tersedia.",
+  "CEO, the planning lead consolidated final report has been generated and archived. You can review it from the report popup.":
+    "CEO, laporan akhir telah dibuat dan disimpan. Anda dapat meninjaunya melalui jendela laporan.",
+  "Task paused after execution failure; checkpoint preserved. Review the report to retry or revise.":
+    "Tugas dijeda setelah eksekusi gagal; checkpoint dipertahankan. Buka laporan untuk menjalankan ulang atau merevisi.",
 };
 
 function parseLanguage(value?: string | null): UiLanguage | null {
@@ -151,6 +181,31 @@ export function pickLang(lang: UiLanguage, text: LangText): string {
     default:
       return text.en;
   }
+}
+
+/** Localize common server-generated decision/status phrases kept in message history. */
+export function localizeMessageContent(lang: UiLanguage, content: string): string {
+  if (lang !== "id" || !content) return content;
+  let output = content;
+  const replacements: Array<[RegExp, string]> = [
+    [/Planning consolidation complete/g, "Konsolidasi perencanaan selesai"],
+    [/Planning lead is consolidating opinions\.\.\./g, "Ketua perencanaan sedang menggabungkan pendapat..."],
+    [/Available options now:/g, "Opsi yang tersedia saat ini:"],
+    [/Choose how to proceed from the options below\./g, "Pilih cara melanjutkan dari opsi di bawah."],
+    [/Start Team-Lead Meeting/g, "Mulai Rapat Ketua Tim"],
+    [/Add Follow-up Request/g, "Tambahkan Permintaan Lanjutan"],
+    [/Open Chat/g, "Buka Percakapan"],
+    [/CLI execution failed \(spawn claude ENOENT\)\.?/g, "Eksekusi CLI gagal karena penyedia AI tidak tersedia."],
+    [/CLI 실행 중 오류가 발생했습니다 \(spawn claude ENOENT\)\.?/g, "Eksekusi CLI gagal karena penyedia AI tidak tersedia."],
+    [/spawn claude ENOENT/g, "penyedia AI tidak tersedia"],
+    [/Please reassign the agent or revise the task, then try again\.?/g, "Silakan tetapkan ulang agen atau revisi tugas, lalu coba lagi."],
+    [/CEO, the planning lead consolidated final report has been generated and archived\. You can review it from the report popup\./g, "CEO, laporan akhir telah dibuat dan disimpan. Anda dapat meninjaunya melalui jendela laporan."],
+    [/Task paused after execution failure; checkpoint preserved\. Review the report to retry or revise\./g, "Tugas dijeda setelah eksekusi gagal; checkpoint dipertahankan. Buka laporan untuk menjalankan ulang atau merevisi."],
+    [/failed with an issue \(exit code: -2\)/g, "mengalami masalah (kode keluar: -2)"],
+    [/Task '([^']+)' failed \(exit code: -2\)\./g, "Tugas '$1' gagal (kode keluar: -2)."],
+  ];
+  for (const [pattern, replacement] of replacements) output = output.replace(pattern, replacement);
+  return output;
 }
 
 export interface I18nContextValue {

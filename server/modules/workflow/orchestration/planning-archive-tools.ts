@@ -307,6 +307,7 @@ export function createPlanningArchiveTools(deps: CreatePlanningArchiveToolsDeps)
             ],
             ["CEO、企画リード最終統合レポートを生成し、アーカイブしました。レポートポップアップから確認できます。"],
             ["CEO，规划负责人最终汇总报告已生成并归档，可在报告弹窗中查看。"],
+            ["CEO, laporan akhir telah dibuat dan disimpan. Anda dapat meninjaunya melalui jendela laporan."],
           ),
           lang,
         ),

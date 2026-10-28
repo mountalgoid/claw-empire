@@ -63,6 +63,10 @@ interface AppOverlaysProps {
   onCloseTaskPanel: () => void;
   taskReport: TaskReportDetail | null;
   onCloseTaskReport: () => void;
+  onUpdateTask: (id: string, data: Partial<Task>) => Promise<void>;
+  onRunTask: (id: string) => Promise<void>;
+  onOpenTasks: () => void;
+  onOpenReports: () => void;
   showReportHistory: boolean;
   onCloseReportHistory: () => void;
   showAgentStatus: boolean;
@@ -110,6 +114,10 @@ export default function AppOverlays({
   onCloseTaskPanel,
   taskReport,
   onCloseTaskReport,
+  onUpdateTask,
+  onRunTask,
+  onOpenTasks,
+  onOpenReports,
   showReportHistory,
   onCloseReportHistory,
   showAgentStatus,
@@ -192,6 +200,10 @@ export default function AppOverlays({
           departments={departments}
           uiLanguage={uiLanguage}
           onClose={onCloseTaskReport}
+          onUpdateTask={onUpdateTask}
+          onRunTask={onRunTask}
+          onOpenTasks={onOpenTasks}
+          onOpenReports={onOpenReports}
         />
       )}
 
@@ -201,6 +213,10 @@ export default function AppOverlays({
           departments={departments}
           uiLanguage={uiLanguage}
           onClose={onCloseReportHistory}
+          onUpdateTask={onUpdateTask}
+          onRunTask={onRunTask}
+          onOpenTasks={onOpenTasks}
+          onOpenReports={onOpenReports}
         />
       )}
 

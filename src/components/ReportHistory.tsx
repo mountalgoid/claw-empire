@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Agent, Department } from "../types";
+import type { Agent, Department, Task } from "../types";
 import type { TaskReportSummary, TaskReportDetail } from "../api";
 import type { UiLanguage } from "../i18n";
 import { localeName, pickLang } from "../i18n";
@@ -13,6 +13,10 @@ interface ReportHistoryProps {
   departments: Department[];
   uiLanguage: UiLanguage;
   onClose: () => void;
+  onUpdateTask?: (id: string, data: Partial<Task>) => Promise<void>;
+  onRunTask?: (id: string) => Promise<void>;
+  onOpenTasks?: () => void;
+  onOpenReports?: () => void;
 }
 
 const PAGE_SIZE = 5;
@@ -34,7 +38,16 @@ function projectNameFromSummary(report: TaskReportSummary): string {
   return seg || "General";
 }
 
-export default function ReportHistory({ agents, departments, uiLanguage, onClose }: ReportHistoryProps) {
+export default function ReportHistory({
+  agents,
+  departments,
+  uiLanguage,
+  onClose,
+  onUpdateTask,
+  onRunTask,
+  onOpenTasks,
+  onOpenReports,
+}: ReportHistoryProps) {
   const t = (text: { ko: string; en: string; ja?: string; zh?: string }) => pickLang(uiLanguage, text);
   const [reports, setReports] = useState<TaskReportSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +112,10 @@ export default function ReportHistory({ agents, departments, uiLanguage, onClose
         departments={departments}
         uiLanguage={uiLanguage}
         onClose={() => setDetail(null)}
+        onUpdateTask={onUpdateTask}
+        onRunTask={onRunTask}
+        onOpenTasks={onOpenTasks}
+        onOpenReports={onOpenReports}
       />
     );
   }

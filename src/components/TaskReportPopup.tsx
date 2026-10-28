@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import type { Agent, Department } from "../types";
+import type { Agent, Department, Task } from "../types";
 import type { TaskReportDetail, TaskReportDocument, TaskReportTeamSection } from "../api";
 import { archiveTaskReport, getTaskReportDetail } from "../api";
 import type { UiLanguage } from "../i18n";
@@ -13,6 +13,10 @@ interface TaskReportPopupProps {
   departments: Department[];
   uiLanguage: UiLanguage;
   onClose: () => void;
+  onUpdateTask?: (id: string, data: Partial<Task>) => Promise<void>;
+  onRunTask?: (id: string) => Promise<void>;
+  onOpenTasks?: () => void;
+  onOpenReports?: () => void;
 }
 
 const DOCUMENTS_PER_PAGE = 3;
@@ -47,14 +51,27 @@ function statusClass(status: string): string {
   return "bg-slate-700/70 text-slate-300";
 }
 
-export default function TaskReportPopup({ report, agents, departments, uiLanguage, onClose }: TaskReportPopupProps) {
-  const t = (text: { ko: string; en: string; ja?: string; zh?: string }) => pickLang(uiLanguage, text);
+export default function TaskReportPopup({
+  report,
+  agents,
+  departments,
+  uiLanguage,
+  onClose,
+  onUpdateTask,
+  onRunTask,
+  onOpenTasks,
+  onOpenReports,
+}: TaskReportPopupProps) {
+  const t = (text: { ko: string; en: string; ja?: string; zh?: string; id?: string }) => pickLang(uiLanguage, text);
 
   const [currentReport, setCurrentReport] = useState<TaskReportDetail>(report);
   const [refreshingArchive, setRefreshingArchive] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("planning");
   const [expandedDocs, setExpandedDocs] = useState<Record<string, boolean>>({});
   const [documentPages, setDocumentPages] = useState<Record<string, number>>({});
+  const [revisionText, setRevisionText] = useState("");
+  const [actionBusy, setActionBusy] = useState<"run" | "revision" | null>(null);
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     setCurrentReport(report);
@@ -84,6 +101,128 @@ export default function TaskReportPopup({ report, agents, departments, uiLanguag
       console.error("Failed to refresh planning archive:", err);
     } finally {
       setRefreshingArchive(false);
+    }
+  };
+
+  const escapeHtml = (value: string): string =>
+    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;");
+
+  const buildReportFallbackHtml = (): string => {
+    const documents = [
+      ...(currentReport.planning_summary?.documents ?? []),
+      ...teamReports.flatMap((team) => team.documents ?? []),
+    ].filter((document, index, all) => all.findIndex((candidate) => candidate.id === document.id) === index);
+    const sections = documents
+      .filter((document) => document.content || document.text_preview)
+      .map(
+        (document) =>
+          `<section><h2>${escapeHtml(document.title)}</h2><p class="meta">${escapeHtml(document.path || document.source)}</p><pre>${escapeHtml(document.content || document.text_preview)}</pre></section>`,
+      )
+      .join("");
+    const result = currentReport.task.result?.trim();
+    return `<!doctype html><html lang="${uiLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(currentReport.task.title)}</title><style>body{margin:0;padding:24px;background:#0f172a;color:#e2e8f0;font:14px system-ui,sans-serif}main{max-width:1000px;margin:auto}h1{font-size:22px}h2{font-size:15px;color:#93c5fd}section{margin:18px 0;padding:16px;border:1px solid #334155;border-radius:12px;background:#111c2d}.meta{color:#94a3b8;font-size:12px}pre{white-space:pre-wrap;overflow:auto;line-height:1.55;color:#cbd5e1}</style></head><body><main><h1>${escapeHtml(currentReport.task.title)}</h1>${result ? `<section><h2>Execution Result</h2><pre>${escapeHtml(result)}</pre></section>` : ""}${sections || `<p>${escapeHtml(t({ ko: "Belum ada dokumen hasil.", en: "No result documents are available.", id: "Belum ada dokumen hasil." }))}</p>`}</main></body></html>`;
+  };
+
+  const openResult = async () => {
+    const projectId = currentReport.project?.project_id || currentReport.task.project_id;
+    const previewUrl = projectId
+      ? `/api/projects/${encodeURIComponent(projectId)}/preview/index.html`
+      : `/api/tasks/${encodeURIComponent(currentReport.task.id)}/preview/index.html`;
+    const popup = window.open("about:blank", "_blank");
+    if (!popup) {
+      setActionError(t({ ko: "Browser memblokir tab hasil. Izinkan pop-up lalu coba lagi.", en: "The browser blocked the result tab. Allow pop-ups and try again.", id: "Browser memblokir tab hasil. Izinkan pop-up lalu coba lagi." }));
+      return;
+    }
+    popup.opener = null;
+
+    try {
+      const previewResponse = await fetch(previewUrl, { credentials: "include" });
+      const previewType = previewResponse.headers.get("content-type") || "";
+      if (previewResponse.ok && !previewType.includes("application/json")) {
+        popup.location.href = previewUrl;
+        return;
+      }
+
+      const resultProjectPath = projectPath;
+      const fileDocument = [
+        ...(currentReport.planning_summary?.documents ?? []),
+        ...teamReports.flatMap((team) => team.documents ?? []),
+      ].find((document) => document.path && resultProjectPath && document.path.startsWith(resultProjectPath));
+      if (fileDocument?.path && resultProjectPath) {
+        const rawRelativePath = fileDocument.path.slice(resultProjectPath.length).replace(/^[/\\]+/, "");
+        // Completed worktrees can be removed after merge. Preserve the useful
+        // project-relative artifact path from stale worktree links.
+        const artifactMatch = fileDocument.path.match(
+          /(?:^|[/\\])(content|public|dist|output)([/\\].*)$/i,
+        );
+        const relativePath = (artifactMatch ? `${artifactMatch[1]}${artifactMatch[2]}` : rawRelativePath).replace(
+          /\\/g,
+          "/",
+        );
+        if (relativePath && !relativePath.includes("..")) {
+          const fileUrl = projectId
+            ? `/api/projects/${encodeURIComponent(projectId)}/preview/${relativePath}`
+            : `/api/tasks/${encodeURIComponent(currentReport.task.id)}/preview/${relativePath}`;
+          const fileResponse = await fetch(fileUrl, { credentials: "include" });
+          if (fileResponse.ok) {
+            popup.location.href = fileUrl;
+            return;
+          }
+        }
+      }
+
+      popup.document.open();
+      popup.document.write(buildReportFallbackHtml());
+      popup.document.close();
+    } catch (error) {
+      console.error("Failed to open task result:", error);
+      popup.document.open();
+      popup.document.write(buildReportFallbackHtml());
+      popup.document.close();
+    }
+  };
+
+  const runAgain = async (withRevision: boolean) => {
+    if (!onUpdateTask || !onRunTask || actionBusy) return;
+    const instruction = revisionText.trim();
+    if (withRevision && !instruction) {
+      setActionError(t({ ko: "작성할 수정 내용을 입력하세요.", en: "Enter the revision instructions first.", id: "Masukkan instruksi revisi terlebih dahulu." }));
+      return;
+    }
+    setActionBusy(withRevision ? "revision" : "run");
+    setActionError("");
+    try {
+      if (withRevision) {
+        const existing = currentReport.task.description?.trim() ?? "";
+        const revisionBlock = `[REVISION REQUEST]\n${instruction}\n[/REVISION REQUEST]`;
+        await onUpdateTask(currentReport.task.id, {
+          description: existing ? `${existing}\n\n${revisionBlock}` : revisionBlock,
+          status: "planned",
+        });
+      } else {
+        await onUpdateTask(currentReport.task.id, { status: "planned" });
+      }
+      await onRunTask(currentReport.task.id);
+      setRevisionText("");
+      onClose();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : t({ ko: "Tindakan gagal dijalankan.", en: "Action failed.", id: "Tindakan gagal dijalankan." }));
+    } finally {
+      setActionBusy(null);
+    }
+  };
+
+  const completeTask = async () => {
+    if (!onUpdateTask || actionBusy) return;
+    setActionBusy("run");
+    setActionError("");
+    try {
+      await onUpdateTask(currentReport.task.id, { status: "done" });
+      onClose();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : t({ ko: "Penyelesaian tugas gagal.", en: "Could not complete the task.", id: "Penyelesaian tugas gagal." }));
+    } finally {
+      setActionBusy(null);
     }
   };
 
@@ -358,9 +497,9 @@ export default function TaskReportPopup({ report, agents, departments, uiLanguag
   };
 
   return (
-    <div className="app-overlay-panel fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-2 backdrop-blur-sm sm:p-4" onClick={onClose}>
+    <div className="app-overlay-panel fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm sm:p-4" onClick={onClose}>
       <div
-        className="app-overlay-panel-content relative mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-emerald-500/30 bg-slate-900 shadow-2xl shadow-emerald-500/10"
+        className="report-popup-content app-overlay-panel-content relative mx-auto flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-emerald-500/30 bg-slate-900 shadow-2xl shadow-emerald-500/10 sm:max-h-[calc(100dvh-2rem)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-700/50 px-6 py-4">
@@ -441,7 +580,7 @@ export default function TaskReportPopup({ report, agents, departments, uiLanguag
           </div>
         </div>
 
-        <div className="max-h-[68vh] overflow-y-auto px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
           {activeTab === "planning" ? (
             renderPlanningSummary()
           ) : selectedTeam ? (
@@ -458,7 +597,87 @@ export default function TaskReportPopup({ report, agents, departments, uiLanguag
           )}
         </div>
 
-        <div className="border-t border-slate-700/50 px-6 py-3">
+        <div className="report-popup-footer sticky bottom-0 z-10 shrink-0 border-t border-slate-700/50 bg-slate-900 px-4 py-3 sm:px-6">
+          {actionError && <p className="mb-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{actionError}</p>}
+          {(onUpdateTask || onRunTask) && (
+            <div className="mb-3 rounded-lg border border-blue-500/25 bg-blue-500/5 p-3">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-blue-200">
+                  {t({ ko: "Tindak lanjuti hasil", en: "Act on this result", id: "Tindak lanjuti hasil" })}
+                </p>
+                <button
+                  type="button"
+                  onClick={openResult}
+                  className="rounded-md border border-blue-400/40 bg-blue-500/15 px-2.5 py-1 text-xs text-blue-100 hover:bg-blue-500/25"
+                >
+                  {t({ ko: "Buka hasil", en: "Open result", id: "Buka hasil" })}
+                </button>
+              </div>
+              <textarea
+                value={revisionText}
+                onChange={(event) => setRevisionText(event.target.value)}
+                placeholder={t({
+                  ko: "Opsional: tulis apa yang perlu diperbaiki...",
+                  en: "Optional: describe what should be revised...",
+                  id: "Opsional: tulis apa yang perlu diperbaiki...",
+                })}
+                className="min-h-16 w-full resize-y rounded-md border border-slate-700 bg-slate-950/50 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-400"
+                disabled={Boolean(actionBusy)}
+              />
+              <div className="mt-2 flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => void completeTask()}
+                  disabled={Boolean(actionBusy) || !onUpdateTask}
+                  className="rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-100 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t({ ko: "Tandai selesai", en: "Mark complete", id: "Tandai selesai" })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void runAgain(false)}
+                  disabled={Boolean(actionBusy) || !onRunTask || !onUpdateTask}
+                  className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {actionBusy === "run"
+                    ? t({ ko: "Menjalankan...", en: "Running...", id: "Menjalankan..." })
+                    : t({ ko: "Jalankan lagi", en: "Run again", id: "Jalankan lagi" })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void runAgain(true)}
+                  disabled={Boolean(actionBusy) || !onRunTask || !onUpdateTask}
+                  className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {actionBusy === "revision"
+                    ? t({ ko: "Mengirim revisi...", en: "Submitting revision...", id: "Mengirim revisi..." })
+                    : t({ ko: "Revisi & jalankan", en: "Revise & run", id: "Revisi & jalankan" })}
+                </button>
+              </div>
+            </div>
+          )}
+          {(onOpenTasks || onOpenReports) && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {onOpenTasks && (
+                <button
+                  type="button"
+                  onClick={onOpenTasks}
+                  className="min-h-10 flex-1 rounded-lg border border-blue-400/40 bg-blue-500/15 px-3 py-2 text-xs font-medium text-blue-100 hover:bg-blue-500/25"
+                >
+                  {t({ ko: "Buka menu Tugas", en: "Open Tasks menu", id: "Buka menu Tugas" })}
+                </button>
+              )}
+              {onOpenReports && (
+                <button
+                  type="button"
+                  onClick={onOpenReports}
+                  className="min-h-10 flex-1 rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-xs font-medium text-emerald-100 hover:bg-emerald-500/25"
+                >
+                  {t({ ko: "Buka menu Laporan", en: "Open Reports menu", id: "Buka menu Laporan" })}
+                </button>
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-500">
               {t({

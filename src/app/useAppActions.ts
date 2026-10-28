@@ -37,6 +37,7 @@ interface UseAppActionsParams {
   setDecisionInboxItems: Dispatch<SetStateAction<DecisionInboxItem[]>>;
   setDecisionReplyBusyKey: Dispatch<SetStateAction<string | null>>;
   setCliStatus: Dispatch<SetStateAction<CliStatusMap | null>>;
+  setActionNotice: Dispatch<SetStateAction<{ tone: "info" | "error"; message: string } | null>>;
 }
 
 export function useAppActions({
@@ -57,6 +58,7 @@ export function useAppActions({
   setDecisionInboxItems,
   setDecisionReplyBusyKey,
   setCliStatus,
+  setActionNotice,
 }: UseAppActionsParams) {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -71,6 +73,19 @@ export function useAppActions({
       projectMeta?: ProjectMetaPayload,
     ) => {
       try {
+        if (messageType === "task_assign" || messageType === "report") {
+          const lang = normalizeLanguage(settingsRef.current.language);
+          setActionNotice({
+            tone: "info",
+            message: pickLang(lang, {
+              ko: "업무 지시를 팀에 전달하는 중입니다...",
+              en: "Sending the task instruction to the team...",
+              ja: "チームにタスク指示を送信しています...",
+              zh: "正在向团队发送任务指令...",
+              id: "Mengirim instruksi tugas ke tim...",
+            }),
+          });
+        }
         await api.sendMessage({
           receiver_type: receiverType,
           receiver_id: receiverId,
@@ -82,11 +97,35 @@ export function useAppActions({
         });
         const msgs = await api.getMessages({ receiver_type: receiverType, receiver_id: receiverId, limit: 50 });
         setMessages(msgs);
+        if (messageType === "task_assign") {
+          const lang = normalizeLanguage(settingsRef.current.language);
+          setActionNotice({
+            tone: "info",
+            message: pickLang(lang, {
+              ko: "업무 지시가 전달되었습니다. 팀의 실행 응답을 기다리는 중입니다.",
+              en: "Task instruction sent. Waiting for the team's execution response.",
+              ja: "タスク指示を送信しました。チームの実行応答を待っています。",
+              zh: "任务指令已发送，正在等待团队执行响应。",
+              id: "Instruksi tugas sudah dikirim. Menunggu respons eksekusi tim.",
+            }),
+          });
+        }
       } catch (error) {
         console.error("Send message failed:", error);
+        const lang = normalizeLanguage(settingsRef.current.language);
+        setActionNotice({
+          tone: "error",
+          message: pickLang(lang, {
+            ko: "업무 지시 전송에 실패했습니다.",
+            en: "Failed to send the task instruction.",
+            ja: "タスク指示の送信に失敗しました。",
+            zh: "任务指令发送失败。",
+            id: "Instruksi tugas gagal dikirim.",
+          }),
+        });
       }
     },
-    [setMessages],
+    [setActionNotice, setMessages],
   );
 
   const handleSendAnnouncement = useCallback(async (content: string) => {
@@ -127,16 +166,49 @@ export function useAppActions({
       workflow_pack_key?: WorkflowPackKey;
     }) => {
       try {
+        const lang = normalizeLanguage(settingsRef.current.language);
+        setActionNotice({
+          tone: "info",
+          message: pickLang(lang, {
+            ko: "업무를 접수했습니다. 자동 실행을 준비하는 중입니다...",
+            en: "Task received. Preparing automatic execution...",
+            ja: "タスクを受け付けました。自動実行を準備しています...",
+            zh: "任务已接收，正在准备自动执行...",
+            id: "Tugas diterima. Menyiapkan eksekusi otomatis...",
+          }),
+        });
         await api.createTask(input as Parameters<typeof api.createTask>[0]);
         const tks = await api.getTasks();
         setTasks(tks);
         const sts = await api.getStats();
         setStats(sts);
+        setActionNotice({
+          tone: "info",
+          message: pickLang(lang, {
+            ko: "업무가 등록되었고 팀 실행이 시작되었습니다. 진행 상황은 Task Board에서 확인할 수 있습니다.",
+            en: "Task registered and team execution started. Track progress on the Task Board.",
+            ja: "タスクを登録し、チームの実行を開始しました。Task Boardで進捗を確認できます。",
+            zh: "任务已登记并开始团队执行，可在任务看板查看进度。",
+            id: "Tugas terdaftar dan eksekusi tim dimulai. Pantau progres di Papan Tugas.",
+          }),
+        });
       } catch (error) {
         console.error("Create task failed:", error);
+        const lang = normalizeLanguage(settingsRef.current.language);
+        setActionNotice({
+          tone: "error",
+          message: pickLang(lang, {
+            ko: "업무 등록 또는 실행 시작에 실패했습니다.",
+            en: "Task registration or execution startup failed.",
+            ja: "タスクの登録または実行開始に失敗しました。",
+            zh: "任务登记或执行启动失败。",
+            id: "Pendaftaran tugas atau awal eksekusi gagal.",
+          }),
+        });
+        throw error;
       }
     },
-    [setTasks, setStats],
+    [setActionNotice, setTasks, setStats],
   );
 
   const handleUpdateTask = useCallback(

@@ -164,6 +164,139 @@ const PACK_SEED_PROFILE: Partial<Record<WorkflowPackKey, SeedProfile>> = {
   },
 };
 
+type StudioPackKey = Extract<
+  WorkflowPackKey,
+  "clipper_studio" | "content_studio" | "art_drawing_studio" | "game_dev_studio" | "app_dev_studio"
+>;
+
+function buildStudioRoomThemes(accent: number, wall: number): Record<string, RoomTheme> {
+  return {
+    ceoOffice: { floor1: 0x15243a, floor2: 0x101a2d, wall, accent },
+    planning: { floor1: 0x1b3150, floor2: 0x162840, wall, accent },
+    dev: { floor1: 0x152c43, floor2: 0x102238, wall, accent },
+    design: { floor1: 0x2a2340, floor2: 0x211c34, wall, accent },
+    qa: { floor1: 0x242e3b, floor2: 0x1c2530, wall, accent },
+    devsecops: { floor1: 0x172b32, floor2: 0x112329, wall, accent },
+    operations: { floor1: 0x1d3440, floor2: 0x162832, wall, accent },
+    breakRoom: { floor1: 0x202a3e, floor2: 0x182133, wall, accent },
+  };
+}
+
+function buildStudioDepartment(
+  name: Localized,
+  icon: string,
+  agentPrefix: Localized,
+  avatarPool: string[],
+): DeptPreset {
+  return { name, icon, agentPrefix, avatarPool };
+}
+
+function buildStudioPreset(params: {
+  key: StudioPackKey;
+  slug: string;
+  label: Localized;
+  summary: Localized;
+  accent: number;
+  wall: number;
+  departments: Partial<Record<string, DeptPreset>>;
+  staffCycle: string[];
+}): PackPreset {
+  return {
+    key: params.key,
+    slug: params.slug,
+    label: params.label,
+    summary: params.summary,
+    roomThemes: buildStudioRoomThemes(params.accent, params.wall),
+    departments: params.departments,
+    staff: { nonLeaderDeptCycle: params.staffCycle },
+  };
+}
+
+const STUDIO_PACK_PRESETS = {
+  clipper_studio: buildStudioPreset({
+    key: "clipper_studio",
+    slug: "CLIP",
+    label: { ko: "클리퍼 스튜디오", en: "Clipper Studio", ja: "クリッパースタジオ", zh: "剪辑工作室", id: "Studio Kliper" },
+    summary: { ko: "긴 콘텐츠를 짧고 강한 클립으로 전환", en: "Turns long-form material into sharp short clips", ja: "長尺素材を強い短尺クリップへ変換", zh: "将长内容转化为高质量短片", id: "Mengubah materi panjang menjadi klip pendek yang kuat" },
+    accent: 0x27d3c2,
+    wall: 0x2e7180,
+    departments: {
+      planning: buildStudioDepartment({ ko: "클립전략실", en: "Clip Strategy", ja: "クリップ戦略", zh: "剪辑策略组", id: "Strategi Klip" }, "✂️", { ko: "클립 기획자", en: "Clip Strategist", ja: "クリップ企画", zh: "剪辑策划", id: "Strategi Klip" }, ["✂️", "🎯", "🧭"]),
+      dev: buildStudioDepartment({ ko: "편집엔진팀", en: "Edit Engine", ja: "編集エンジン", zh: "剪辑引擎组", id: "Mesin Edit" }, "🎞️", { ko: "편집 엔지니어", en: "Edit Engineer", ja: "編集エンジニア", zh: "剪辑工程师", id: "Insinyur Edit" }, ["🎞️", "⚙️", "🖥️"]),
+      design: buildStudioDepartment({ ko: "썸네일모션팀", en: "Thumbnail & Motion", ja: "サムネ・モーション", zh: "缩略图与动效组", id: "Thumbnail dan Motion" }, "🖼️", { ko: "모션 디자이너", en: "Motion Designer", ja: "モーションデザイナー", zh: "动效设计师", id: "Desainer Motion" }, ["🖼️", "✨", "🎨"]),
+      qa: buildStudioDepartment({ ko: "권리검수팀", en: "Rights & QC", ja: "権利・検証", zh: "版权与质检组", id: "Hak dan QC" }, "🔎", { ko: "권리 검수관", en: "Rights Reviewer", ja: "権利レビュア", zh: "版权审查员", id: "Peninjau Hak" }, ["🔎", "✅", "🔐"]),
+      operations: buildStudioDepartment({ ko: "배포운영팀", en: "Clip Publishing", ja: "配信運用", zh: "剪辑发布组", id: "Publikasi Klip" }, "📡", { ko: "배포 매니저", en: "Publishing Manager", ja: "配信マネージャー", zh: "发布经理", id: "Manajer Publikasi" }, ["📡", "📈", "🚀"]),
+    },
+    staffCycle: ["planning", "dev", "design", "qa", "operations", "dev", "design"],
+  }),
+  content_studio: buildStudioPreset({
+    key: "content_studio",
+    slug: "CONTENT",
+    label: { ko: "콘텐츠 스튜디오", en: "Content Studio", ja: "コンテンツスタジオ", zh: "内容工作室", id: "Studio Konten" },
+    summary: { ko: "전략부터 제작·배포·성과 측정까지 통합", en: "Unifies content strategy, production, distribution, and measurement", ja: "戦略から制作・配信・計測まで統合", zh: "整合内容策略、制作、分发与衡量", id: "Menggabungkan strategi, produksi, distribusi, dan pengukuran konten" },
+    accent: 0xffb84d,
+    wall: 0x82613c,
+    departments: {
+      planning: buildStudioDepartment({ ko: "콘텐츠전략실", en: "Content Strategy", ja: "コンテンツ戦略", zh: "内容策略组", id: "Strategi Konten" }, "🧭", { ko: "콘텐츠 전략가", en: "Content Strategist", ja: "コンテンツ戦略家", zh: "内容策略师", id: "Strategi Konten" }, ["🧭", "📅", "🎯"]),
+      dev: buildStudioDepartment({ ko: "콘텐츠제작팀", en: "Content Production", ja: "コンテンツ制作", zh: "内容制作组", id: "Produksi Konten" }, "✍️", { ko: "콘텐츠 제작자", en: "Content Producer", ja: "コンテンツ制作者", zh: "内容制作人", id: "Produser Konten" }, ["✍️", "📝", "🎙️"]),
+      design: buildStudioDepartment({ ko: "에디토리얼디자인팀", en: "Editorial Design", ja: "エディトリアルデザイン", zh: "编辑设计组", id: "Desain Editorial" }, "🖼️", { ko: "에디토리얼 디자이너", en: "Editorial Designer", ja: "編集デザイナー", zh: "编辑设计师", id: "Desainer Editorial" }, ["🖼️", "🎨", "📐"]),
+      qa: buildStudioDepartment({ ko: "브랜드검수팀", en: "Brand QA", ja: "ブランド検証", zh: "品牌质检组", id: "QC Merek" }, "✅", { ko: "브랜드 검수관", en: "Brand Reviewer", ja: "ブランドレビュア", zh: "品牌审校员", id: "Peninjau Merek" }, ["✅", "🔎", "🛡️"]),
+      operations: buildStudioDepartment({ ko: "배포분석팀", en: "Distribution & Analytics", ja: "配信・分析", zh: "分发与分析组", id: "Distribusi dan Analitik" }, "📊", { ko: "성장 분석가", en: "Growth Analyst", ja: "成長アナリスト", zh: "增长分析师", id: "Analis Pertumbuhan" }, ["📊", "📣", "🚀"]),
+    },
+    staffCycle: ["planning", "dev", "design", "operations", "qa", "dev", "operations"],
+  }),
+  art_drawing_studio: buildStudioPreset({
+    key: "art_drawing_studio",
+    slug: "ART",
+    label: { ko: "아트 드로잉 스튜디오", en: "Art Drawing Studio", ja: "アートドローイングスタジオ", zh: "绘画艺术工作室", id: "Studio Gambar Seni" },
+    summary: { ko: "아트 브리프·스케치·레이어·에셋 품질 관리", en: "Manages art briefs, sketches, layers, assets, and visual quality", ja: "アート概要・スケッチ・レイヤー・素材品質を管理", zh: "管理艺术简报、草图、图层、素材与视觉质量", id: "Mengelola brief, sketsa, layer, aset, dan kualitas visual" },
+    accent: 0xe875ff,
+    wall: 0x724b87,
+    departments: {
+      planning: buildStudioDepartment({ ko: "아트디렉션실", en: "Art Direction", ja: "アートディレクション", zh: "艺术指导组", id: "Direksi Seni" }, "🎯", { ko: "아트 디렉터", en: "Art Director", ja: "アートディレクター", zh: "艺术指导", id: "Direktur Seni" }, ["🎯", "🧭", "📋"]),
+      dev: buildStudioDepartment({ ko: "일러스트팀", en: "Illustration", ja: "イラスト", zh: "插画组", id: "Ilustrasi" }, "✏️", { ko: "일러스트레이터", en: "Illustrator", ja: "イラストレーター", zh: "插画师", id: "Ilustrator" }, ["✏️", "🖌️", "🧑‍🎨"]),
+      design: buildStudioDepartment({ ko: "비주얼디자인팀", en: "Visual Design", ja: "ビジュアルデザイン", zh: "视觉设计组", id: "Desain Visual" }, "🎨", { ko: "비주얼 디자이너", en: "Visual Designer", ja: "ビジュアルデザイナー", zh: "视觉设计师", id: "Desainer Visual" }, ["🎨", "🖼️", "🌈"]),
+      qa: buildStudioDepartment({ ko: "에셋검수팀", en: "Asset QA", ja: "素材検証", zh: "素材质检组", id: "QC Aset" }, "🔍", { ko: "에셋 검수관", en: "Asset Reviewer", ja: "素材レビュア", zh: "素材审校员", id: "Peninjau Aset" }, ["🔍", "✅", "📐"]),
+      operations: buildStudioDepartment({ ko: "아트생산팀", en: "Art Production", ja: "アート制作", zh: "艺术制作组", id: "Produksi Seni" }, "🗂️", { ko: "아트 프로듀서", en: "Art Producer", ja: "アートプロデューサー", zh: "艺术制片", id: "Produser Seni" }, ["🗂️", "📦", "🚀"]),
+    },
+    staffCycle: ["planning", "design", "dev", "design", "qa", "operations", "dev"],
+  }),
+  game_dev_studio: buildStudioPreset({
+    key: "game_dev_studio",
+    slug: "GAME",
+    label: { ko: "게임 개발 스튜디오", en: "Game Developer Studio", ja: "ゲーム開発スタジオ", zh: "游戏开发工作室", id: "Studio Pengembang Game" },
+    summary: { ko: "게임 루프·엔진·아트·플레이테스트·빌드 중심", en: "Coordinates game loops, engine work, art, playtests, and builds", ja: "ゲームループ・エンジン・アート・テスト・ビルドを連携", zh: "协同游戏循环、引擎、美术、试玩与构建", id: "Mengelola game loop, engine, seni, playtest, dan build" },
+    accent: 0x45a6ff,
+    wall: 0x3d6394,
+    departments: {
+      planning: buildStudioDepartment({ ko: "게임디자인실", en: "Game Design", ja: "ゲームデザイン", zh: "游戏设计组", id: "Desain Game" }, "🎮", { ko: "게임 디자이너", en: "Game Designer", ja: "ゲームデザイナー", zh: "游戏设计师", id: "Desainer Game" }, ["🎮", "🧭", "📜"]),
+      dev: buildStudioDepartment({ ko: "게임플레이엔진팀", en: "Gameplay Engineering", ja: "ゲームプレイエンジン", zh: "玩法引擎组", id: "Engineering Gameplay" }, "🕹️", { ko: "게임플레이 엔지니어", en: "Gameplay Engineer", ja: "ゲームプレイエンジニア", zh: "玩法工程师", id: "Insinyur Gameplay" }, ["🕹️", "⚙️", "💻"]),
+      design: buildStudioDepartment({ ko: "게임아트팀", en: "Game Art", ja: "ゲームアート", zh: "游戏美术组", id: "Seni Game" }, "🧩", { ko: "게임 아티스트", en: "Game Artist", ja: "ゲームアーティスト", zh: "游戏美术师", id: "Artis Game" }, ["🧩", "🎨", "🖌️"]),
+      qa: buildStudioDepartment({ ko: "플레이테스트팀", en: "Playtest QA", ja: "プレイテスト", zh: "试玩质检组", id: "QC Playtest" }, "🧪", { ko: "플레이테스트 리드", en: "Playtest Lead", ja: "プレイテストリード", zh: "试玩负责人", id: "Lead Playtest" }, ["🧪", "🎯", "✅"]),
+      devsecops: buildStudioDepartment({ ko: "빌드보안팀", en: "Build & Security", ja: "ビルド・セキュリティ", zh: "构建与安全组", id: "Build dan Keamanan" }, "🛡️", { ko: "빌드 엔지니어", en: "Build Engineer", ja: "ビルドエンジニア", zh: "构建工程师", id: "Insinyur Build" }, ["🛡️", "🔧", "🚀"]),
+      operations: buildStudioDepartment({ ko: "릴리스운영팀", en: "Release Operations", ja: "リリース運用", zh: "发布运营组", id: "Operasi Rilis" }, "📦", { ko: "릴리스 매니저", en: "Release Manager", ja: "リリースマネージャー", zh: "发布经理", id: "Manajer Rilis" }, ["📦", "📈", "🚀"]),
+    },
+    staffCycle: ["planning", "dev", "design", "qa", "devsecops", "operations", "dev", "qa"],
+  }),
+  app_dev_studio: buildStudioPreset({
+    key: "app_dev_studio",
+    slug: "APPS",
+    label: { ko: "앱 개발 스튜디오", en: "Developer Apps Studio", ja: "アプリ開発スタジオ", zh: "应用开发工作室", id: "Studio Pengembang Aplikasi" },
+    summary: { ko: "제품 흐름·구현·보안·검증·출시를 통합", en: "Unifies product flows, implementation, security, testing, and release", ja: "製品フロー・実装・セキュリティ・検証・リリースを統合", zh: "整合产品流程、实现、安全、测试与发布", id: "Menggabungkan alur produk, implementasi, keamanan, pengujian, dan rilis" },
+    accent: 0x6c8cff,
+    wall: 0x4c5f9d,
+    departments: {
+      planning: buildStudioDepartment({ ko: "제품기획실", en: "Product Planning", ja: "プロダクト企画", zh: "产品规划组", id: "Perencanaan Produk" }, "📱", { ko: "프로덕트 매니저", en: "Product Manager", ja: "プロダクトマネージャー", zh: "产品经理", id: "Manajer Produk" }, ["📱", "🧭", "📋"]),
+      dev: buildStudioDepartment({ ko: "앱엔지니어링팀", en: "App Engineering", ja: "アプリエンジニアリング", zh: "应用工程组", id: "Engineering Aplikasi" }, "💻", { ko: "앱 엔지니어", en: "App Engineer", ja: "アプリエンジニア", zh: "应用工程师", id: "Insinyur Aplikasi" }, ["💻", "⚙️", "🧱"]),
+      design: buildStudioDepartment({ ko: "UX/UI팀", en: "UX/UI Design", ja: "UX/UIデザイン", zh: "UX/UI设计组", id: "Desain UX/UI" }, "🧑‍💻", { ko: "UX/UI 디자이너", en: "UX/UI Designer", ja: "UX/UIデザイナー", zh: "UX/UI设计师", id: "Desainer UX/UI" }, ["🧑‍💻", "🎨", "📐"]),
+      qa: buildStudioDepartment({ ko: "품질엔지니어링팀", en: "Quality Engineering", ja: "品質エンジニアリング", zh: "质量工程组", id: "Engineering Kualitas" }, "🧪", { ko: "품질 엔지니어", en: "Quality Engineer", ja: "品質エンジニア", zh: "质量工程师", id: "Insinyur Kualitas" }, ["🧪", "✅", "🔎"]),
+      devsecops: buildStudioDepartment({ ko: "앱보안인프라팀", en: "AppSec & Infrastructure", ja: "アプリセキュリティ・インフラ", zh: "应用安全与基础设施组", id: "Keamanan dan Infrastruktur" }, "🛡️", { ko: "앱 보안 엔지니어", en: "App Security Engineer", ja: "アプリセキュリティエンジニア", zh: "应用安全工程师", id: "Insinyur Keamanan Aplikasi" }, ["🛡️", "🔐", "☁️"]),
+      operations: buildStudioDepartment({ ko: "릴리스운영팀", en: "Release Operations", ja: "リリース運用", zh: "发布运营组", id: "Operasi Rilis" }, "🚀", { ko: "출시 매니저", en: "Release Manager", ja: "リリースマネージャー", zh: "发布经理", id: "Manajer Rilis" }, ["🚀", "📈", "📦"]),
+    },
+    staffCycle: ["planning", "dev", "design", "qa", "devsecops", "operations", "dev", "qa"],
+  }),
+} satisfies Record<StudioPackKey, PackPreset>;
+
 const PACK_PRESETS: Record<WorkflowPackKey, PackPreset> = {
   development: {
     key: "development",
@@ -452,6 +585,7 @@ const PACK_PRESETS: Record<WorkflowPackKey, PackPreset> = {
       nonLeaderDeptCycle: ["planning", "design", "dev", "design", "qa", "planning", "operations", "design"],
     },
   },
+  ...STUDIO_PACK_PRESETS,
 };
 
 export function normalizeOfficeWorkflowPack(value: unknown): WorkflowPackKey {

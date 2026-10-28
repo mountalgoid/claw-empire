@@ -18,6 +18,7 @@ interface MeetingPresenceSyncParams {
   deliveryLayerRef: MutableRefObject<Container | null>;
   texturesRef: MutableRefObject<Record<string, Texture>>;
   ceoMeetingSeatsRef: MutableRefObject<Array<{ x: number; y: number }>>;
+  agentPosRef: MutableRefObject<Map<string, { x: number; y: number }>>;
   deliveriesRef: MutableRefObject<Delivery[]>;
   spriteMapRef: MutableRefObject<Map<string, number>>;
 }
@@ -29,6 +30,7 @@ export function useMeetingPresenceSync({
   deliveryLayerRef,
   texturesRef,
   ceoMeetingSeatsRef,
+  agentPosRef,
   deliveriesRef,
   spriteMapRef,
 }: MeetingPresenceSyncParams): void {
@@ -101,16 +103,17 @@ export function useMeetingPresenceSync({
       actor.addChild(badgeText);
       paintMeetingBadge(badge, badgeText, language, row.phase, decision);
 
-      actor.position.set(seat.x, seat.y);
+      const startPosition = agentPosRef.current.get(row.agent_id) ?? seat;
+      actor.position.set(startPosition.x, startPosition.y);
       dlLayer.addChild(actor);
       deliveriesRef.current.push({
         sprite: actor,
-        fromX: seat.x,
-        fromY: seat.y,
+        fromX: startPosition.x,
+        fromY: startPosition.y,
         toX: seat.x,
         toY: seat.y,
-        progress: 1,
-        speed: 0.0048,
+        progress: startPosition.x === seat.x && startPosition.y === seat.y ? 1 : 0,
+        speed: 0.012,
         type: "walk",
         agentId: row.agent_id,
         holdAtSeat: true,
@@ -137,6 +140,7 @@ export function useMeetingPresenceSync({
     deliveryLayerRef,
     texturesRef,
     ceoMeetingSeatsRef,
+    agentPosRef,
     deliveriesRef,
     spriteMapRef,
   ]);

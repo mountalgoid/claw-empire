@@ -649,6 +649,7 @@ export function initializeWorkflowPartC(ctx: RuntimeContext): WorkflowOrchestrat
     upsertReportFlowValue,
     isReportRequestTask,
     notifyTaskStatus,
+    emitTaskReportEvent,
     prettyStreamJson,
     getWorktreeDiffSummary,
     hasVisibleDiffSummary,

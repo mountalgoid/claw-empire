@@ -386,6 +386,7 @@ export default function OfficeView({
     deliveryLayerRef,
     texturesRef,
     ceoMeetingSeatsRef,
+    agentPosRef,
     deliveriesRef,
     spriteMapRef,
   });

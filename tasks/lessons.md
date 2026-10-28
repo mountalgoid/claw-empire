@@ -1,0 +1,21 @@
+# Pelajaran
+
+- Jangan mengandalkan model CLI yang hanya berasal dari seed lama. Sebelum menjalankan task, cocokkan konfigurasi provider dengan model yang benar-benar tersedia di cache lokal dan sesuaikan tingkat penalarannya.
+- Memori agen harus dipisahkan dari konteks percakapan sementara: simpan ringkasan hasil task per agen/per proyek, lalu masukkan kembali secara terbatas agar kecerdasan bertambah tanpa membuat prompt membengkak.
+- Kegagalan jaringan harus diperlakukan sebagai antrean tertunda, bukan kegagalan pekerjaan; checkpoint dan worktree perlu dipertahankan agar eksekusi dapat dilanjutkan.
+- Kemampuan agent harus dirutekan dari kebutuhan task dan resource yang benar-benar terpasang; label kemampuan saja tidak boleh dianggap sebagai akses plugin atau aplikasi nyata.
+- Quality gate harus menjadi bagian dari kontrak eksekusi agen, sehingga hasil tidak dianggap selesai hanya karena proses CLI berakhir dengan kode nol.
+- Provider CLI yang tidak terpasang (`spawn ... ENOENT`) harus dijeda dan tidak dikembalikan ke Inbox untuk retry otomatis tanpa batas; artefak yang sudah tervalidasi tetap harus dipertahankan dan task dipulihkan ke Review.
+- Semua modal keputusan dan isi pesan server harus memiliki jalur lokalisasi aktif; fallback bahasa Inggris tidak boleh tampil saat Bahasa Indonesia dipilih, termasuk teks historis dan label opsi.
+- Kegagalan eksekusi harus dijeda dengan checkpoint tetap tersimpan, bukan dikembalikan ke Inbox; laporan wajib menyediakan jalankan ulang dan revisi agar tidak terjadi loop error tanpa kendali.
+- Tombol mode Tugas dan Laporan pada panel pengumuman tidak boleh dinonaktifkan hanya karena belum memilih agen; mode tetap harus bisa dibuka dan diarahkan ke alur proyek/penugasan otomatis.
+- Popup laporan di perangkat kecil harus memakai tinggi viewport terbatas dengan footer tetap terlihat; aksi navigasi dan pengiriman revisi tidak boleh terdorong keluar layar.
+- Perhitungkan safe area perangkat saat membatasi tinggi popup; padding bawah browser dapat memotong objek terakhir meskipun panel sudah memakai `100dvh`.
+- Satu alur tugas harus berhenti di Review untuk keputusan CEO; jangan menjalankan persetujuan otomatis setelah laporan agen dikirim. Sediakan aksi Selesaikan dan Revisi agar proyek dapat dilanjutkan di waktu berikutnya.
+- Saat tugas berhasil dibuat tetapi UI hanya menyegarkan data tanpa status visual, pengguna mengira eksekusi berhenti. Semua jalur pembuatan/pengiriman tugas harus memberi umpan balik langsung dan pesan kegagalan di UI.
+- Animasi status kantor perlu memiliki tujuan visual yang jelas: kerja bergerak pendek di area meja, rapat memakai rute menuju kursi, dan presence rapat menjadi sumber kebenaran agar karakter tidak bergerak ganda.
+- Tombol hasil tidak boleh mengasumsikan semua proyek memiliki index.html. Coba preview dan artefak secara berurutan, lalu selalu sediakan fallback laporan yang bisa dibaca.
+- Link artefak yang berasal dari worktree tidak boleh dipakai mentah setelah merge/cleanup; ambil path relatif seperti content/ atau output/ lalu layani dari proyek utama.
+- Pemulihan otomatis harus berada di dalam prompt eksekusi dengan batas keamanan: diagnosis dulu, gunakan resource disetujui, buat fallback lokal hanya jika aman, verifikasi ulang sekali, lalu jeda dengan blocker terukur agar tidak terjadi retry loop.
+- Penemuan external tidak boleh bergantung pada input manual, tetapi harus dibatasi allowlist, query minimum, redaksi data sensitif, validasi paket, dan pencatatan sumber agar otomatis tetap aman dan dapat diaudit.
+- Prop UI yang dipakai dalam render bersarang harus diteruskan dan memiliki fallback default; prop undefined pada operasi seperti Set.has dapat membuat seluruh Dashboard blank meskipun TypeScript tidak menangkapnya.

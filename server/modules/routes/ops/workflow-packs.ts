@@ -77,6 +77,16 @@ function classifyWorkflowPack(text: string): WorkflowRouteResult {
     addScore("web_research_report", 0.78);
   if (matcher(/(보고서|리포트|brief|summary\s*report|status\s*report|executive\s*summary)/i)) addScore("report", 0.74);
   if (matcher(/(소설|novel|fiction|chapter|스토리|세계관|시놉시스)/i)) addScore("novel", 0.76);
+  if (matcher(/(clipper|clipping|short\s*clip|highlight|cuplikan|klip|potong\s*(video|rekaman))/i))
+    addScore("clipper_studio", 0.9);
+  if (matcher(/(content\s*(plan|calendar|strategy)|konten|copywriting|marketing\s*content|social\s*media)/i))
+    addScore("content_studio", 0.86);
+  if (matcher(/(art\s*drawing|drawing|illustration|ilustrasi|gambar|menggambar|concept\s*art|desain\s*karakter)/i))
+    addScore("art_drawing_studio", 0.88);
+  if (matcher(/(game\s*(dev|development|play|design)|video\s*game|gameplay|unity|unreal|godot|permainan)/i))
+    addScore("game_dev_studio", 0.9);
+  if (matcher(/(app\s*(development|dev|build)|web\s*app|mobile\s*app|desktop\s*app|aplikasi|software|aplikasi\s*kasir)/i))
+    addScore("app_dev_studio", 0.9);
   if (matcher(/(영상|video|콘티|storyboard|shot\s*list|샷리스트|script\s*for\s*video|릴스|쇼츠)/i))
     addScore("video_preprod", 0.77);
   if (matcher(/(역할\s*놀이|roleplay|rp\b|캐릭터\s*대화|in\s*character)/i)) addScore("roleplay", 0.79);

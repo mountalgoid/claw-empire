@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isApiRequestError } from "../../api";
 import { useI18n } from "../../i18n";
 import { launchProjectFromGoal } from "../../api";
 
@@ -23,7 +24,20 @@ export default function QuickProjectLaunchModal({ onClose, onRefresh }: QuickPro
       onRefresh();
       onClose();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      const code = isApiRequestError(cause) ? cause.code : "";
+      const message =
+        code === "project_path_conflict"
+          ? t({
+              ko: "이 목표에 연결된 기존 프로젝트를 찾았지만 경로가 충돌했습니다. 기존 프로젝트를 재사용하도록 새로고침해 주세요.",
+              en: "An existing project uses this path. Refresh and try again so the project can be resumed.",
+              ja: "このパスは既存プロジェクトで使用中です。更新して既存プロジェクトを再開してください。",
+              zh: "此路径已被现有项目使用。请刷新后重试以继续现有项目。",
+              id: "Path ini sudah digunakan proyek lain. Segarkan halaman lalu coba lagi agar proyek lama dapat dilanjutkan.",
+            })
+          : cause instanceof Error
+            ? cause.message
+            : String(cause);
+      setError(message);
     } finally {
       setBusy(false);
     }

@@ -218,6 +218,7 @@ function Dashboard({ stats, agents, tasks, companyName, onPrimaryCtaClick, unrea
         language={language}
         numberFormatter={numberFormatter}
         t={t}
+        unreadAgentIds={unreadAgentIds}
       />
 
       <DashboardMissionLog

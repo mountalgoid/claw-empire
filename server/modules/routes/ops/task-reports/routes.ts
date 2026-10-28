@@ -29,9 +29,9 @@ export function registerTaskReportRoutes(ctx: RuntimeContext): void {
       LEFT JOIN agents a ON a.id = t.assigned_agent_id
       LEFT JOIN departments d ON d.id = t.department_id
       LEFT JOIN projects p ON p.id = t.project_id
-      WHERE t.status = 'done'
+      WHERE t.status IN ('review', 'done')
         AND (t.source_task_id IS NULL OR TRIM(t.source_task_id) = '')
-      ORDER BY t.completed_at DESC
+      ORDER BY COALESCE(t.completed_at, t.updated_at) DESC
       LIMIT 50
     `,
         )

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { UiLanguage } from "../i18n";
-import { localeName, pickLang } from "../i18n";
+import { localeName, localizeMessageContent, pickLang } from "../i18n";
 import type { Agent } from "../types";
 import AgentAvatar, { buildSpriteMap } from "./AgentAvatar";
 import MessageContent from "./MessageContent";
@@ -19,7 +19,7 @@ export default function DecisionInboxModal({
   onReplyOption,
   onOpenChat,
 }: DecisionInboxModalProps) {
-  const t = (text: { ko: string; en: string; ja?: string; zh?: string }) => pickLang(uiLanguage, text);
+  const t = (text: { ko: string; en: string; ja?: string; zh?: string; id?: string }) => pickLang(uiLanguage, text);
   const spriteMap = useMemo(() => buildSpriteMap(agents), [agents]);
   const agentById = useMemo(() => {
     const map = new Map<string, Agent>();
@@ -249,6 +249,7 @@ export default function DecisionInboxModal({
               {t({
                 ko: "미결 목록 불러오는 중...",
                 en: "Loading pending decisions...",
+                id: "Memuat keputusan yang menunggu...",
                 ja: "未決一覧を読み込み中...",
                 zh: "正在加载待处理决策...",
               })}
@@ -258,6 +259,7 @@ export default function DecisionInboxModal({
               {t({
                 ko: "현재 미결 의사결정이 없습니다.",
                 en: "No pending decisions right now.",
+                id: "Tidak ada keputusan yang menunggu saat ini.",
                 ja: "現在、未決の意思決定はありません。",
                 zh: "当前没有待处理决策。",
               })}
@@ -302,13 +304,13 @@ export default function DecisionInboxModal({
                         onClick={() => onOpenChat(item.agentId!)}
                         className="rounded-md border border-slate-600 px-2 py-1 text-[11px] text-slate-300 transition hover:border-slate-400 hover:bg-slate-700 hover:text-white"
                       >
-                        {t({ ko: "채팅 열기", en: "Open Chat", ja: "チャットを開く", zh: "打开聊天" })}
+                        {t({ ko: "채팅 열기", en: "Open Chat", ja: "チャットを開く", zh: "打开聊天", id: "Buka Percakapan" })}
                       </button>
                     ) : null}
                   </div>
 
                   <div className="rounded-lg border border-slate-700/70 bg-slate-900/60 px-2.5 py-2 text-xs text-slate-200">
-                    <MessageContent content={item.requestContent} />
+                    <MessageContent content={localizeMessageContent(uiLanguage, item.requestContent)} />
                   </div>
 
                   <div className="mt-2 space-y-1.5">
@@ -344,7 +346,7 @@ export default function DecisionInboxModal({
                                   disabled={isItemBusy}
                                   className={`decision-inbox-option w-full rounded-md px-2.5 py-1.5 text-left text-xs transition disabled:cursor-not-allowed disabled:opacity-60${selectedFlag ? " decision-inbox-option-active" : ""}`}
                                 >
-                                  {`${option.number}. ${option.label}`}
+                                  {`${option.number}. ${localizeMessageContent(uiLanguage, option.label)}`}
                                 </button>
                               );
                             })}
@@ -414,7 +416,7 @@ export default function DecisionInboxModal({
                           >
                             {isBusy
                               ? t({ ko: "전송 중...", en: "Sending...", ja: "送信中...", zh: "发送中..." })
-                              : `${option.number}. ${option.label}`}
+                              : `${option.number}. ${localizeMessageContent(uiLanguage, option.label)}`}
                           </button>
                         );
                       })

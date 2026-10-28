@@ -38,7 +38,7 @@ export function DashboardDeptAndSquad({
   language,
   numberFormatter,
   t,
-  unreadAgentIds,
+  unreadAgentIds = new Set(),
 }: DashboardDeptAndSquadProps) {
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">

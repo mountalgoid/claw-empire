@@ -19,8 +19,8 @@ export type ProjectMetaPayload = {
 export type PendingSendAction =
   | { kind: "directive"; content: string }
   | { kind: "announcement"; content: string }
-  | { kind: "task"; content: string; receiverId: string }
-  | { kind: "report"; content: string; receiverId: string }
+  | { kind: "task"; content: string; receiverId?: string }
+  | { kind: "report"; content: string; receiverId?: string }
   | { kind: "chat"; content: string; receiverId: string }
   | { kind: "broadcast"; content: string };
 

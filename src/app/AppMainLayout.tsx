@@ -122,6 +122,8 @@ interface AppMainLayoutProps {
   onAgentsChange: () => void;
   activeOfficeWorkflowPack: WorkflowPackKey;
   onChangeOfficeWorkflowPack: (packKey: WorkflowPackKey) => void;
+  officePackManual: boolean;
+  onEnableOfficePackAuto: () => void;
   onSaveSettings: (settings: CompanySettings) => Promise<void>;
   onRefreshCli: () => Promise<void>;
   onOauthResultClear: () => void;
@@ -133,6 +135,7 @@ interface AppMainLayoutProps {
   onDismissAutoUpdateNotice: () => Promise<void>;
   onDismissUpdate: () => void;
   officePackBootstrappingLabel?: string | null;
+  actionNotice: { tone: "info" | "error"; message: string } | null;
   children?: ReactNode;
 }
 
@@ -184,6 +187,8 @@ export default function AppMainLayout({
   onAgentsChange,
   activeOfficeWorkflowPack,
   onChangeOfficeWorkflowPack,
+  officePackManual,
+  onEnableOfficePackAuto,
   onSaveSettings,
   onRefreshCli,
   onOauthResultClear,
@@ -195,6 +200,7 @@ export default function AppMainLayout({
   onDismissAutoUpdateNotice,
   onDismissUpdate,
   officePackBootstrappingLabel,
+  actionNotice,
   children,
 }: AppMainLayoutProps) {
   const uiLanguage =
@@ -409,6 +415,9 @@ export default function AppMainLayout({
                     value: officePackKey,
                     options: officePackOptions,
                     onChange: onChangeOfficeWorkflowPack,
+                    autoMode: !officePackManual,
+                    autoLabel: uiLanguage === "id" ? "Otomatis" : "Auto",
+                    onEnableAuto: onEnableOfficePackAuto,
                   }
                 : null
             }
@@ -421,6 +430,22 @@ export default function AppMainLayout({
           {officePackBootstrappingMessage && (
             <div className="border-b border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 sm:px-4 lg:px-6">
               <div className="text-xs font-medium text-emerald-100">{officePackBootstrappingMessage}</div>
+            </div>
+          )}
+
+          {actionNotice && (
+            <div
+              role="status"
+              className={`border-b px-3 py-2.5 text-xs sm:px-4 lg:px-6 ${
+                actionNotice.tone === "error"
+                  ? "border-rose-500/30 bg-rose-500/10 text-rose-100"
+                  : "border-cyan-500/30 bg-cyan-500/10 text-cyan-100"
+              }`}
+            >
+              <div className="mx-auto flex max-w-7xl items-center gap-2 font-medium">
+                <span aria-hidden="true">{actionNotice.tone === "error" ? "⚠️" : "⚡"}</span>
+                <span>{actionNotice.message}</span>
+              </div>
             </div>
           )}
 

@@ -38,7 +38,6 @@ export function createRunCompleteHandler(deps: CreateRunCompleteHandlerDeps) {
     crossDeptNextCallbacks,
     recoverCrossDeptQueueAfterMissingCallback,
     subtaskDelegationCallbacks,
-    finishReview,
     reconcileDelegatedSubtasksAfterRun,
     completeTaskWithoutReview,
     isReportDesignCheckpointTask,
@@ -50,6 +49,7 @@ export function createRunCompleteHandler(deps: CreateRunCompleteHandlerDeps) {
     upsertReportFlowValue,
     isReportRequestTask,
     notifyTaskStatus,
+    emitTaskReportEvent,
     prettyStreamJson,
     getWorktreeDiffSummary,
     hasVisibleDiffSummary,
@@ -342,7 +342,7 @@ export function createRunCompleteHandler(deps: CreateRunCompleteHandlerDeps) {
       finalExitCode !== 0 &&
       Boolean(
         result &&
-          /(fetch failed|ECONNREFUSED|ENETUNREACH|EHOSTUNREACH|ETIMEDOUT|timed out|network|connection reset|provider .*\(5\d\d\))/i.test(
+          /(fetch failed|ECONNREFUSED|ENETUNREACH|EHOSTUNREACH|ETIMEDOUT|timed out|network|connection reset|provider .*\(5\d\d\)|spawn\s+[^\n]+\s+ENOENT|command not found)/i.test(
             result,
           ),
       );
@@ -635,8 +635,9 @@ export function createRunCompleteHandler(deps: CreateRunCompleteHandlerDeps) {
         if (!task) return;
         const leader = findTeamLeader(task.department_id);
         if (!leader) {
-          // No team leader — auto-approve
-          finishReview(taskId, task.title);
+          // CEO must explicitly approve the result. Keep the task in Review.
+          appendTaskLog(taskId, "system", "CEO review required: no team leader was available for automatic review.");
+          emitTaskReportEvent(taskId);
           return;
         }
 
@@ -714,14 +715,20 @@ export function createRunCompleteHandler(deps: CreateRunCompleteHandlerDeps) {
 
         sendAgentMessage(leader, reportContent, "report", "all", null, taskId);
 
-        // After another 2-3s: team leader approves → move to done
-        setTimeout(() => {
-          finishReview(taskId, task.title);
-        }, 2500);
+        appendTaskLog(taskId, "system", "CEO review required: result is ready for approval or revision.");
+        emitTaskReportEvent(taskId);
       }, 2500);
     } else {
-      // ── FAILURE: Reset to inbox, team leader reports failure ──
-      db.prepare("UPDATE tasks SET status = 'inbox', updated_at = ? WHERE id = ?").run(t, taskId);
+      // ── FAILURE: Pause safely instead of returning to Inbox ──
+      // Returning a failed task to Inbox lets the automatic router pick it up
+      // again immediately, creating an endless error/announcement loop. Keep
+      // the checkpoint and let the CEO explicitly resume or revise it.
+      db.prepare("UPDATE tasks SET status = 'pending', updated_at = ? WHERE id = ?").run(t, taskId);
+      appendTaskLog(
+        taskId,
+        "system",
+        "Task paused after execution failure; checkpoint preserved. Review the report to retry or revise.",
+      );
 
       if (task?.source_task_id) {
         reconcileDelegatedSubtasksAfterRun(taskId, finalExitCode);
@@ -730,11 +737,10 @@ export function createRunCompleteHandler(deps: CreateRunCompleteHandlerDeps) {
       const updatedTask = db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
       broadcast("task_update", updatedTask);
 
-      // Clean up worktree on failure — failed work shouldn't persist
+      // Keep the worktree/checkpoint available for the report and a controlled retry.
       const failWtInfo = taskWorktrees.get(taskId);
       if (failWtInfo) {
-        cleanupWorktree(failWtInfo.projectPath, taskId);
-        appendTaskLog(taskId, "system", "Worktree cleaned up (task failed)");
+        appendTaskLog(taskId, "system", "Worktree preserved for controlled retry or revision");
       }
 
       if (task) {
@@ -799,7 +805,7 @@ export function createRunCompleteHandler(deps: CreateRunCompleteHandlerDeps) {
           pickL(
             l(
               [`'${task.title}' 작업 실패 (exit code: ${finalExitCode}).`],
-              [`Task '${task.title}' failed (exit code: ${finalExitCode}).`],
+              [`Tugas '${task.title}' gagal (kode keluar: ${finalExitCode}) dan dijeda agar tidak mengulang otomatis.`],
               [`'${task.title}' のタスクが失敗しました (exit code: ${finalExitCode})。`],
               [`任务 '${task.title}' 失败（exit code: ${finalExitCode}）。`],
             ),

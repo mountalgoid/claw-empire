@@ -78,6 +78,37 @@ export function createHttpAgentTools(deps: CreateHttpAgentToolsDeps) {
     return rawModel.includes("/") ? rawModel.split("/").pop()! : rawModel;
   }
 
+  async function resolveAvailableCopilotModel(
+    baseUrl: string,
+    token: string,
+    requestedModel: string,
+    signal: AbortSignal,
+  ): Promise<string> {
+    try {
+      const response = await fetch(`${baseUrl}/models`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          "User-Agent": "climpire",
+          "Editor-Version": "climpire/1.0.0",
+          "Copilot-Integration-Id": "vscode-chat",
+        },
+        signal,
+      });
+      if (!response.ok) return requestedModel;
+      const payload = (await response.json()) as { data?: Array<{ id?: string }> };
+      const available = (payload.data ?? [])
+        .map((model) => String(model.id ?? "").trim())
+        .filter(Boolean);
+      if (available.length === 0 || available.includes(requestedModel)) return requestedModel;
+
+      const preferred = ["gpt-4.1", "gpt-4o", "claude-3.7-sonnet", "gemini-2.5-pro"];
+      return preferred.find((model) => available.includes(model)) ?? available[0] ?? requestedModel;
+    } catch {
+      return requestedModel;
+    }
+  }
+
   function resolveAntigravityModel(rawModel: string): string {
     let model = rawModel;
     if (model.includes("antigravity-")) {
@@ -117,7 +148,7 @@ export function createHttpAgentTools(deps: CreateHttpAgentToolsDeps) {
       if (!account.accessToken) continue;
       const accountName = getOAuthAccountDisplayName(account);
       const rawModel = account.modelOverride || defaultRawModel;
-      const model = resolveCopilotModel(rawModel);
+      const requestedModel = resolveCopilotModel(rawModel);
 
       const header = `[copilot] Account: ${accountName}${account.modelOverride ? ` (model override: ${rawModel})` : ""}\n`;
       safeWrite(header);
@@ -132,6 +163,12 @@ export function createHttpAgentTools(deps: CreateHttpAgentToolsDeps) {
             data: "[copilot] Exchanging Copilot token...\n",
           });
         const { token, baseUrl } = await exchangeCopilotToken(account.accessToken);
+        const model = await resolveAvailableCopilotModel(baseUrl, token, requestedModel, signal);
+        if (model !== requestedModel) {
+          const fallbackNotice = `[copilot] Model ${requestedModel} is unavailable; using ${model} instead.\n`;
+          safeWrite(fallbackNotice);
+          if (taskId) broadcast("cli_output", { task_id: taskId, stream: "stderr", data: fallbackNotice });
+        }
         safeWrite(`[copilot] Model: ${model}, Base: ${baseUrl}\n---\n`);
         if (taskId)
           broadcast("cli_output", {

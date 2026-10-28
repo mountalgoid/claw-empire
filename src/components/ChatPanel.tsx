@@ -252,11 +252,11 @@ export function ChatPanel({
         return;
       }
       if (action.kind === "task") {
-        onSendMessage(action.content, "agent", action.receiverId, "task_assign", projectMeta);
+        onSendMessage(action.content, action.receiverId ? "agent" : "all", action.receiverId, "task_assign", projectMeta);
         return;
       }
       if (action.kind === "report") {
-        onSendMessage(action.content, "agent", action.receiverId, "report", projectMeta);
+        onSendMessage(action.content, action.receiverId ? "agent" : "all", action.receiverId, "report", projectMeta);
         return;
       }
       if (action.kind === "chat") {
@@ -322,13 +322,13 @@ export function ChatPanel({
       action = { kind: "directive", content: directiveContent };
     } else if (mode === "announcement") {
       action = { kind: "announcement", content: trimmed };
-    } else if (mode === "task" && selectedAgent) {
-      action = { kind: "task", content: trimmed, receiverId: selectedAgent.id };
-    } else if (mode === "report" && selectedAgent) {
+    } else if (mode === "task") {
+      action = { kind: "task", content: trimmed, receiverId: selectedAgent?.id };
+    } else if (mode === "report") {
       action = {
         kind: "report",
         content: `[${tr("보고 요청", "Report Request", "レポート依頼", "报告请求")}] ${trimmed}`,
-        receiverId: selectedAgent.id,
+        receiverId: selectedAgent?.id,
       };
     } else if (selectedAgent) {
       action = { kind: "chat", content: trimmed, receiverId: selectedAgent.id };
@@ -431,6 +431,7 @@ export function ChatPanel({
         agents={agents}
         spriteMap={spriteMap}
         locale={locale}
+        language={language}
         tr={tr}
         getAgentName={getAgentName}
         decisionRequestByMessage={decisionRequestByMessage}

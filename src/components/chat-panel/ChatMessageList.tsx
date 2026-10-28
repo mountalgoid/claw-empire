@@ -3,6 +3,7 @@ import type { Agent, Message } from "../../types";
 import type { DecisionOption } from "../chat/decision-request";
 import AgentAvatar from "../AgentAvatar";
 import MessageContent from "../MessageContent";
+import { localizeMessageContent } from "../../i18n";
 
 type Tr = (ko: string, en: string, ja?: string, zh?: string, id?: string) => string;
 
@@ -20,6 +21,7 @@ interface ChatMessageListProps {
   agents: Agent[];
   spriteMap: ReturnType<typeof import("../AgentAvatar").buildSpriteMap>;
   locale: string;
+  language: import("../../i18n").UiLanguage;
   tr: Tr;
   getAgentName: (agent: Agent | null | undefined) => string;
   decisionRequestByMessage: Map<string, { options: DecisionOption[] }>;
@@ -86,6 +88,7 @@ export default function ChatMessageList({
   agents,
   spriteMap,
   locale,
+  language,
   tr,
   getAgentName,
   decisionRequestByMessage,
@@ -149,7 +152,7 @@ export default function ChatMessageList({
                   <div className="flex max-w-[75%] flex-col gap-1">
                     <span className="px-1 text-xs text-gray-500">{senderName}</span>
                     <div className="announcement-reply-bubble rounded-2xl rounded-bl-sm border border-yellow-500/20 bg-gray-700/70 px-4 py-2.5 text-sm text-gray-100 shadow-md">
-                      <MessageContent content={msg.content} />
+                      <MessageContent content={localizeMessageContent(language, msg.content)} />
                     </div>
                     {decisionRequest && (
                       <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-2 py-2">
@@ -205,7 +208,7 @@ export default function ChatMessageList({
                         : "announcement-message-bubble border border-yellow-500/30 bg-yellow-500/15 text-yellow-300"
                     }`}
                   >
-                    <MessageContent content={msg.content} />
+                    <MessageContent content={localizeMessageContent(language, msg.content)} />
                   </div>
                   <span className="text-xs text-gray-600">{formatTime(msg.created_at, locale)}</span>
                 </div>
@@ -217,7 +220,7 @@ export default function ChatMessageList({
                 <div key={msg.id} className="flex flex-col items-end gap-1">
                   <span className="px-1 text-xs text-gray-500">{tr("CEO", "CEO")}</span>
                   <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-blue-600 px-4 py-2.5 text-sm text-white shadow-md">
-                    <MessageContent content={msg.content} />
+                    <MessageContent content={localizeMessageContent(language, msg.content)} />
                   </div>
                   <span className="px-1 text-xs text-gray-600">{formatTime(msg.created_at, locale)}</span>
                 </div>
@@ -230,7 +233,7 @@ export default function ChatMessageList({
                 <div className="flex max-w-[75%] flex-col gap-1">
                   <span className="px-1 text-xs text-gray-500">{senderName}</span>
                   <div className="rounded-2xl rounded-bl-sm bg-gray-700 px-4 py-2.5 text-sm text-gray-100 shadow-md">
-                    <MessageContent content={msg.content} />
+                  <MessageContent content={localizeMessageContent(language, msg.content)} />
                   </div>
                   {decisionRequest && (
                     <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-2 py-2">
@@ -277,7 +280,7 @@ export default function ChatMessageList({
               <div className="flex max-w-[75%] flex-col gap-1">
                 <span className="px-1 text-xs text-gray-500">{getAgentName(selectedAgent)}</span>
                 <div className="rounded-2xl rounded-bl-sm border border-emerald-500/20 bg-gray-700 px-4 py-2.5 text-sm text-gray-100 shadow-md">
-                  <MessageContent content={streamingMessage.content} />
+                  <MessageContent content={localizeMessageContent(language, streamingMessage.content)} />
                   <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-emerald-400 align-text-bottom" />
                 </div>
               </div>

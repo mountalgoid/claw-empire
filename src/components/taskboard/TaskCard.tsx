@@ -67,6 +67,9 @@ export default function TaskCard({
   const { t, locale: localeTag, language: locale } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
+  const [showRevision, setShowRevision] = useState(false);
+  const [revisionInstruction, setRevisionInstruction] = useState("");
+  const [revisionBusy, setRevisionBusy] = useState(false);
   const [showSubtasks, setShowSubtasks] = useState(false);
   const [agentWarning, setAgentWarning] = useState(false);
 
@@ -83,6 +86,25 @@ export default function TaskCard({
   const canResume = (task.status === "pending" || task.status === "cancelled") && !!onResumeTask;
   const canDelete = task.status !== "in_progress";
   const canHideTask = isHideableStatus(task.status);
+  const canRevise = task.status === "review" || task.status === "done";
+
+  const submitRevision = async () => {
+    const instruction = revisionInstruction.trim();
+    if (!instruction || revisionBusy) return;
+    setRevisionBusy(true);
+    try {
+      const revisionBlock = `\n\n[REVISION REQUEST]\n${instruction}\n[/REVISION REQUEST]`;
+      await onUpdateTask(task.id, {
+        description: `${task.description?.trim() ?? ""}${revisionBlock}`.trim(),
+        status: "planned",
+      });
+      setRevisionInstruction("");
+      setShowRevision(false);
+      onRunTask(task.id);
+    } finally {
+      setRevisionBusy(false);
+    }
+  };
 
   return (
     <div
@@ -380,6 +402,21 @@ export default function TaskCard({
             {t({ ko: "Diff", en: "Diff", ja: "差分", zh: "差异" })}
           </button>
         )}
+        {canRevise && (
+          <button
+            onClick={() => setShowRevision((current) => !current)}
+            title={t({
+              ko: "수정 지시 작성",
+              en: "Write revision instructions",
+              ja: "修正指示を書く",
+              zh: "编写修订指示",
+              id: "Tulis instruksi revisi",
+            })}
+            className="flex items-center justify-center gap-1 rounded-lg bg-amber-800 px-2 py-1.5 text-xs font-medium text-amber-100 transition hover:bg-amber-700"
+          >
+            ✏️ {t({ ko: "수정", en: "Revise", ja: "修正", zh: "修订", id: "Revisi" })}
+          </button>
+        )}
         {(task.status === "review" || task.status === "done") && (
           <button
             onClick={() =>
@@ -442,6 +479,62 @@ export default function TaskCard({
           </button>
         )}
       </div>
+
+      {showRevision && canRevise && (
+        <div className="mt-3 rounded-lg border border-amber-700/60 bg-amber-950/30 p-3">
+          <label className="mb-1.5 block text-xs font-medium text-amber-200">
+            {t({
+              ko: "무엇을 수정할지 자연스럽게 입력하세요",
+              en: "Describe what should be revised",
+              ja: "何を修正するか自然に入力してください",
+              zh: "请自然地描述需要修订的内容",
+              id: "Jelaskan bagian yang perlu direvisi",
+            })}
+          </label>
+          <textarea
+            value={revisionInstruction}
+            onChange={(event) => setRevisionInstruction(event.target.value)}
+            onKeyDown={(event) => {
+              if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                event.preventDefault();
+                void submitRevision();
+              }
+            }}
+            rows={3}
+            autoFocus
+            placeholder={t({
+              ko: "Contoh: halaman checkout masih terpotong di ponsel, perbaiki dan uji ulang.",
+              en: "Example: the checkout page is clipped on mobile; fix it and test again.",
+              ja: "例: モバイルの決済画面が切れるので修正して再テストしてください。",
+              zh: "示例：移动端结账页面被截断，请修复并重新测试。",
+              id: "Contoh: halaman checkout terpotong di ponsel, perbaiki dan uji ulang.",
+            })}
+            className="w-full resize-y rounded-md border border-amber-700/60 bg-slate-900/80 px-2.5 py-2 text-xs text-slate-100 outline-none placeholder:text-slate-500 focus:border-amber-400"
+          />
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setRevisionInstruction("");
+                setShowRevision(false);
+              }}
+              className="rounded-md px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
+            >
+              {t({ ko: "Batal", en: "Cancel", ja: "キャンセル", zh: "取消", id: "Batal" })}
+            </button>
+            <button
+              type="button"
+              disabled={!revisionInstruction.trim() || revisionBusy}
+              onClick={() => void submitRevision()}
+              className="rounded-md bg-amber-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {revisionBusy
+                ? t({ ko: "Menjalankan...", en: "Running...", ja: "実行中...", zh: "运行中...", id: "Menjalankan..." })
+                : t({ ko: "Revisi & jalankan", en: "Revise & run", ja: "修正して実行", zh: "修订并运行", id: "Revisi & jalankan" })}
+            </button>
+          </div>
+        </div>
+      )}
 
       {showDiff && <DiffModal taskId={task.id} onClose={() => setShowDiff(false)} />}
     </div>

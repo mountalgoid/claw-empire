@@ -419,12 +419,17 @@ export async function launchProjectFromGoal(goal: string): Promise<{ project: Pr
     .trim()
     .slice(0, 100) || "Proyek Baru";
   const suggestedPath = `/projects/${slug}`;
-  const existing = await getProjects({ page: 1, page_size: 50, search: suggestedName });
+  // Search broadly before creating a project. A project may have been created
+  // from the same goal with a different display name, while its canonical
+  // path still points at the same slug. Reusing it avoids project_path_conflict.
+  const existing = await getProjects({ page: 1, page_size: 200 });
   const project =
     existing.projects.find(
       (candidate) =>
         candidate.project_path.toLowerCase() === suggestedPath.toLowerCase() ||
-        candidate.name.toLowerCase() === suggestedName.toLowerCase(),
+        candidate.name.toLowerCase() === suggestedName.toLowerCase() ||
+        candidate.core_goal.trim().toLowerCase() === normalizedGoal.toLowerCase() ||
+        candidate.project_path.toLowerCase().replace(/\\/g, "/").endsWith(`/${slug}`),
     ) ??
     (await createProject({
       name: suggestedName,

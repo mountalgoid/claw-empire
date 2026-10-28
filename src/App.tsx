@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import type { DecisionInboxItem } from "./components/chat/decision-inbox";
 import { useWebSocket } from "./hooks/useWebSocket";
 import type {
@@ -52,6 +52,8 @@ import {
 
 export type { OAuthCallbackResult } from "./app/types";
 
+const OFFICE_PACK_MANUAL_STORAGE_KEY = "claw-empire.office-pack.manual";
+
 export default function App() {
   const { theme, setTheme, toggleTheme } = useTheme();
   const initialRoomThemes = useMemo(() => readStoredRoomThemes(), []);
@@ -93,6 +95,7 @@ export default function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileHeaderMenuOpen, setMobileHeaderMenuOpen] = useState(false);
   const [officePackBootstrappingLabel, setOfficePackBootstrappingLabel] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<{ tone: "info" | "error"; message: string } | null>(null);
   const [runtimeOs] = useState<RuntimeOs>(() => detectRuntimeOs());
   const [forceUpdateBanner] = useState<boolean>(() => isForceUpdateBannerEnabled());
   const [updateStatus, setUpdateStatus] = useState<api.UpdateStatus | null>(null);
@@ -108,6 +111,12 @@ export default function App() {
     content: string;
   } | null>(null);
 
+  useEffect(() => {
+    if (!actionNotice) return;
+    const timer = window.setTimeout(() => setActionNotice(null), 7000);
+    return () => window.clearTimeout(timer);
+  }, [actionNotice]);
+
   const viewRef = useRef<View>("office");
   viewRef.current = view;
   const agentsRef = useRef<Agent[]>(agents);
@@ -122,6 +131,12 @@ export default function App() {
   const activeChatRef = useRef<{ showChat: boolean; agentId: string | null }>({ showChat: false, agentId: null });
   activeChatRef.current = { showChat, agentId: chatAgent?.id ?? null };
   const officePackBootstrapReqRef = useRef(0);
+  const officePackAutoRequestRef = useRef(0);
+  const officePackManualRef = useRef(
+    typeof window !== "undefined" && window.localStorage.getItem(OFFICE_PACK_MANUAL_STORAGE_KEY) === "true",
+  );
+  const [officePackManual, setOfficePackManual] = useState(officePackManualRef.current);
+  const officePackAutoTaskSignatureRef = useRef("");
 
   const readHydratedPackSet = (source: CompanySettings): Set<string> => {
     const raw = source.officePackHydratedPacks;
@@ -201,7 +216,14 @@ export default function App() {
     };
   };
 
-  const handleOfficeWorkflowPackChange = (packKey: WorkflowPackKey) => {
+  const handleOfficeWorkflowPackChange = (packKey: WorkflowPackKey, options?: { manual?: boolean }) => {
+    if (options?.manual !== false) {
+      officePackManualRef.current = true;
+      setOfficePackManual(true);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(OFFICE_PACK_MANUAL_STORAGE_KEY, "true");
+      }
+    }
     const previousPack = settings.officeWorkflowPack ?? "development";
     const previousProfiles = settings.officePackProfiles;
     const currentHydratedSet = readHydratedPackSet(settings);
@@ -265,6 +287,56 @@ export default function App() {
         );
       });
   };
+
+  const enableAutomaticOfficePack = useCallback(() => {
+    officePackManualRef.current = false;
+    setOfficePackManual(false);
+    officePackAutoTaskSignatureRef.current = "";
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(OFFICE_PACK_MANUAL_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (loading || officePackManualRef.current || tasks.length === 0) return;
+
+    const activeStatuses = ["in_progress", "planned", "inbox", "review", "pending"];
+    const latestTask = [...tasks]
+      .filter((task) => task.title?.trim() || task.description?.trim())
+      .sort((left, right) => {
+        const leftActive = activeStatuses.includes(left.status) ? 1 : 0;
+        const rightActive = activeStatuses.includes(right.status) ? 1 : 0;
+        if (leftActive !== rightActive) return rightActive - leftActive;
+        return String(right.updated_at ?? right.created_at ?? "").localeCompare(
+          String(left.updated_at ?? left.created_at ?? ""),
+        );
+      })[0];
+    if (!latestTask) return;
+
+    const taskSignature = `${latestTask.id}:${latestTask.title}:${latestTask.description ?? ""}`;
+    if (officePackAutoTaskSignatureRef.current === taskSignature) return;
+    officePackAutoTaskSignatureRef.current = taskSignature;
+
+    const requestId = ++officePackAutoRequestRef.current;
+    const taskText = [latestTask.title, latestTask.description].filter(Boolean).join("\n").trim();
+    void api
+      .previewWorkflowRoute({ text: taskText, project_id: latestTask.project_id ?? undefined })
+      .then((route) => {
+        if (
+          officePackManualRef.current ||
+          officePackAutoRequestRef.current !== requestId ||
+          route.confidence < 0.72 ||
+          normalizeOfficeWorkflowPack(route.packKey) ===
+            normalizeOfficeWorkflowPack(settings.officeWorkflowPack ?? "development")
+        ) {
+          return;
+        }
+        handleOfficeWorkflowPackChange(route.packKey, { manual: false });
+      })
+      .catch((error) => {
+        console.warn("Automatic office pack routing unavailable:", error);
+      });
+  }, [loading, settings.officeWorkflowPack, tasks]);
 
   const { connected, on } = useWebSocket();
   const shouldIncludeSeedAgents = useCallback(
@@ -346,6 +418,7 @@ export default function App() {
     setDecisionInboxItems,
     setDecisionReplyBusyKey,
     setCliStatus,
+    setActionNotice,
   });
 
   const activeMeetingTaskId = useActiveMeetingTaskId(meetingPresence);
@@ -448,6 +521,8 @@ export default function App() {
       onAgentsChange={actions.handleAgentsChange}
       activeOfficeWorkflowPack={settings.officeWorkflowPack ?? "development"}
       onChangeOfficeWorkflowPack={handleOfficeWorkflowPackChange}
+      officePackManual={officePackManual}
+      onEnableOfficePackAuto={enableAutomaticOfficePack}
       onSaveSettings={actions.handleSaveSettings}
       onRefreshCli={actions.handleRefreshCli}
       onOauthResultClear={() => setOauthResult(null)}
@@ -465,6 +540,7 @@ export default function App() {
         }
       }}
       officePackBootstrappingLabel={officePackBootstrappingLabel}
+      actionNotice={actionNotice}
     >
       <AppOverlays
         showChat={showChat}
@@ -538,6 +614,17 @@ export default function App() {
         onCloseTaskPanel={() => setTaskPanel(null)}
         taskReport={taskReport}
         onCloseTaskReport={() => setTaskReport(null)}
+        onUpdateTask={actions.handleUpdateTask}
+        onRunTask={actions.handleRunTask}
+        onOpenTasks={() => {
+          setShowReportHistory(false);
+          setTaskReport(null);
+          setView("tasks");
+        }}
+        onOpenReports={() => {
+          setTaskReport(null);
+          setShowReportHistory(true);
+        }}
         showReportHistory={showReportHistory}
         onCloseReportHistory={() => setShowReportHistory(false)}
         showAgentStatus={showAgentStatus}

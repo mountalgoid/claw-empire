@@ -27,6 +27,9 @@ interface AppHeaderBarProps {
     value: WorkflowPackKey;
     options: OfficePackOption[];
     onChange: (packKey: WorkflowPackKey) => void;
+    autoMode?: boolean;
+    autoLabel?: string;
+    onEnableAuto?: () => void;
   } | null;
   theme: ThemeMode;
   mobileHeaderMenuOpen: boolean;
@@ -130,6 +133,16 @@ export default function AppHeaderBar({
                 </option>
               ))}
             </select>
+            {officePackControl.onEnableAuto && !officePackControl.autoMode && (
+              <button
+                type="button"
+                onClick={officePackControl.onEnableAuto}
+                className="rounded-md px-2 py-1 text-[10px] font-semibold"
+                style={{ background: "var(--th-accent)", color: "white" }}
+              >
+                {officePackControl.autoLabel ?? "Auto"}
+              </button>
+            )}
           </label>
         )}
       </div>
@@ -287,6 +300,19 @@ export default function AppHeaderBar({
                         </option>
                       ))}
                     </select>
+                    {officePackControl.onEnableAuto && !officePackControl.autoMode && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          officePackControl.onEnableAuto?.();
+                          onCloseMobileHeaderMenu();
+                        }}
+                        className="mt-2 w-full rounded-md px-2 py-1.5 text-xs font-semibold"
+                        style={{ background: "var(--th-accent)", color: "white" }}
+                      >
+                        {officePackControl.autoLabel ?? "Auto"}
+                      </button>
+                    )}
                   </div>
                 )}
                 <button
