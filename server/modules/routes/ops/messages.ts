@@ -66,6 +66,7 @@ export function registerOpsMessageRoutes(ctx: RuntimeContext): Record<string, ne
       recordAcceptedIngressAuditOrRollback,
       scheduleAnnouncementReplies,
       detectMentions,
+      scheduleAgentReply,
       findTeamLeader,
       handleTaskDelegation,
     },

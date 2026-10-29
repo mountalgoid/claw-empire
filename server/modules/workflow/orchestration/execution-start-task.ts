@@ -219,7 +219,10 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
       ),
       taskLang,
     );
-    const availableSkillsPromptBlock = buildAvailableSkillsPromptBlock(provider);
+    const availableSkillsPromptBlock = buildAvailableSkillsPromptBlock(
+      provider,
+      `${taskData.title}\n${taskData.description ?? ""}\n${workflowPackGuidance ?? ""}`,
+    );
     const spawnPrompt = buildTaskExecutionPrompt(
       [
         availableSkillsPromptBlock,

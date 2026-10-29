@@ -147,6 +147,38 @@ describe("task media artifacts route", () => {
       db.close();
     }
   });
+
+  it("moves and deletes only listed assets while rejecting paths outside output roots", () => {
+    const worktreePath = fs.mkdtempSync(path.join(os.tmpdir(), "climpire-artifact-manage-"));
+    const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), "climpire-artifact-manage-project-"));
+    tempDirs.push(worktreePath, projectPath);
+    fs.mkdirSync(path.join(worktreePath, "content", "week-01"), { recursive: true });
+    fs.writeFileSync(path.join(worktreePath, "content", "week-01", "post.png"), "png-data");
+    const taskId = "artifact-manage-task-0000-0000-000000000000";
+    const { db, postRoutes } = createHarness(new Map([[taskId, { worktreePath, branchName: "test", projectPath }]]));
+    try {
+      db.exec("CREATE TABLE tasks (id TEXT PRIMARY KEY, project_path TEXT)");
+      db.prepare("INSERT INTO tasks (id, project_path) VALUES (?, ?)").run(taskId, projectPath);
+      const handler = postRoutes.get("/api/tasks/:id/artifacts/manage");
+      expect(handler).toBeTypeOf("function");
+
+      const moveResponse = createFakeResponse();
+      handler?.({ params: { id: taskId }, body: { operation: "move", source: "task", path: "content/week-01/post.png", destination: "content/week-02/final.png" } }, moveResponse);
+      expect(moveResponse.statusCode).toBe(200);
+      expect(fs.existsSync(path.join(worktreePath, "content", "week-02", "final.png"))).toBe(true);
+
+      const unsafeResponse = createFakeResponse();
+      handler?.({ params: { id: taskId }, body: { operation: "delete", source: "task", path: "../../README.md" } }, unsafeResponse);
+      expect(unsafeResponse.statusCode).toBe(400);
+
+      const deleteResponse = createFakeResponse();
+      handler?.({ params: { id: taskId }, body: { operation: "delete", source: "task", path: "content/week-02/final.png" } }, deleteResponse);
+      expect(deleteResponse.statusCode).toBe(200);
+      expect(fs.existsSync(path.join(worktreePath, "content", "week-02", "final.png"))).toBe(false);
+    } finally {
+      db.close();
+    }
+  });
 });
 
 describe("worktree verify-commit route", () => {

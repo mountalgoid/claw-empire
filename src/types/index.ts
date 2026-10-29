@@ -125,6 +125,7 @@ export interface Task {
   agent_name_ko?: string | null;
   agent_avatar?: string | null;
   project_id?: string | null;
+  project_name?: string | null;
   status: TaskStatus;
   priority: number;
   task_type: TaskType;

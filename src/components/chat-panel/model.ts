@@ -1,4 +1,5 @@
 import type { LangText } from "../../i18n";
+import type { Agent } from "../../types";
 
 export interface StreamingMessage {
   message_id: string;
@@ -19,10 +20,20 @@ export type ProjectMetaPayload = {
 export type PendingSendAction =
   | { kind: "directive"; content: string }
   | { kind: "announcement"; content: string }
+  | { kind: "announcement_task"; content: string }
   | { kind: "task"; content: string; receiverId?: string }
   | { kind: "report"; content: string; receiverId?: string }
   | { kind: "chat"; content: string; receiverId: string }
   | { kind: "broadcast"; content: string };
+
+export function findMentionedAgent(content: string, agents: Agent[]): Agent | null {
+  const normalized = content.toLocaleLowerCase();
+  return agents.find((agent) =>
+    [agent.name, agent.name_ko]
+      .filter((name): name is string => Boolean(name?.trim()))
+      .some((name) => normalized.includes(`@${name.trim()}`.toLocaleLowerCase())),
+  ) ?? null;
+}
 
 export const STATUS_COLORS: Record<string, string> = {
   idle: "bg-green-400",

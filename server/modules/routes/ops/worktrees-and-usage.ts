@@ -219,7 +219,7 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
       ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     };
-    const assetsByPath = new Map<string, { name: string; path: string; kind: "image" | "video" | "file"; mime: string; size_bytes: number; url: string }>();
+    const assetsByPath = new Map<string, { name: string; path: string; source: "task" | "project"; kind: "image" | "video" | "file"; mime: string; size_bytes: number; url: string }>();
     const visit = (root: string, source: "task" | "project", directory: string, relativeDirectory: string, depth: number): void => {
       if (depth > 6 || assetsByPath.size >= 100) return;
       let entries: fs.Dirent[];
@@ -246,9 +246,11 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
           if (!stat.isFile() || stat.isSymbolicLink() || stat.size <= 0) continue;
           const encodedPath = relative.split("/").map(encodeURIComponent).join("/");
           const sourceQuery = source === "project" ? "?source=project" : "";
-          if (!assetsByPath.has(relative)) assetsByPath.set(relative, {
+          const assetKey = `${source}:${relative}`;
+          if (!assetsByPath.has(assetKey)) assetsByPath.set(assetKey, {
             name: entry.name,
             path: relative,
+            source,
             kind: media?.kind ?? "file",
             mime: media?.mime ?? fileMime!,
             size_bytes: stat.size,
@@ -276,7 +278,7 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
         }
       }
     }
-    return [...assetsByPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+    return [...assetsByPath.values()].sort((a, b) => a.path.localeCompare(b.path) || a.source.localeCompare(b.source));
   }
 
   app.get("/api/tasks/:id/artifacts", (req, res) => {
@@ -291,6 +293,131 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
     if (task.project_path) roots.push({ path: path.resolve(task.project_path), source: "project" });
     if (roots.length === 0) return res.status(200).json({ ok: true, assets: [] });
     return res.json({ ok: true, assets: listTaskMediaAssets(taskId, roots) });
+  });
+
+  app.post("/api/tasks/:id/artifacts/manage", (req, res) => {
+    const taskId = String(req.params.id ?? "").trim();
+    const task = db.prepare("SELECT id, project_path FROM tasks WHERE id = ?").get(taskId) as
+      | { id: string; project_path: string | null }
+      | undefined;
+    if (!task) return res.status(404).json({ ok: false, error: "task_not_found" });
+
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const operation = body.operation;
+    const source = body.source;
+    const assetPath = body.path;
+    const destination = body.destination;
+    if (!(["rename", "move", "delete"].includes(String(operation))) || !(["task", "project"].includes(String(source)))) {
+      return res.status(400).json({ ok: false, error: "invalid_asset_operation" });
+    }
+    if (typeof assetPath !== "string" || assetPath.length > 1024 || assetPath.includes("\\") || assetPath.startsWith("/")) {
+      return res.status(400).json({ ok: false, error: "invalid_asset_path" });
+    }
+    if (operation !== "delete" && (typeof destination !== "string" || destination.length > 1024 || destination.includes("\\") || destination.startsWith("/"))) {
+      return res.status(400).json({ ok: false, error: "invalid_asset_destination" });
+    }
+
+    const taskRoot = resolvePreviewRoot(taskId, task.project_path);
+    const root = source === "project" ? (task.project_path ? path.resolve(task.project_path) : null) : taskRoot;
+    if (!root) return res.status(404).json({ ok: false, error: "asset_root_not_found" });
+    let realRoot: string;
+    try {
+      realRoot = fs.realpathSync(root);
+      if (!fs.lstatSync(root).isDirectory() || fs.lstatSync(root).isSymbolicLink()) throw new Error("unsafe root");
+    } catch {
+      return res.status(400).json({ ok: false, error: "unsafe_asset_root" });
+    }
+
+    const allowedRoots = new Set(["content", "output", "video_output", "public", "dist", "assets"]);
+    const parseRelative = (value: string): string[] | null => {
+      const segments = value.split("/");
+      if (segments.length < 2 || segments.some((part) => !part || part === "." || part === ".." || part.startsWith("."))) return null;
+      if (!allowedRoots.has(segments[0])) return null;
+      return segments;
+    };
+    const sourceSegments = parseRelative(assetPath);
+    const destinationSegments = operation === "delete" ? null : parseRelative(destination as string);
+    if (!sourceSegments || (operation !== "delete" && !destinationSegments)) {
+      return res.status(400).json({ ok: false, error: "asset_path_outside_output" });
+    }
+
+    const roots = [
+      ...(taskRoot ? [{ path: taskRoot, source: "task" as const }] : []),
+      ...(task.project_path ? [{ path: path.resolve(task.project_path), source: "project" as const }] : []),
+    ];
+    const listedAsset = listTaskMediaAssets(taskId, roots).find((asset) => asset.source === source && asset.path === assetPath);
+    if (!listedAsset) return res.status(404).json({ ok: false, error: "asset_not_found_or_unsupported" });
+
+    const resolveSafe = (segments: string[], createParents: boolean): string | null => {
+      let current = realRoot;
+      for (let index = 0; index < segments.length; index += 1) {
+        current = path.join(current, segments[index]);
+        if (!current.startsWith(`${realRoot}${path.sep}`)) return null;
+        const isFinal = index === segments.length - 1;
+        try {
+          const stat = fs.lstatSync(current);
+          if (stat.isSymbolicLink() || (isFinal ? !stat.isFile() : !stat.isDirectory())) return null;
+        } catch {
+          if (!createParents || isFinal) return null;
+          try {
+            fs.mkdirSync(current);
+          } catch {
+            return null;
+          }
+        }
+      }
+      return current;
+    };
+
+    const sourcePath = resolveSafe(sourceSegments, false);
+    if (!sourcePath) return res.status(400).json({ ok: false, error: "unsafe_asset_path" });
+    if (operation === "delete") {
+      try {
+        fs.unlinkSync(sourcePath);
+        try {
+          appendTaskLog(taskId, "system", `CEO deleted ${source} asset: ${assetPath}`);
+        } catch (error) {
+          console.warn("Failed to audit asset deletion", error);
+        }
+        return res.json({ ok: true, operation, path: assetPath });
+      } catch {
+        return res.status(500).json({ ok: false, error: "asset_delete_failed" });
+      }
+    }
+
+    const targetSegments = destinationSegments as string[];
+    if (path.extname(targetSegments.at(-1) ?? "").toLowerCase() !== path.extname(assetPath).toLowerCase()) {
+      return res.status(400).json({ ok: false, error: "asset_extension_must_not_change" });
+    }
+    const targetPath = path.resolve(realRoot, ...targetSegments);
+    if (!targetPath.startsWith(`${realRoot}${path.sep}`)) return res.status(400).json({ ok: false, error: "unsafe_asset_destination" });
+    if (fs.existsSync(targetPath)) return res.status(409).json({ ok: false, error: "asset_destination_exists" });
+    const parentSegments = targetSegments.slice(0, -1);
+    let parentPath = realRoot;
+    for (const segment of parentSegments) {
+      parentPath = path.join(parentPath, segment);
+      try {
+        const stat = fs.lstatSync(parentPath);
+        if (!stat.isDirectory() || stat.isSymbolicLink()) return res.status(400).json({ ok: false, error: "unsafe_asset_destination" });
+      } catch {
+        try {
+          fs.mkdirSync(parentPath);
+        } catch {
+          return res.status(400).json({ ok: false, error: "unsafe_asset_destination" });
+        }
+      }
+    }
+    try {
+      fs.renameSync(sourcePath, targetPath);
+      try {
+        appendTaskLog(taskId, "system", `CEO ${operation}d ${source} asset: ${assetPath} -> ${destination}`);
+      } catch (error) {
+        console.warn("Failed to audit asset update", error);
+      }
+      return res.json({ ok: true, operation, path: assetPath, destination });
+    } catch {
+      return res.status(500).json({ ok: false, error: "asset_update_failed" });
+    }
   });
 
   function sendProjectPreview(req: any, res: any): void {

@@ -140,6 +140,7 @@ export default function AppOverlays({
           onSendMessage={onSendMessage}
           onSendAnnouncement={onSendAnnouncement}
           onSendDirective={onSendDirective}
+          onOpenAgentChat={onChatFromAgentDetail}
           onClearMessages={onClearMessages}
           onClose={onCloseChat}
         />

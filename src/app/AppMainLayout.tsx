@@ -1,5 +1,6 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 import Sidebar from "../components/Sidebar";
+import AssetLibrary from "../components/AssetLibrary";
 import OfficeView from "../components/OfficeView";
 import Dashboard from "../components/Dashboard";
 import TaskBoard from "../components/TaskBoard";
@@ -7,6 +8,7 @@ import AgentManager from "../components/AgentManager";
 import SkillsLibrary from "../components/SkillsLibrary";
 import SettingsPanel from "../components/SettingsPanel";
 import { I18nProvider } from "../i18n";
+import type { UiLanguage } from "../i18n";
 import type { ThemeMode } from "../ThemeContext";
 import type {
   Agent,
@@ -203,7 +205,7 @@ export default function AppMainLayout({
   actionNotice,
   children,
 }: AppMainLayoutProps) {
-  const uiLanguage =
+  const uiLanguage: UiLanguage =
     labels.uiLanguage === "ko" || labels.uiLanguage === "ja" || labels.uiLanguage === "zh" || labels.uiLanguage === "id"
       ? labels.uiLanguage
       : "en";
@@ -554,6 +556,8 @@ export default function AppMainLayout({
                 onRefresh={onAgentsChange}
               />
             )}
+
+            {view === "assets" && <AssetLibrary tasks={tasks} uiLanguage={uiLanguage} />}
 
             {view === "agents" && (
               <AgentManager

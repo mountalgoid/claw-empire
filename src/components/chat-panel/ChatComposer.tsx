@@ -17,6 +17,7 @@ interface ChatComposerProps {
   onModeChange: (mode: ChatMode) => void;
   onInputChange: (value: string) => void;
   onSend: () => void;
+  onExecuteAnnouncement: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
 }
 
@@ -32,6 +33,7 @@ export default function ChatComposer({
   onModeChange,
   onInputChange,
   onSend,
+  onExecuteAnnouncement,
   onKeyDown,
 }: ChatComposerProps) {
   return (
@@ -73,6 +75,34 @@ export default function ChatComposer({
       </div>
 
       <ChatModeHint mode={mode} isDirectiveMode={isDirectiveMode} tr={tr} />
+
+      {isAnnouncementMode && (
+        <div className="flex-shrink-0 px-4 pt-1">
+          <button
+            type="button"
+            onClick={onExecuteAnnouncement}
+            disabled={!input.trim()}
+            className="w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-left text-xs font-medium text-amber-200 transition-colors hover:bg-amber-500/15 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {tr(
+              "Kirim dan jalankan sebagai tugas",
+              "Send and execute as a task",
+              "タスクとして送信して実行",
+              "发送并作为任务执行",
+              "Kirim dan eksekusi sebagai tugas",
+            )}
+            <span className="mt-0.5 block text-[10px] font-normal text-amber-100/65">
+              {tr(
+                "Pengumuman tetap dikirim; tim juga akan menerima arahan untuk mengerjakannya.",
+                "The announcement is broadcast and the team also receives an execution directive.",
+                "告知を全体に送信し、チームにも実行指示を送ります。",
+                "公告会广播，同时团队会收到执行指令。",
+                "Pengumuman tetap disiarkan dan tim menerima instruksi untuk mengerjakannya.",
+              )}
+            </span>
+          </button>
+        </div>
+      )}
 
       <div className="flex-shrink-0 px-4 pb-4 pt-2">
         <div

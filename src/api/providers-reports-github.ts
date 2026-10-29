@@ -152,6 +152,7 @@ export interface TaskReportDocument {
 export interface TaskPreviewArtifact {
   name: string;
   path: string;
+  source?: "task" | "project";
   kind: "image" | "video" | "file";
   mime: string;
   size_bytes: number;
@@ -319,6 +320,21 @@ export async function getTaskPreviewArtifacts(taskId: string): Promise<TaskPrevi
     `/api/tasks/${encodeURIComponent(taskId)}/artifacts`,
   );
   return result.assets ?? [];
+}
+
+export async function manageTaskArtifact(input: {
+  taskId: string;
+  operation: "rename" | "move" | "delete";
+  source: "task" | "project";
+  path: string;
+  destination?: string;
+}): Promise<void> {
+  await post(`/api/tasks/${encodeURIComponent(input.taskId)}/artifacts/manage`, {
+    operation: input.operation,
+    source: input.source,
+    path: input.path,
+    destination: input.destination,
+  });
 }
 
 export async function archiveTaskReport(taskId: string): Promise<{

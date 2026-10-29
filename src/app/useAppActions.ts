@@ -133,8 +133,18 @@ export function useAppActions({
       await api.sendAnnouncement(content);
     } catch (error) {
       console.error("Announcement failed:", error);
+      setActionNotice({
+        tone: "error",
+        message: pickLang(normalizeLanguage(settingsRef.current.language), {
+          ko: "공지 전송에 실패했습니다. 연결 상태를 확인하고 다시 시도하세요.",
+          en: "Announcement failed to send. Check the connection and try again.",
+          ja: "告知を送信できませんでした。接続を確認して再試行してください。",
+          zh: "公告发送失败，请检查连接后重试。",
+          id: "Pengumuman gagal dikirim. Periksa koneksi lalu coba lagi.",
+        }),
+      });
     }
-  }, []);
+  }, [setActionNotice]);
 
   const handleSendDirective = useCallback(async (content: string, projectMeta?: ProjectMetaPayload) => {
     try {
@@ -148,10 +158,30 @@ export function useAppActions({
       } else {
         await api.sendDirective(content);
       }
+      setActionNotice({
+        tone: "info",
+        message: pickLang(normalizeLanguage(settingsRef.current.language), {
+          ko: "업무 지시를 접수했습니다. 작업 현황에서 실행 상태를 확인할 수 있습니다.",
+          en: "Execution directive accepted. Track progress in Tasks.",
+          ja: "実行指示を受け付けました。タスク画面で進行状況を確認できます。",
+          zh: "执行指令已受理，可在任务页面查看进度。",
+          id: "Instruksi eksekusi diterima. Pantau kemajuannya di menu Tugas.",
+        }),
+      });
     } catch (error) {
       console.error("Directive failed:", error);
+      setActionNotice({
+        tone: "error",
+        message: pickLang(normalizeLanguage(settingsRef.current.language), {
+          ko: "업무 지시를 실행 대기열에 전달하지 못했습니다. 연결을 확인하고 다시 시도하세요.",
+          en: "Could not queue the execution directive. Check the connection and try again.",
+          ja: "実行指示をキューに登録できませんでした。接続を確認して再試行してください。",
+          zh: "执行指令未能加入队列，请检查连接后重试。",
+          id: "Instruksi gagal masuk antrean eksekusi. Periksa koneksi lalu coba lagi.",
+        }),
+      });
     }
-  }, []);
+  }, [setActionNotice]);
 
   const handleCreateTask = useCallback(
     async (input: {

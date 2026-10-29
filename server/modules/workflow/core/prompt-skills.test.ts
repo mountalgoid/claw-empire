@@ -142,4 +142,32 @@ describe("createPromptSkillsHelper", () => {
       db.close();
     }
   });
+
+  it("task와 workflow pack 문맥에 맞는 skill을 최신순보다 우선 선택한다", () => {
+    const db = createDb();
+    try {
+      insertLearnedSkill(db, {
+        provider: "codex",
+        repo: "team/general",
+        skillId: "general-notes",
+        skillLabel: "team/general#general-notes",
+        at: 300,
+      });
+      insertLearnedSkill(db, {
+        provider: "codex",
+        repo: "studio/video",
+        skillId: "video-rendering",
+        skillLabel: "studio/video#video-rendering",
+        at: 100,
+      });
+
+      const { buildAvailableSkillsPromptBlock } = createPromptSkillsHelper(db);
+      const block = buildAvailableSkillsPromptBlock("codex", "Create an Instagram video for Content Studio");
+
+      expect(block.indexOf("studio/video#video-rendering")).toBeLessThan(block.indexOf("team/general#general-notes"));
+      expect(block).toContain("Select and apply every installed skill/tool that materially helps this task");
+    } finally {
+      db.close();
+    }
+  });
 });

@@ -8,8 +8,8 @@ type PromptSkillRow = {
   learned_at: number;
 };
 
-const SKILL_PROMPT_FETCH_LIMIT = 8;
-const SKILL_PROMPT_INLINE_LIMIT = 4;
+const SKILL_PROMPT_FETCH_LIMIT = 12;
+const SKILL_PROMPT_INLINE_LIMIT = 12;
 
 function isPromptSkillProvider(provider: string): provider is PromptSkillProvider {
   return (
@@ -99,6 +99,20 @@ function queryPromptSkillsByProvider(db: DatabaseSync, provider: PromptSkillProv
     .all(provider, limit) as PromptSkillRow[];
 }
 
+function rankSkillsForTask(rows: PromptSkillRow[], taskText: string, limit: number): PromptSkillRow[] {
+  const terms = [...new Set((taskText.toLowerCase().match(/[\p{L}\p{N}+#.-]{3,}/gu) ?? []).filter((term) => term.length > 2))];
+  if (terms.length === 0) return dedupePromptSkills(rows).slice(0, limit);
+  return dedupePromptSkills(rows)
+    .map((row, index) => {
+      const searchable = `${row.repo} ${row.skill_id} ${row.skill_label}`.toLowerCase();
+      const score = terms.reduce((sum, term) => sum + (searchable.includes(term) ? Math.min(term.length, 12) : 0), 0);
+      return { row, score, index };
+    })
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, limit)
+    .map(({ row }) => row);
+}
+
 function queryPromptSkillsGlobal(db: DatabaseSync, limit: number): PromptSkillRow[] {
   return db
     .prepare(
@@ -126,6 +140,9 @@ function buildSkillRuntimePolicyLines(providerScoped: boolean): string[] {
     "[Skills Rule] Also use globally installed skills available in this user's environment (setup may differ by machine).",
     "[MCP Rule] Use available MCP servers/tools for context discovery and verification when supported by this runtime.",
     "[Skills Rule] If overlaps exist, prefer learned skills first, then global/runtime skills.",
+    "[Resource Rule] Select and apply every installed skill/tool that materially helps this task or office workflow pack; do not load unrelated resources just because they exist.",
+    "[Resource Rule] Before using an external app/plugin, verify the runtime exposes it and the project/agent has permission; never fabricate availability, credentials, or access.",
+    "[Resource Rule] If a relevant resource is absent, continue with a safe local alternative and report the exact gap; pause only the dependent external action when credentials, new permission, or CEO input is truly required.",
   ];
 }
 
@@ -183,9 +200,9 @@ export function createPromptSkillsHelper(db: DatabaseSync): {
     try {
       const providerKey = isPromptSkillProvider(provider) ? provider : null;
       const providerLearnedSkills = providerKey
-        ? queryPromptSkillsByProvider(db, providerKey, SKILL_PROMPT_FETCH_LIMIT)
+        ? rankSkillsForTask(queryPromptSkillsByProvider(db, providerKey, 120), taskText, SKILL_PROMPT_FETCH_LIMIT)
         : [];
-      const globalLearnedSkills = queryPromptSkillsGlobal(db, SKILL_PROMPT_FETCH_LIMIT);
+      const globalLearnedSkills = rankSkillsForTask(queryPromptSkillsGlobal(db, 120), taskText, SKILL_PROMPT_FETCH_LIMIT);
 
       if (providerLearnedSkills.length > 0) {
         return [

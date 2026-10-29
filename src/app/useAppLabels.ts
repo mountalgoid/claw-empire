@@ -65,6 +65,14 @@ export function useAppLabels({
           zh: "任务管理",
           id: "Tugas",
         })}`;
+      case "assets":
+        return pickLang(uiLanguage, {
+          ko: "자산 보관함",
+          en: "Asset Library",
+          ja: "アセットライブラリ",
+          zh: "资产库",
+          id: "Pustaka Aset",
+        });
       case "agents":
         return `${pickLang(uiLanguage, {
           ko: "직원관리",

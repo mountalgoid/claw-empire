@@ -1,5 +1,5 @@
 import type { RuntimeContext } from "../../../../types/runtime-context.ts";
-import type { AgentRow, StoredMessage } from "../../shared/types.ts";
+import type { StoredMessage } from "../../shared/types.ts";
 
 type AnnouncementRouteCtx = Pick<RuntimeContext, "app" | "db" | "broadcast">;
 
@@ -12,6 +12,7 @@ type AnnouncementRouteDeps = {
   recordAcceptedIngressAuditOrRollback: RuntimeContext["recordAcceptedIngressAuditOrRollback"];
   scheduleAnnouncementReplies: RuntimeContext["scheduleAnnouncementReplies"];
   detectMentions: RuntimeContext["detectMentions"];
+  scheduleAgentReply: RuntimeContext["scheduleAgentReply"];
   findTeamLeader: RuntimeContext["findTeamLeader"];
   handleTaskDelegation: RuntimeContext["handleTaskDelegation"];
 };
@@ -27,6 +28,7 @@ export function registerAnnouncementRoutes(ctx: AnnouncementRouteCtx, deps: Anno
     recordAcceptedIngressAuditOrRollback,
     scheduleAnnouncementReplies,
     detectMentions,
+    scheduleAgentReply,
     findTeamLeader,
     handleTaskDelegation,
   } = deps;
@@ -155,14 +157,7 @@ export function registerAnnouncementRoutes(ctx: AnnouncementRouteCtx, deps: Anno
         }
 
         for (const agentId of mentions.agentIds) {
-          const mentioned = db.prepare("SELECT * FROM agents WHERE id = ?").get(agentId) as AgentRow | undefined;
-          if (mentioned?.department_id && !processedDepts.has(mentioned.department_id)) {
-            processedDepts.add(mentioned.department_id);
-            const leader = findTeamLeader(mentioned.department_id);
-            if (leader) {
-              handleTaskDelegation(leader, content, "");
-            }
-          }
+          scheduleAgentReply(agentId, content, "chat");
         }
       }, mentionDelay);
     }

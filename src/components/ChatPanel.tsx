@@ -17,6 +17,7 @@ import {
   type PendingSendAction,
   type ProjectMetaPayload,
   type StreamingMessage,
+  findMentionedAgent,
 } from "./chat-panel/model";
 import ProjectFlowDialog from "./chat-panel/ProjectFlowDialog";
 
@@ -36,7 +37,7 @@ interface ChatPanelProps {
       project_context?: string;
     },
   ) => void | Promise<void>;
-  onSendAnnouncement: (content: string) => void;
+  onSendAnnouncement: (content: string) => Promise<void>;
   onSendDirective: (
     content: string,
     projectMeta?: {
@@ -44,7 +45,8 @@ interface ChatPanelProps {
       project_path?: string;
       project_context?: string;
     },
-  ) => void;
+  ) => Promise<void>;
+  onOpenAgentChat: (agent: Agent) => void;
   onClearMessages?: (agentId?: string) => void;
   onClose: () => void;
 }
@@ -57,6 +59,7 @@ export function ChatPanel({
   onSendMessage,
   onSendAnnouncement,
   onSendDirective,
+  onOpenAgentChat,
   onClearMessages,
   onClose,
 }: ChatPanelProps) {
@@ -129,7 +132,7 @@ export function ChatPanel({
   const [newProjectGoal, setNewProjectGoal] = useState("");
   const [projectSaving, setProjectSaving] = useState(false);
   const [decisionReplyKey, setDecisionReplyKey] = useState<string | null>(null);
-  const isDirectivePending = pendingSend?.kind === "directive";
+  const isDirectivePending = pendingSend?.kind === "directive" || pendingSend?.kind === "announcement_task";
 
   const closeProjectFlow = () => {
     setProjectFlowOpen(false);
@@ -248,7 +251,17 @@ export function ChatPanel({
         return;
       }
       if (action.kind === "announcement") {
-        onSendAnnouncement(action.content);
+        void onSendAnnouncement(action.content).then(() => {
+          const conversationAgent = findMentionedAgent(action.content, agents) ?? selectedAgent;
+          if (conversationAgent) onOpenAgentChat(conversationAgent);
+        });
+        return;
+      }
+      if (action.kind === "announcement_task") {
+        void onSendAnnouncement(action.content).then(() => onSendDirective(action.content, projectMeta)).then(() => {
+          const conversationAgent = findMentionedAgent(action.content, agents) ?? selectedAgent;
+          if (conversationAgent) onOpenAgentChat(conversationAgent);
+        });
         return;
       }
       if (action.kind === "task") {
@@ -265,7 +278,7 @@ export function ChatPanel({
       }
       onSendMessage(action.content, "all", undefined, undefined, projectMeta);
     },
-    [onSendAnnouncement, onSendDirective, onSendMessage],
+    [agents, onOpenAgentChat, onSendAnnouncement, onSendDirective, onSendMessage, selectedAgent],
   );
 
   const handleConfirmProject = () => {
@@ -308,7 +321,7 @@ export function ChatPanel({
     setExistingProjectInput("");
     setExistingProjectError("");
     setProjectItems([]);
-    setNewProjectGoal(action.kind === "directive" ? action.content : "");
+    setNewProjectGoal(action.kind === "directive" || action.kind === "announcement_task" ? action.content : "");
   };
 
   const handleSend = () => {
@@ -346,6 +359,12 @@ export function ChatPanel({
     dispatchPending(action);
     setInput("");
     textareaRef.current?.focus();
+  };
+
+  const handleExecuteAnnouncement = () => {
+    const content = input.trim();
+    if (!content || mode !== "announcement") return;
+    openProjectBranch({ kind: "announcement_task", content });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -486,6 +505,7 @@ export function ChatPanel({
         onModeChange={setMode}
         onInputChange={setInput}
         onSend={handleSend}
+        onExecuteAnnouncement={handleExecuteAnnouncement}
         onKeyDown={handleKeyDown}
       />
     </div>
