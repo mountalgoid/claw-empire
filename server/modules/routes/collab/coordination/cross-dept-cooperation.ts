@@ -2,6 +2,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { Lang } from "../../../../types/lang.ts";
 import { getDepartmentPromptForPack } from "../../../workflow/packs/department-scope.ts";
+import { buildStaffProfessionalPrompt } from "../../../workflow/core/staff-professional-prompt.ts";
 import { resolveWorkflowPackKeyForTask } from "../../../workflow/packs/task-pack-resolver.ts";
 import { resolveConstrainedAgentScopeForTask } from "../../core/tasks/execution-run-auto-assign.ts";
 import type { AgentRow } from "./types.ts";
@@ -517,6 +518,7 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
         if (crossTaskData) {
           const projPath = resolveProjectPath(crossTaskData);
           const logFilePath = path.join(logsDir, `${crossTaskId}.log`);
+          const taskLang = resolveLang(crossTaskData.description ?? crossTaskData.title);
           const roleLabels: Record<string, string> = {
             team_leader: "Team Leader",
             senior: "Senior",
@@ -528,8 +530,17 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
           const deptPromptRaw = getDepartmentPromptForPack(db as any, crossTaskData.workflow_pack_key, crossDeptId);
           const deptPrompt = typeof deptPromptRaw === "string" ? deptPromptRaw.trim() : "";
           const deptPromptBlock = deptPrompt ? `[Department Shared Prompt]\n${deptPrompt}` : "";
+          const staffProfessionalPrompt = buildStaffProfessionalPrompt({
+            name: execAgent.name,
+            role: execAgent.role,
+            departmentId: crossDeptId,
+            departmentName: crossDeptName,
+            provider: execProvider,
+            workflowPackKey: crossTaskData.workflow_pack_key,
+            taskText: `${crossTaskData.title}\n${crossTaskData.description ?? ""}`,
+            lang: taskLang,
+          });
           const crossConversationCtx = getRecentConversationContext(execAgent.id);
-          const taskLang = resolveLang(crossTaskData.description ?? crossTaskData.title);
           const availableSkillsPromptBlock = buildAvailableSkillsPromptBlock(execProvider);
           const spawnPrompt = buildTaskExecutionPrompt(
             [
@@ -539,6 +550,7 @@ export function createCrossDeptCooperationTools(deps: CrossDeptCooperationDeps) 
               crossConversationCtx,
               `\n---`,
               `Agent: ${execAgent.name} (${roleLabel}, ${crossDeptName})`,
+              staffProfessionalPrompt,
               execAgent.personality ? `Personality: ${execAgent.personality}` : "",
               deptConstraint,
               deptPromptBlock,

@@ -27,3 +27,5 @@
 - Endpoint hasil tidak boleh mengasumsikan `index.html`; jika output media tersedia, sediakan galeri fallback yang menyajikan file aktual dan tidak mengembalikan error pratinjau mentah kepada CEO.
 - Skill media harus dipasang berdasarkan kebutuhan task dan provider staff yang benar-benar menjalankan task; gunakan instruksi lokal yang dapat diaudit bila instalasi eksternal atau kredensial belum tersedia.
 - Penghapusan task harus membersihkan worktree/folder task dan lampiran yang hanya dipakai task tersebut, tetapi tidak boleh menghapus root proyek atau aset yang masih direferensikan task/pesan lain.
+- Prompt peran/departemen saja tidak cukup untuk menjaga mutu lintas provider; setiap jalur eksekusi harus menyertakan profil profesional wajib yang memuat tujuan, validasi, keamanan, dan aturan pelaporan.
+- Sumber clipper harus dibedakan antara lampiran lokal dan URL publik. URL tidak boleh diasumsikan dapat diunduh: gunakan alat yang benar-benar tersedia, hormati akses/lisensi, lalu laporkan dependency yang hilang tanpa klaim palsu.

@@ -10,6 +10,7 @@ import { resolveVideoArtifactSpecForTask } from "../../../workflow/packs/video-a
 import { ensureVideoPreprodRemotionBestPracticesSkill } from "../../../workflow/core/video-skill-bootstrap.ts";
 import { ensureMediaProductionSkills } from "../../../workflow/core/media-production-skill-bootstrap.ts";
 import { createAgentMemoryTools } from "../../../workflow/core/agent-memory-tools.ts";
+import { buildStaffProfessionalPrompt } from "../../../workflow/core/staff-professional-prompt.ts";
 import { createProjectGovernanceTools } from "../../../workflow/core/project-governance-tools.ts";
 import {
   buildInterruptPromptBlock,
@@ -310,6 +311,7 @@ export function registerTaskRunRoute(deps: TaskRunRouteDeps): void {
       logsDir,
       provider,
       taskText: `${task.title}\n${task.description ?? ""}`,
+      workflowPackKey: task.workflow_pack_key,
       taskId: id,
       appendTaskLog,
     });
@@ -353,6 +355,16 @@ export function registerTaskRunRoute(deps: TaskRunRouteDeps): void {
         : "";
     const departmentPrompt = revisionDepartmentPolicy ? "" : normalizeTextField(agent.department_prompt);
     const departmentPromptBlock = departmentPrompt ? `[Department Shared Prompt]\n${departmentPrompt}` : "";
+    const staffProfessionalPrompt = buildStaffProfessionalPrompt({
+      name: agent.name,
+      role: agent.role,
+      departmentId: agent.department_id,
+      departmentName: agent.department_name,
+      provider,
+      workflowPackKey: task.workflow_pack_key,
+      taskText: `${task.title}\n${task.description ?? ""}`,
+      lang: taskLang,
+    });
     const conversationCtx = getRecentConversationContext(agentId);
     const continuationCtx = getTaskContinuationContext(id);
     const continuationInstruction = continuationCtx
@@ -506,6 +518,7 @@ Whenever you complete a subtask, report it in this format:
         conversationCtx,
         `\n---`,
         `Agent: ${agent.name} (${roleLabel}, ${agent.department_name || "Unassigned"})`,
+        staffProfessionalPrompt,
         agent.personality ? `Personality: ${agent.personality}` : "",
         deptConstraint,
         departmentPromptBlock,

@@ -71,6 +71,8 @@ Claw-Empire transforms your AI coding assistants — connected via **CLI**, **OA
 
 ## Latest Release (v2.0.4)
 
+- **Staff prompts adapt to the work automatically** - every execution path now receives a shared professional baseline tailored to staff role, department, office pack, provider, task language, and task signals.
+- **Clipper Studio staff can produce verified clips** - the Clipper Editing Pro profile supports supplied media files and accessible video URLs, with timestamp selection, playable output checks, source attribution, and clear handling when a tool or source is unavailable.
 - **Task cleanup now removes isolated task storage** - deleting a task cleans its task worktree and task-only attachments while preserving the project root and shared assets still referenced elsewhere.
 - **Media production skills are routed automatically** - media tasks can install the local `Video Editing Pro` and `Voice Production Pro` skill profiles for the staff provider that executes the task, with explicit verification and safe external-resource limits.
 - **Result preview has a media fallback** - when a task has no `index.html`, the result view serves a gallery of the actual images, videos, and files instead of returning `preview_file_not_found`.

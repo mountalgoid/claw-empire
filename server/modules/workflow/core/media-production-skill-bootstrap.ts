@@ -16,6 +16,20 @@ const PROVIDER_TO_AGENT: Record<string, string> = {
 
 const SKILLS = [
   {
+    id: "clipper-editing-pro",
+    label: "Claw-Empire Clipper Editing Pro",
+    match: /clipper|clipping|short\s*clip|highlight|cuplikan|klip|potong\s*(video|rekaman)|youtube\.com|youtu\.be/i,
+    content: `# Clipper Editing Pro
+
+- Accept source media from task attachments, a local file, or a public URL supplied by the CEO.
+- For URLs, inspect the source first and use only installed/approved tools such as yt-dlp or browser download when available; never bypass login, paywalls, DRM, rate limits, or access controls.
+- Preserve attribution and source URL, respect copyright/licensing, and never silently publish third-party material.
+- Identify the strongest moments, create real clips with ffmpeg/installed editing tools, and provide timestamps, titles, aspect ratios, captions, and filenames.
+- Verify every output with ffprobe, a playable/openable check, representative frames, and audio sync/loudness when audio exists.
+- If a URL is inaccessible or a tool is missing, continue with local work and report the exact dependency instead of pretending the clip is complete.
+`,
+  },
+  {
     id: "video-editing-pro",
     label: "Claw-Empire Video Editing Pro",
     match: /video|reel|film|transisi|edit video|mp4|ffmpeg|motion|montage/i,
@@ -34,6 +48,7 @@ export function ensureMediaProductionSkills(args: {
   logsDir: string;
   provider: string | null | undefined;
   taskText: string;
+  workflowPackKey?: string | null;
   taskId?: string | null;
   appendTaskLog?: (taskId: string, kind: string, message: string) => void;
 }): string[] {
@@ -42,7 +57,11 @@ export function ensureMediaProductionSkills(args: {
     .toLowerCase();
   const agent = PROVIDER_TO_AGENT[provider];
   if (!agent) return [];
-  const selected = SKILLS.filter((skill) => skill.match.test(args.taskText));
+  const selected = SKILLS.filter(
+    (skill) =>
+      skill.match.test(args.taskText) ||
+      (skill.id === "clipper-editing-pro" && args.workflowPackKey === "clipper_studio"),
+  );
   if (!selected.length) return [];
 
   const installed: string[] = [];

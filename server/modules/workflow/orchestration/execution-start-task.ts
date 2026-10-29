@@ -3,6 +3,7 @@ import type { RuntimeContext } from "../../../types/runtime-context.ts";
 import { getDepartmentPromptForPack } from "../packs/department-scope.ts";
 import { ensureVideoPreprodRemotionBestPracticesSkill } from "../core/video-skill-bootstrap.ts";
 import { ensureMediaProductionSkills } from "../core/media-production-skill-bootstrap.ts";
+import { buildStaffProfessionalPrompt } from "../core/staff-professional-prompt.ts";
 import { buildWorkflowPackExecutionGuidance } from "../packs/execution-guidance.ts";
 import { buildAttachmentAnalysisContext } from "../core/file-attachments.ts";
 import { resolveVideoArtifactSpecForTask } from "../packs/video-artifact.ts";
@@ -118,6 +119,7 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
       logsDir,
       provider,
       taskText: `${taskData.title}\n${taskData.description ?? ""}`,
+      workflowPackKey: taskData.workflow_pack_key,
       taskId,
       appendTaskLog,
     });
@@ -192,6 +194,16 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
     const deptPromptRaw = deptId ? getDepartmentPromptForPack(db as any, taskData.workflow_pack_key, deptId) : null;
     const deptPrompt = typeof deptPromptRaw === "string" ? deptPromptRaw.trim() : "";
     const deptPromptBlock = deptPrompt ? `[Department Shared Prompt]\n${deptPrompt}` : "";
+    const staffProfessionalPrompt = buildStaffProfessionalPrompt({
+      name: execAgent.name,
+      role: execAgent.role,
+      departmentId: deptId ?? execAgent.department_id,
+      departmentName: deptName,
+      provider,
+      workflowPackKey: taskData.workflow_pack_key,
+      taskText: `${taskData.title}\n${taskData.description ?? ""}`,
+      lang: taskLang,
+    });
     const conversationCtx = getRecentConversationContext(execAgent.id);
     const continuationCtx = getTaskContinuationContext(taskId);
     const recentChanges = getRecentChanges(projPath, taskId);
@@ -248,6 +260,7 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
         conversationCtx,
         `\n---`,
         `Agent: ${execAgent.name} (${roleLabel}, ${deptName})`,
+        staffProfessionalPrompt,
         execAgent.personality ? `Personality: ${execAgent.personality}` : "",
         deptConstraint,
         deptPromptBlock,

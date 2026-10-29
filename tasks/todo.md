@@ -500,3 +500,16 @@ Hasil: build produksi berhasil (`pnpm build`, 885 modul). Build memberi peringat
 - [x] Agen boleh membuat bahan lokal/sintetis yang aman dan diberi label bila task mengizinkan.
 - [x] Agen wajib mengulang verifikasi setelah pemulihan dan berhenti terkontrol jika tetap tidak memungkinkan.
 - [x] Verifikasi TypeScript dan format diff.
+
+## Profil profesional staff dan Clipper Studio
+
+- [x] Tambahkan prompt best practice global yang otomatis menyesuaikan peran, departemen, provider, paket kantor, dan bahasa setiap staff.
+- [x] Pasang prompt permanen pada eksekusi task utama, retry/approved execution, spawn manual, subtask, dan delegasi lintas departemen.
+- [x] Tambahkan skill Clipper Editing Pro untuk sumber lampiran lokal dan URL publik dengan validasi ffprobe, hak akses, dan fallback aman.
+- [x] Jalankan tes regresi, typecheck, dan pemeriksaan diff.
+
+## Review profil staff dan Clipper Studio
+- Prompt profesional kini dibangun dari jabatan, departemen, provider, paket kantor, bahasa tugas, dan sinyal kebutuhan pada perintah. Semua jalur eksekusi utama memakai helper yang sama.
+- Paket Clipper Studio otomatis memasang Clipper Editing Pro; staf menerima arahan untuk menganalisis file/link, menentukan timestamp, menghasilkan klip playable, mencantumkan sumber, dan memeriksa output.
+- Akses URL dibatasi pada sumber yang dapat dijangkau tool terpasang dan tidak melewati login, DRM, paywall, atau proteksi akses.
+- Verifikasi: tes prompt/skill lulus 4/4, typecheck dan `git diff --check` lulus. Build produksi belum dijalankan.

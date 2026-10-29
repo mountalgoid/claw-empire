@@ -4,6 +4,8 @@ import type { RuntimeContext } from "../../../../types/runtime-context.ts";
 import { buildWorkflowPackExecutionGuidance } from "../../../workflow/packs/execution-guidance.ts";
 import { resolveVideoArtifactSpecForTask } from "../../../workflow/packs/video-artifact.ts";
 import { ensureVideoPreprodRemotionBestPracticesSkill } from "../../../workflow/core/video-skill-bootstrap.ts";
+import { ensureMediaProductionSkills } from "../../../workflow/core/media-production-skill-bootstrap.ts";
+import { buildStaffProfessionalPrompt } from "../../../workflow/core/staff-professional-prompt.ts";
 
 export function registerAgentSpawnRoute(ctx: RuntimeContext): void {
   const {
@@ -155,6 +157,15 @@ export function registerAgentSpawnRoute(ctx: RuntimeContext): void {
       taskId,
       appendTaskLog,
     });
+    ensureMediaProductionSkills({
+      db: db as any,
+      logsDir,
+      provider,
+      taskText: `${task.title}\n${task.description ?? ""}`,
+      workflowPackKey: task.workflow_pack_key,
+      taskId,
+      appendTaskLog,
+    });
     const taskLang = resolveLang(task.description ?? task.title);
 
     const projectPath = task.project_path || process.cwd();
@@ -185,6 +196,16 @@ export function registerAgentSpawnRoute(ctx: RuntimeContext): void {
       : "";
     const departmentPrompt = normalizeTextField(agent.department_prompt);
     const departmentPromptBlock = departmentPrompt ? `[Department Shared Prompt]\n${departmentPrompt}` : "";
+    const staffProfessionalPrompt = buildStaffProfessionalPrompt({
+      name: agent.name,
+      role: agent.role,
+      departmentId: agent.department_id,
+      departmentName: agent.department_name,
+      provider,
+      workflowPackKey: task.workflow_pack_key,
+      taskText: `${task.title}\n${task.description ?? ""}`,
+      lang: taskLang,
+    });
     const videoArtifactSpec =
       task.workflow_pack_key === "video_preprod"
         ? resolveVideoArtifactSpecForTask(db as any, {
@@ -208,6 +229,7 @@ export function registerAgentSpawnRoute(ctx: RuntimeContext): void {
         workflowPackGuidance ? `\n[Workflow Pack Execution Rules]\n${workflowPackGuidance}` : "",
         `NOTE: You are working in an isolated Git worktree branch (climpire/${taskId.slice(0, 8)}). Commit your changes normally.`,
         `Agent: ${agent.name} (${roleLabel}, ${agent.department_name || "Unassigned"})`,
+        staffProfessionalPrompt,
         agent.personality ? `Personality: ${agent.personality}` : "",
         deptConstraint,
         departmentPromptBlock,

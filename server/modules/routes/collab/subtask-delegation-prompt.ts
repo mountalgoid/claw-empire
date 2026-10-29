@@ -1,5 +1,6 @@
 import type { Lang } from "../../../types/lang.ts";
 import { getDepartmentPromptForPack } from "../../workflow/packs/department-scope.ts";
+import { buildStaffProfessionalPrompt } from "../../workflow/core/staff-professional-prompt.ts";
 import type { AgentRow } from "./direct-chat.ts";
 import type { L10n } from "./language-policy.ts";
 import type { SubtaskRow } from "./subtask-summary.ts";
@@ -223,6 +224,16 @@ export function createSubtaskDelegationPromptBuilder(deps: PromptDeps) {
         : "";
     const conversationCtx = getRecentConversationContext(execAgent.id);
     const agentDisplayName = getAgentDisplayName(execAgent, lang);
+    const staffProfessionalPrompt = buildStaffProfessionalPrompt({
+      name: agentDisplayName,
+      role: execAgent.role,
+      departmentId: targetDeptId,
+      departmentName: targetDeptName,
+      provider: execAgent.cli_provider,
+      workflowPackKey: parentDept?.workflow_pack_key,
+      taskText: `${parentTask.title}\n${parentTask.description ?? ""}\n${assignedSubtasks.map((item) => `${item.title} ${item.description ?? ""}`).join("\n")}`,
+      lang,
+    });
     const header = pickL(
       l(
         [`[프로젝트 협업 업무 - ${targetDeptName}]`],
@@ -283,6 +294,7 @@ export function createSubtaskDelegationPromptBuilder(deps: PromptDeps) {
         ``,
         `---`,
         `Agent: ${agentDisplayName} (${roleLabel}, ${targetDeptName})`,
+        staffProfessionalPrompt,
         execAgent.personality ? `Personality: ${execAgent.personality}` : "",
         deptConstraint,
         deptPromptBlock,
