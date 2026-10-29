@@ -40,19 +40,22 @@ export type MessageInsertInput = {
 };
 
 export class IdempotencyConflictError extends Error {
-  constructor(public readonly key: string) {
+  readonly key: string;
+  constructor(key: string) {
     super("idempotency_conflict");
     this.name = "IdempotencyConflictError";
+    this.key = key;
   }
 }
 
 export class StorageBusyError extends Error {
-  constructor(
-    public readonly operation: string,
-    public readonly attempts: number,
-  ) {
+  readonly operation: string;
+  readonly attempts: number;
+  constructor(operation: string, attempts: number) {
     super("storage_busy");
     this.name = "StorageBusyError";
+    this.operation = operation;
+    this.attempts = attempts;
   }
 }
 

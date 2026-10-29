@@ -44,8 +44,8 @@ export const PKG_VERSION: string = (() => {
   }
 })();
 
-export const PORT = Number(process.env.PORT ?? 8790);
-export const HOST = process.env.HOST ?? "127.0.0.1";
+export const PORT = Number(process.env.PORT ?? 3000);
+export const HOST = process.env.HOST ?? "0.0.0.0";
 export const OAUTH_BASE_HOST = HOST === "0.0.0.0" || HOST === "::" ? "127.0.0.1" : HOST;
 export const SESSION_COOKIE_NAME = "claw_session";
 
@@ -84,7 +84,7 @@ export const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "")
 // Production static file serving
 // ---------------------------------------------------------------------------
 export const DIST_DIR = path.resolve(SERVER_DIRNAME, "..", "..", "dist");
-export const IS_PRODUCTION = !process.env.VITE_DEV && fs.existsSync(path.join(DIST_DIR, "index.html"));
+export const IS_PRODUCTION = true;
 
 // ---------------------------------------------------------------------------
 // Runtime path defaults

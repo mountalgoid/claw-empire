@@ -1,0 +1,6 @@
+{
+  "name": "Claw-Empire",
+  "description": "AI Agent Company Simulation. Command your CLI agent empire from the CEO desk.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
