@@ -1,4 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { registerTaskCrudRoutes } from "./crud.ts";
 
@@ -77,6 +80,8 @@ function createTaskCrudHarness(): { db: DatabaseSync; routes: Map<string, RouteH
       status TEXT NOT NULL,
       delegated_task_id TEXT
     );
+    CREATE TABLE task_logs (task_id TEXT, kind TEXT, message TEXT, created_at INTEGER);
+    CREATE TABLE messages (id TEXT PRIMARY KEY, task_id TEXT, content TEXT);
   `);
 
   const routes = new Map<string, RouteHandler>();
@@ -263,6 +268,30 @@ describe("task CRUD workflow pack filter", () => {
       expect(payload.task.project_id).toBe("project-novel");
       expect(payload.task.project_path).toBe("/tmp/novel-project");
     } finally {
+      db.close();
+    }
+  });
+
+  it("DELETE /api/tasks removes the isolated task folder recursively", () => {
+    const { db, routes } = createTaskCrudHarness();
+    const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), "claw-task-delete-"));
+    const taskId = "12345678-task-delete";
+    const worktree = path.join(projectPath, ".climpire-worktrees", taskId.slice(0, 8));
+    fs.mkdirSync(path.join(worktree, "content", "nested"), { recursive: true });
+    fs.writeFileSync(path.join(worktree, "content", "nested", "result.mp4"), "result");
+    db.prepare(
+      `INSERT INTO tasks (id, title, description, status, priority, task_type, workflow_pack_key, project_path, created_at, updated_at)
+       VALUES (?, ?, ?, 'done', 1, 'standard', 'development', ?, ?, ?)`,
+    ).run(taskId, "Delete me", "Generated result", projectPath, Date.now(), Date.now());
+
+    try {
+      const response = createFakeResponse();
+      routes.get("DELETE /api/tasks/:id")?.({ params: { id: taskId } }, response);
+      expect(response.statusCode).toBe(200);
+      expect(fs.existsSync(worktree)).toBe(false);
+      expect(db.prepare("SELECT 1 FROM tasks WHERE id = ?").get(taskId)).toBeUndefined();
+    } finally {
+      fs.rmSync(projectPath, { recursive: true, force: true });
       db.close();
     }
   });

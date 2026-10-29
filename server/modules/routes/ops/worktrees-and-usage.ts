@@ -219,8 +219,25 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
       ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     };
-    const assetsByPath = new Map<string, { name: string; path: string; source: "task" | "project"; kind: "image" | "video" | "file"; mime: string; size_bytes: number; url: string }>();
-    const visit = (root: string, source: "task" | "project", directory: string, relativeDirectory: string, depth: number): void => {
+    const assetsByPath = new Map<
+      string,
+      {
+        name: string;
+        path: string;
+        source: "task" | "project";
+        kind: "image" | "video" | "file";
+        mime: string;
+        size_bytes: number;
+        url: string;
+      }
+    >();
+    const visit = (
+      root: string,
+      source: "task" | "project",
+      directory: string,
+      relativeDirectory: string,
+      depth: number,
+    ): void => {
       if (depth > 6 || assetsByPath.size >= 100) return;
       let entries: fs.Dirent[];
       try {
@@ -247,22 +264,26 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
           const encodedPath = relative.split("/").map(encodeURIComponent).join("/");
           const sourceQuery = source === "project" ? "?source=project" : "";
           const assetKey = `${source}:${relative}`;
-          if (!assetsByPath.has(assetKey)) assetsByPath.set(assetKey, {
-            name: entry.name,
-            path: relative,
-            source,
-            kind: media?.kind ?? "file",
-            mime: media?.mime ?? fileMime!,
-            size_bytes: stat.size,
-            url: `/api/tasks/${encodeURIComponent(taskId)}/preview/${encodedPath}${sourceQuery}`,
-          });
+          if (!assetsByPath.has(assetKey))
+            assetsByPath.set(assetKey, {
+              name: entry.name,
+              path: relative,
+              source,
+              kind: media?.kind ?? "file",
+              mime: media?.mime ?? fileMime!,
+              size_bytes: stat.size,
+              url: `/api/tasks/${encodeURIComponent(taskId)}/preview/${encodedPath}${sourceQuery}`,
+            });
         } catch {
           // Files may disappear while a task is finishing; omit them safely.
         }
       }
     };
 
-    const uniqueRoots = roots.filter((item, index, all) => all.findIndex((candidate) => path.resolve(candidate.path) === path.resolve(item.path)) === index);
+    const uniqueRoots = roots.filter(
+      (item, index, all) =>
+        all.findIndex((candidate) => path.resolve(candidate.path) === path.resolve(item.path)) === index,
+    );
     for (const { path: root, source } of uniqueRoots) {
       for (const directoryName of allowedRoots) {
         if (assetsByPath.size >= 100) break;
@@ -307,13 +328,24 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
     const source = body.source;
     const assetPath = body.path;
     const destination = body.destination;
-    if (!(["rename", "move", "delete"].includes(String(operation))) || !(["task", "project"].includes(String(source)))) {
+    if (!["rename", "move", "delete"].includes(String(operation)) || !["task", "project"].includes(String(source))) {
       return res.status(400).json({ ok: false, error: "invalid_asset_operation" });
     }
-    if (typeof assetPath !== "string" || assetPath.length > 1024 || assetPath.includes("\\") || assetPath.startsWith("/")) {
+    if (
+      typeof assetPath !== "string" ||
+      assetPath.length > 1024 ||
+      assetPath.includes("\\") ||
+      assetPath.startsWith("/")
+    ) {
       return res.status(400).json({ ok: false, error: "invalid_asset_path" });
     }
-    if (operation !== "delete" && (typeof destination !== "string" || destination.length > 1024 || destination.includes("\\") || destination.startsWith("/"))) {
+    if (
+      operation !== "delete" &&
+      (typeof destination !== "string" ||
+        destination.length > 1024 ||
+        destination.includes("\\") ||
+        destination.startsWith("/"))
+    ) {
       return res.status(400).json({ ok: false, error: "invalid_asset_destination" });
     }
 
@@ -331,7 +363,11 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
     const allowedRoots = new Set(["content", "output", "video_output", "public", "dist", "assets"]);
     const parseRelative = (value: string): string[] | null => {
       const segments = value.split("/");
-      if (segments.length < 2 || segments.some((part) => !part || part === "." || part === ".." || part.startsWith("."))) return null;
+      if (
+        segments.length < 2 ||
+        segments.some((part) => !part || part === "." || part === ".." || part.startsWith("."))
+      )
+        return null;
       if (!allowedRoots.has(segments[0])) return null;
       return segments;
     };
@@ -345,7 +381,9 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
       ...(taskRoot ? [{ path: taskRoot, source: "task" as const }] : []),
       ...(task.project_path ? [{ path: path.resolve(task.project_path), source: "project" as const }] : []),
     ];
-    const listedAsset = listTaskMediaAssets(taskId, roots).find((asset) => asset.source === source && asset.path === assetPath);
+    const listedAsset = listTaskMediaAssets(taskId, roots).find(
+      (asset) => asset.source === source && asset.path === assetPath,
+    );
     if (!listedAsset) return res.status(404).json({ ok: false, error: "asset_not_found_or_unsupported" });
 
     const resolveSafe = (segments: string[], createParents: boolean): string | null => {
@@ -390,7 +428,8 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
       return res.status(400).json({ ok: false, error: "asset_extension_must_not_change" });
     }
     const targetPath = path.resolve(realRoot, ...targetSegments);
-    if (!targetPath.startsWith(`${realRoot}${path.sep}`)) return res.status(400).json({ ok: false, error: "unsafe_asset_destination" });
+    if (!targetPath.startsWith(`${realRoot}${path.sep}`))
+      return res.status(400).json({ ok: false, error: "unsafe_asset_destination" });
     if (fs.existsSync(targetPath)) return res.status(409).json({ ok: false, error: "asset_destination_exists" });
     const parentSegments = targetSegments.slice(0, -1);
     let parentPath = realRoot;
@@ -398,7 +437,8 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
       parentPath = path.join(parentPath, segment);
       try {
         const stat = fs.lstatSync(parentPath);
-        if (!stat.isDirectory() || stat.isSymbolicLink()) return res.status(400).json({ ok: false, error: "unsafe_asset_destination" });
+        if (!stat.isDirectory() || stat.isSymbolicLink())
+          return res.status(400).json({ ok: false, error: "unsafe_asset_destination" });
       } catch {
         try {
           fs.mkdirSync(parentPath);
@@ -426,9 +466,10 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
       | { id: string; project_path: string | null; status: string }
       | undefined;
     if (!task) return res.status(404).json({ error: "task_not_found" });
-    const root = req.query?.source === "project" && task.project_path
-      ? path.resolve(task.project_path)
-      : resolvePreviewRoot(taskId, task.project_path);
+    const root =
+      req.query?.source === "project" && task.project_path
+        ? path.resolve(task.project_path)
+        : resolvePreviewRoot(taskId, task.project_path);
     if (!root) return res.status(404).json({ error: "preview_not_available" });
     const requested = typeof req.params[0] === "string" ? req.params[0] : "index.html";
     const relative = requested.trim() || "index.html";
@@ -439,10 +480,33 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
     if (target !== root && !target.startsWith(`${root}${path.sep}`)) {
       return res.status(400).json({ error: "invalid_preview_path" });
     }
+
+    const sendArtifactFallback = (): void => {
+      const assets = listTaskMediaAssets(taskId, [{ path: root, source: "task" }]);
+      const escapeHtml = (value: string): string =>
+        value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;");
+      const cards = assets
+        .map((asset) => {
+          const url = escapeHtml(asset.url);
+          const name = escapeHtml(asset.name);
+          const preview =
+            asset.kind === "image"
+              ? `<img src="${url}" alt="${name}">`
+              : asset.kind === "video"
+                ? `<video src="${url}" controls playsinline preload="metadata"></video>`
+                : `<p>File tersedia untuk diunduh.</p>`;
+          return `<article>${preview}<div><strong>${name}</strong><small>${escapeHtml(asset.path)}</small><a href="${url}" download="${name}">Unduh</a></div></article>`;
+        })
+        .join("");
+      const html = `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hasil tugas</title><style>body{margin:0;padding:20px;background:#0b1220;color:#e2e8f0;font:15px system-ui,sans-serif}main{max-width:1100px;margin:auto}section{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}article{overflow:hidden;border:1px solid #334155;border-radius:14px;background:#111c2d}img,video{display:block;width:100%;max-height:70vh;object-fit:contain;background:#020617}article div{display:grid;gap:6px;padding:12px}small{color:#94a3b8;overflow-wrap:anywhere}a{color:#93c5fd}</style></head><body><main><h1>Hasil tugas</h1>${cards ? `<section>${cards}</section>` : "<p>Belum ada aset hasil yang dapat dipratinjau.</p>"}</main></body></html>`;
+      res.type("html").send(html);
+    };
+
     try {
       const stat = fs.lstatSync(target);
       if (!stat.isFile() || stat.isSymbolicLink()) return res.status(404).json({ error: "preview_file_not_found" });
     } catch {
+      if (relative.toLowerCase() === "index.html") return sendArtifactFallback();
       return res.status(404).json({ error: "preview_file_not_found" });
     }
     try {
@@ -454,28 +518,36 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
 
   function sendProjectPreviewForProject(req: any, res: any): void {
     const projectId = String(req.params.id ?? "").trim();
-    const task = db.prepare(
-      `SELECT id, project_path, status FROM tasks
+    const task = db
+      .prepare(
+        `SELECT id, project_path, status FROM tasks
        WHERE project_id = ? AND status IN ('done', 'review')
        ORDER BY CASE status WHEN 'done' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`,
-    ).get(projectId) as { id: string; project_path: string | null; status: string } | undefined;
+      )
+      .get(projectId) as { id: string; project_path: string | null; status: string } | undefined;
     if (!task) return res.status(404).json({ error: "preview_not_available" });
     return sendProjectPreview({ ...req, params: { ...req.params, id: task.id, 0: "index.html" } }, res);
   }
 
   function sendProjectPreviewAssetForProject(req: any, res: any): void {
     const projectId = String(req.params.id ?? req.params[0] ?? "").trim();
-    const task = db.prepare(
-      `SELECT id FROM tasks WHERE project_id = ? AND status IN ('done', 'review')
+    const task = db
+      .prepare(
+        `SELECT id FROM tasks WHERE project_id = ? AND status IN ('done', 'review')
        ORDER BY CASE status WHEN 'done' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`,
-    ).get(projectId) as { id: string } | undefined;
+      )
+      .get(projectId) as { id: string } | undefined;
     if (!task) return res.status(404).json({ error: "preview_not_available" });
     const match = req.path.match(/^\/api\/projects\/[^/]+\/preview\/(.+)$/);
     return sendProjectPreview({ ...req, params: { id: task.id, 0: match?.[1] ?? "" } }, res);
   }
 
-  app.get("/api/tasks/:id/preview", (req, res) => sendProjectPreview({ ...req, params: { ...req.params, 0: "index.html" } }, res));
-  app.get("/api/tasks/:id/preview/index.html", (req, res) => sendProjectPreview({ ...req, params: { ...req.params, 0: "index.html" } }, res));
+  app.get("/api/tasks/:id/preview", (req, res) =>
+    sendProjectPreview({ ...req, params: { ...req.params, 0: "index.html" } }, res),
+  );
+  app.get("/api/tasks/:id/preview/index.html", (req, res) =>
+    sendProjectPreview({ ...req, params: { ...req.params, 0: "index.html" } }, res),
+  );
   app.get("/api/projects/:id/preview", sendProjectPreviewForProject);
   app.get("/api/projects/:id/preview/index.html", sendProjectPreviewForProject);
   app.get(/^\/api\/projects\/([^/]+)\/preview\/(.+)$/, sendProjectPreviewAssetForProject);

@@ -25,10 +25,10 @@ interface TaskCardProps {
   departments: Department[];
   taskSubtasks: SubTask[];
   isHiddenTask?: boolean;
-  onUpdateTask: (id: string, data: Partial<Task>) => void;
+  onUpdateTask: (id: string, data: Partial<Task>) => Promise<void>;
   onDeleteTask: (id: string) => void;
   onAssignTask: (taskId: string, agentId: string) => void;
-  onRunTask: (id: string) => void;
+  onRunTask: (id: string) => Promise<void>;
   onStopTask: (id: string) => void;
   onPauseTask?: (id: string) => void;
   onResumeTask?: (id: string) => void;
@@ -75,6 +75,7 @@ export default function TaskCard({
   const [showRevision, setShowRevision] = useState(false);
   const [revisionInstruction, setRevisionInstruction] = useState("");
   const [revisionBusy, setRevisionBusy] = useState(false);
+  const [revisionError, setRevisionError] = useState("");
   const [revisionAttachments, setRevisionAttachments] = useState<UploadedAttachment[]>([]);
   const [showSubtasks, setShowSubtasks] = useState(false);
   const [agentWarning, setAgentWarning] = useState(false);
@@ -101,6 +102,8 @@ export default function TaskCard({
     const instruction = revisionInstruction.trim();
     if (!instruction || revisionBusy) return;
     setRevisionBusy(true);
+    setRevisionError("");
+    let revisionSaved = false;
     try {
       const revisionBlock = `\n\n[REVISION REQUEST]\n${instruction}\n[/REVISION REQUEST]`;
       await onUpdateTask(task.id, {
@@ -111,11 +114,31 @@ export default function TaskCard({
         ),
         status: "planned",
       });
+      revisionSaved = true;
+      await onRunTask(task.id);
       setRevisionInstruction("");
       clearAttachmentPreviews(revisionAttachments);
       setRevisionAttachments([]);
       setShowRevision(false);
-      onRunTask(task.id);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "";
+      setRevisionError(
+        revisionSaved
+          ? t({
+              ko: `수정 지시는 저장됐지만 재실행을 시작하지 못했습니다. 작업판에서 다시 실행해주세요.${detail ? ` (${detail})` : ""}`,
+              en: `The revision was saved, but execution could not start. Retry from the Task Board.${detail ? ` (${detail})` : ""}`,
+              ja: `修正指示は保存されましたが、再実行を開始できませんでした。タスクボードから再試行してください。${detail ? ` (${detail})` : ""}`,
+              zh: `修订说明已保存，但未能开始重新执行。请从任务看板重试。${detail ? ` (${detail})` : ""}`,
+              id: `Instruksi revisi tersimpan, tetapi eksekusi ulang gagal dimulai. Jalankan lagi dari Papan Tugas.${detail ? ` (${detail})` : ""}`,
+            })
+          : t({
+              ko: `수정 지시를 저장하지 못해 이전 결과가 그대로 유지되었습니다. 다시 시도해주세요.${detail ? ` (${detail})` : ""}`,
+              en: `The revision could not be saved, so the previous result is unchanged. Please retry.${detail ? ` (${detail})` : ""}`,
+              ja: `修正指示を保存できず、以前の結果のままです。再試行してください。${detail ? ` (${detail})` : ""}`,
+              zh: `修订说明未能保存，因此结果未改变。请重试。${detail ? ` (${detail})` : ""}`,
+              id: `Instruksi revisi gagal disimpan sehingga hasil lama tidak berubah. Silakan coba lagi.${detail ? ` (${detail})` : ""}`,
+            }),
+      );
     } finally {
       setRevisionBusy(false);
     }
@@ -205,7 +228,9 @@ export default function TaskCard({
         )}
         <select
           value={task.status}
-          onChange={(event) => onUpdateTask(task.id, { status: event.target.value as TaskStatus })}
+          onChange={(event) => {
+            void onUpdateTask(task.id, { status: event.target.value as TaskStatus }).catch(() => undefined);
+          }}
           className="w-full rounded-lg border border-slate-600 bg-slate-700 px-2 py-1 text-xs text-white outline-none transition focus:border-blue-500"
         >
           {STATUS_OPTIONS.map((status) => (
@@ -258,7 +283,7 @@ export default function TaskCard({
             if (agentId) {
               onAssignTask(task.id, agentId);
             } else {
-              onUpdateTask(task.id, { assigned_agent_id: null });
+              void onUpdateTask(task.id, { assigned_agent_id: null }).catch(() => undefined);
             }
           }}
         />
@@ -343,7 +368,7 @@ export default function TaskCard({
                 setTimeout(() => setAgentWarning(false), 3000);
                 return;
               }
-              onRunTask(task.id);
+              void onRunTask(task.id).catch(() => undefined);
             }}
             title={t({
               ko: task.status === "done" || task.status === "review" ? "완료된 프로젝트 다시 개선" : "작업 실행",
@@ -554,7 +579,10 @@ export default function TaskCard({
           </label>
           <textarea
             value={revisionInstruction}
-            onChange={(event) => setRevisionInstruction(event.target.value)}
+            onChange={(event) => {
+              setRevisionInstruction(event.target.value);
+              setRevisionError("");
+            }}
             onKeyDown={(event) => {
               if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
                 event.preventDefault();
@@ -580,6 +608,11 @@ export default function TaskCard({
               compact
             />
           </div>
+          {revisionError && (
+            <p role="alert" className="mt-2 text-xs leading-relaxed text-rose-300">
+              {revisionError}
+            </p>
+          )}
           <div className="mt-2 flex items-center justify-end gap-2">
             <button
               type="button"

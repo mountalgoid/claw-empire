@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createPromptSkillsHelper } from "./prompt-skills.ts";
+import { buildTaskRevisionContext } from "./task-revision-context.ts";
 
 type DbLike = {
   prepare: (sql: string) => {
@@ -82,7 +83,9 @@ export function createProjectContextTools(deps: CreateProjectContextToolsDeps) {
     parts: Array<string | null | undefined>,
     opts: { allowWarningFix?: boolean } = {},
   ): string {
+    const revisionContext = buildTaskRevisionContext(parts.filter(Boolean).join("\n"));
     return [
+      revisionContext,
       ...parts,
       EXECUTION_CONTINUITY_POLICY_LINES.join("\n"),
       QUALITY_GATE_POLICY_LINES.join("\n"),

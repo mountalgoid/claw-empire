@@ -2,6 +2,7 @@ import path from "node:path";
 import type { RuntimeContext } from "../../../types/runtime-context.ts";
 import { getDepartmentPromptForPack } from "../packs/department-scope.ts";
 import { ensureVideoPreprodRemotionBestPracticesSkill } from "../core/video-skill-bootstrap.ts";
+import { ensureMediaProductionSkills } from "../core/media-production-skill-bootstrap.ts";
 import { buildWorkflowPackExecutionGuidance } from "../packs/execution-guidance.ts";
 import { buildAttachmentAnalysisContext } from "../core/file-attachments.ts";
 import { resolveVideoArtifactSpecForTask } from "../packs/video-artifact.ts";
@@ -109,6 +110,14 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
       nowMs,
       workflowPackKey: taskData.workflow_pack_key,
       provider,
+      taskId,
+      appendTaskLog,
+    });
+    ensureMediaProductionSkills({
+      db: db as any,
+      logsDir,
+      provider,
+      taskText: `${taskData.title}\n${taskData.description ?? ""}`,
       taskId,
       appendTaskLog,
     });

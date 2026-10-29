@@ -128,60 +128,66 @@ export function useAppActions({
     [setActionNotice, setMessages],
   );
 
-  const handleSendAnnouncement = useCallback(async (content: string) => {
-    try {
-      await api.sendAnnouncement(content);
-    } catch (error) {
-      console.error("Announcement failed:", error);
-      setActionNotice({
-        tone: "error",
-        message: pickLang(normalizeLanguage(settingsRef.current.language), {
-          ko: "공지 전송에 실패했습니다. 연결 상태를 확인하고 다시 시도하세요.",
-          en: "Announcement failed to send. Check the connection and try again.",
-          ja: "告知を送信できませんでした。接続を確認して再試行してください。",
-          zh: "公告发送失败，请检查连接后重试。",
-          id: "Pengumuman gagal dikirim. Periksa koneksi lalu coba lagi.",
-        }),
-      });
-    }
-  }, [setActionNotice]);
-
-  const handleSendDirective = useCallback(async (content: string, projectMeta?: ProjectMetaPayload) => {
-    try {
-      if (projectMeta?.project_id || projectMeta?.project_path || projectMeta?.project_context) {
-        await api.sendDirectiveWithProject({
-          content,
-          project_id: projectMeta.project_id,
-          project_path: projectMeta.project_path,
-          project_context: projectMeta.project_context,
+  const handleSendAnnouncement = useCallback(
+    async (content: string) => {
+      try {
+        await api.sendAnnouncement(content);
+      } catch (error) {
+        console.error("Announcement failed:", error);
+        setActionNotice({
+          tone: "error",
+          message: pickLang(normalizeLanguage(settingsRef.current.language), {
+            ko: "공지 전송에 실패했습니다. 연결 상태를 확인하고 다시 시도하세요.",
+            en: "Announcement failed to send. Check the connection and try again.",
+            ja: "告知を送信できませんでした。接続を確認して再試行してください。",
+            zh: "公告发送失败，请检查连接后重试。",
+            id: "Pengumuman gagal dikirim. Periksa koneksi lalu coba lagi.",
+          }),
         });
-      } else {
-        await api.sendDirective(content);
       }
-      setActionNotice({
-        tone: "info",
-        message: pickLang(normalizeLanguage(settingsRef.current.language), {
-          ko: "업무 지시를 접수했습니다. 작업 현황에서 실행 상태를 확인할 수 있습니다.",
-          en: "Execution directive accepted. Track progress in Tasks.",
-          ja: "実行指示を受け付けました。タスク画面で進行状況を確認できます。",
-          zh: "执行指令已受理，可在任务页面查看进度。",
-          id: "Instruksi eksekusi diterima. Pantau kemajuannya di menu Tugas.",
-        }),
-      });
-    } catch (error) {
-      console.error("Directive failed:", error);
-      setActionNotice({
-        tone: "error",
-        message: pickLang(normalizeLanguage(settingsRef.current.language), {
-          ko: "업무 지시를 실행 대기열에 전달하지 못했습니다. 연결을 확인하고 다시 시도하세요.",
-          en: "Could not queue the execution directive. Check the connection and try again.",
-          ja: "実行指示をキューに登録できませんでした。接続を確認して再試行してください。",
-          zh: "执行指令未能加入队列，请检查连接后重试。",
-          id: "Instruksi gagal masuk antrean eksekusi. Periksa koneksi lalu coba lagi.",
-        }),
-      });
-    }
-  }, [setActionNotice]);
+    },
+    [setActionNotice],
+  );
+
+  const handleSendDirective = useCallback(
+    async (content: string, projectMeta?: ProjectMetaPayload) => {
+      try {
+        if (projectMeta?.project_id || projectMeta?.project_path || projectMeta?.project_context) {
+          await api.sendDirectiveWithProject({
+            content,
+            project_id: projectMeta.project_id,
+            project_path: projectMeta.project_path,
+            project_context: projectMeta.project_context,
+          });
+        } else {
+          await api.sendDirective(content);
+        }
+        setActionNotice({
+          tone: "info",
+          message: pickLang(normalizeLanguage(settingsRef.current.language), {
+            ko: "업무 지시를 접수했습니다. 작업 현황에서 실행 상태를 확인할 수 있습니다.",
+            en: "Execution directive accepted. Track progress in Tasks.",
+            ja: "実行指示を受け付けました。タスク画面で進行状況を確認できます。",
+            zh: "执行指令已受理，可在任务页面查看进度。",
+            id: "Instruksi eksekusi diterima. Pantau kemajuannya di menu Tugas.",
+          }),
+        });
+      } catch (error) {
+        console.error("Directive failed:", error);
+        setActionNotice({
+          tone: "error",
+          message: pickLang(normalizeLanguage(settingsRef.current.language), {
+            ko: "업무 지시를 실행 대기열에 전달하지 못했습니다. 연결을 확인하고 다시 시도하세요.",
+            en: "Could not queue the execution directive. Check the connection and try again.",
+            ja: "実行指示をキューに登録できませんでした。接続を確認して再試行してください。",
+            zh: "执行指令未能加入队列，请检查连接后重试。",
+            id: "Instruksi gagal masuk antrean eksekusi. Periksa koneksi lalu coba lagi.",
+          }),
+        });
+      }
+    },
+    [setActionNotice],
+  );
 
   const handleCreateTask = useCallback(
     async (input: {
@@ -245,13 +251,31 @@ export function useAppActions({
     async (id: string, data: Partial<Task>) => {
       try {
         await api.updateTask(id, data);
+      } catch (error) {
+        console.error("Update task failed:", error);
+        const lang = normalizeLanguage(settingsRef.current.language);
+        setActionNotice({
+          tone: "error",
+          message: pickLang(lang, {
+            ko: "업무 업데이트 또는 수정 지시 저장에 실패했습니다. 다시 시도해주세요.",
+            en: "The task update or revision could not be saved. Please try again.",
+            ja: "タスクまたは修正指示を保存できませんでした。もう一度お試しください。",
+            zh: "任务更新或修订说明未能保存，请重试。",
+            id: "Pembaruan tugas atau instruksi revisi gagal disimpan. Silakan coba lagi.",
+          }),
+        });
+        throw error;
+      }
+
+      try {
         const tks = await api.getTasks();
         setTasks(tks);
       } catch (error) {
-        console.error("Update task failed:", error);
+        console.warn("Task was saved, but the task list could not be refreshed:", error);
+        setTasks((previous) => previous.map((task) => (task.id === id ? { ...task, ...data } : task)));
       }
     },
-    [setTasks],
+    [setActionNotice, setTasks],
   );
 
   const handleDeleteTask = useCallback(
@@ -290,12 +314,28 @@ export function useAppActions({
     async (id: string) => {
       try {
         await api.runTask(id);
-        await refreshTasksAndAgents();
       } catch (error) {
         console.error("Run task failed:", error);
+        const lang = normalizeLanguage(settingsRef.current.language);
+        setActionNotice({
+          tone: "error",
+          message: pickLang(lang, {
+            ko: "업무 실행을 시작하지 못했습니다. 작업판에서 상태를 확인하고 다시 시도해주세요.",
+            en: "The task could not be started. Check its Task Board status and retry.",
+            ja: "タスクを開始できませんでした。タスクボードで状態を確認して再試行してください。",
+            zh: "任务未能启动，请检查任务看板状态后重试。",
+            id: "Tugas gagal dijalankan. Periksa statusnya di Papan Tugas lalu coba lagi.",
+          }),
+        });
+        throw error;
+      }
+      try {
+        await refreshTasksAndAgents();
+      } catch (error) {
+        console.warn("Task started, but its status could not be refreshed:", error);
       }
     },
-    [refreshTasksAndAgents],
+    [refreshTasksAndAgents, setActionNotice],
   );
 
   const handleStopTask = useCallback(

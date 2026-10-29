@@ -29,10 +29,10 @@ interface TaskBoardProps {
     assigned_agent_id?: string;
     workflow_pack_key?: WorkflowPackKey;
   }) => void;
-  onUpdateTask: (id: string, data: Partial<Task>) => void;
+  onUpdateTask: (id: string, data: Partial<Task>) => Promise<void>;
   onDeleteTask: (id: string) => void;
   onAssignTask: (taskId: string, agentId: string) => void;
-  onRunTask: (id: string) => void;
+  onRunTask: (id: string) => Promise<void>;
   onStopTask: (id: string) => void;
   onPauseTask?: (id: string) => void;
   onResumeTask?: (id: string) => void;
@@ -83,14 +83,14 @@ export function TaskBoard({
 
   const hideTask = useCallback(
     (taskId: string) => {
-      onUpdateTask(taskId, { hidden: 1 });
+      void onUpdateTask(taskId, { hidden: 1 }).catch(() => undefined);
     },
     [onUpdateTask],
   );
 
   const unhideTask = useCallback(
     (taskId: string) => {
-      onUpdateTask(taskId, { hidden: 0 });
+      void onUpdateTask(taskId, { hidden: 0 }).catch(() => undefined);
     },
     [onUpdateTask],
   );

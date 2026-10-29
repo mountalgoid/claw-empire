@@ -82,8 +82,24 @@ describe("TaskReportPopup", () => {
 
   it("opens generated image and video assets instead of only the text report", async () => {
     vi.mocked(getTaskPreviewArtifacts).mockResolvedValue([
-      { name: "poster.png", path: "content/poster.png", source: "project", kind: "image", mime: "image/png", size_bytes: 1200, url: "/api/tasks/task-1/preview/content/poster.png?source=project" },
-      { name: "reel.mp4", path: "content/reel.mp4", source: "project", kind: "video", mime: "video/mp4", size_bytes: 2400, url: "/api/tasks/task-1/preview/content/reel.mp4?source=project" },
+      {
+        name: "poster.png",
+        path: "content/poster.png",
+        source: "project",
+        kind: "image",
+        mime: "image/png",
+        size_bytes: 1200,
+        url: "/api/tasks/task-1/preview/content/poster.png?source=project",
+      },
+      {
+        name: "reel.mp4",
+        path: "content/reel.mp4",
+        source: "project",
+        kind: "video",
+        mime: "video/mp4",
+        size_bytes: 2400,
+        url: "/api/tasks/task-1/preview/content/reel.mp4?source=project",
+      },
     ]);
     const popup = {
       opener: window,
@@ -113,5 +129,34 @@ describe("TaskReportPopup", () => {
     expect(gallery).toContain("<video");
     expect(gallery).toContain("poster.png");
     expect(gallery).toContain("reel.mp4");
+  });
+
+  it("does not start a revision when saving the CEO instruction fails", async () => {
+    const onUpdateTask = vi.fn().mockRejectedValue(new Error("save rejected"));
+    const onRunTask = vi.fn().mockResolvedValue(undefined);
+    const onClose = vi.fn();
+
+    render(
+      <I18nProvider language="en">
+        <TaskReportPopup
+          report={baseReport as any}
+          agents={[]}
+          departments={[]}
+          uiLanguage="en"
+          onClose={onClose}
+          onUpdateTask={onUpdateTask}
+          onRunTask={onRunTask}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Optional: describe what should be revised..."), {
+      target: { value: "Replace the placeholder image with the real product asset." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Revise & run" }));
+
+    expect(await screen.findByText("save rejected")).toBeInTheDocument();
+    expect(onRunTask).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

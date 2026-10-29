@@ -11,23 +11,29 @@ import { formatAttachmentReferences } from "../../../workflow/core/file-attachme
 
 export type TaskCrudRouteDeps = Pick<
   RuntimeContext,
-  | "app"
-  | "db"
-  | "nowMs"
-  | "firstQueryValue"
-  | "reconcileCrossDeptSubtasks"
-  | "normalizeTextField"
-  | "recordTaskCreationAudit"
-  | "appendTaskLog"
-  | "broadcast"
-  | "setTaskCreationAuditCompletion"
-  | "clearTaskWorkflowState"
-  | "endTaskExecutionSession"
-  | "activeProcesses"
-  | "stopRequestedTasks"
-  | "killPidTree"
-  | "logsDir"
->;
+  Exclude<
+    | "app"
+    | "db"
+    | "nowMs"
+    | "firstQueryValue"
+    | "reconcileCrossDeptSubtasks"
+    | "normalizeTextField"
+    | "recordTaskCreationAudit"
+    | "appendTaskLog"
+    | "broadcast"
+    | "setTaskCreationAuditCompletion"
+    | "clearTaskWorkflowState"
+    | "endTaskExecutionSession"
+    | "activeProcesses"
+    | "stopRequestedTasks"
+    | "killPidTree"
+    | "logsDir"
+    | "cleanupWorktree",
+    "cleanupWorktree"
+  >
+> & {
+  cleanupWorktree?: RuntimeContext["cleanupWorktree"];
+};
 
 export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
   const {
@@ -47,7 +53,49 @@ export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
     stopRequestedTasks,
     killPidTree,
     logsDir,
+    cleanupWorktree,
   } = deps;
+
+  function removeTaskStorage(taskId: string, projectPath: string | null, description: string | null): void {
+    if (projectPath) {
+      const normalizedProject = path.resolve(projectPath);
+      cleanupWorktree?.(normalizedProject, taskId);
+      const worktreeRoot = path.join(normalizedProject, ".climpire-worktrees");
+      const shortId = taskId.slice(0, 8);
+      for (const folderName of [shortId, `${shortId}-1`, `${shortId}-2`, `${shortId}-3`]) {
+        const folder = path.join(worktreeRoot, folderName);
+        if (path.dirname(folder) !== worktreeRoot) continue;
+        try {
+          if (fs.existsSync(folder)) fs.rmSync(folder, { recursive: true, force: true });
+        } catch {
+          // Best effort cleanup; database deletion must still complete.
+        }
+      }
+    }
+
+    const attachmentIds = [...(description ?? "").matchAll(/\[\[attachment:([0-9a-f-]{36})\]\]/gi)].map(
+      (match) => match[1],
+    );
+    for (const attachmentId of attachmentIds) {
+      const marker = `%[[attachment:${attachmentId}]]%`;
+      const usedElsewhere =
+        db.prepare("SELECT 1 FROM tasks WHERE id != ? AND description LIKE ? LIMIT 1").get(taskId, marker) ||
+        db.prepare("SELECT 1 FROM messages WHERE task_id != ? AND content LIKE ? LIMIT 1").get(taskId, marker);
+      if (usedElsewhere) continue;
+      const attachment = db.prepare("SELECT storage_name FROM attachments WHERE id = ?").get(attachmentId) as
+        | { storage_name: string }
+        | undefined;
+      if (!attachment) continue;
+      db.prepare("DELETE FROM attachments WHERE id = ?").run(attachmentId);
+      const attachmentPath = path.join(logsDir, "attachments", attachment.storage_name);
+      if (path.dirname(attachmentPath) !== path.join(logsDir, "attachments")) continue;
+      try {
+        fs.unlinkSync(attachmentPath);
+      } catch {
+        // The file may already have been removed.
+      }
+    }
+  }
 
   function normalizeProjectPathInput(raw: unknown): string | null {
     const value = normalizeTextField(raw);
@@ -550,6 +598,8 @@ export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
     const existing = db.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as
       | {
           assigned_agent_id: string | null;
+          project_path: string | null;
+          description: string | null;
         }
       | undefined;
     if (!existing) return res.status(404).json({ error: "not_found" });
@@ -577,6 +627,7 @@ export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
 
     db.prepare("DELETE FROM task_logs WHERE task_id = ?").run(id);
     db.prepare("DELETE FROM messages WHERE task_id = ?").run(id);
+    removeTaskStorage(id, existing.project_path, existing.description);
     db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
 
     for (const suffix of [".log", ".prompt.txt"]) {

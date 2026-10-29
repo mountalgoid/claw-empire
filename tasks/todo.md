@@ -1,3 +1,51 @@
+# Perbaikan revisi yang tidak tercermin pada hasil agent
+- [x] Telusuri simpan instruksi revisi, respons error UI, pemuatan task saat eksekusi, dan prompt agent.
+- [x] Buat permintaan revisi menjadi instruksi eksekusi berprioritas dengan kriteria pemeriksaan hasil.
+- [x] Pastikan kegagalan simpan/jalankan tidak dianggap sukses dan tampilkan umpan balik yang jelas.
+- [x] Tambahkan tes regresi untuk prompt revisi dan alur aksi, lalu jalankan tes, typecheck, build, dan diff check.
+
+## Review perbaikan revisi
+
+- Task execution prompt sekarang mengangkat permintaan revisi CEO menjadi instruksi wajib, memberi prioritas pada revisi terbaru, dan mengharuskan agent memeriksa file/hasil aktual serta memverifikasi perubahan sebelum melaporkan selesai.
+- Gagal menyimpan revisi kini menghentikan alur sebelum task dijalankan ulang; UI memberi tahu CEO bahwa hasil lama tetap berlaku. Jika simpan berhasil tetapi eksekusi gagal, UI membedakan kedua keadaan itu. Kegagalan update/start juga muncul sebagai notifikasi, bukan ditelan.
+- Verifikasi lulus: tes konteks revisi 2/2, tes laporan/revisi 4/4, `tsc -b`, `vite build`, dan `git diff --check`. Build menampilkan peringatan bundle utama 819.86 kB (gzip 248.00 kB).
+
+# Revisi harus melewati pembatasan departemen yang membuat hasil tidak berubah
+- [x] Cocokkan hasil CEO dengan prompt agent dan temukan pembatasan peran yang mengarahkan revisi produksi kembali menjadi dokumentasi.
+- [x] Tambahkan kebijakan override departemen hanya saat ada instruksi revisi CEO; pertahankan batas peran untuk tugas biasa.
+- [x] Tambahkan tes regresi untuk ekstraksi revisi dan override departemen.
+- [x] Jalankan tes backend terkait, TypeScript, build, dan pemeriksaan diff.
+
+## Review override departemen revisi
+
+- Penyebab pada hasil CEO: agent Content Strategy menerima larangan departemen untuk membuat aset desain/produksi dan menjalankan tes, sehingga permintaan chart berulang kali menjadi dokumen strategi/README.
+- Saat task memuat blok revisi CEO, prompt kini menonaktifkan larangan serta prompt bersama departemen yang dapat bertentangan, lalu menegaskan bahwa revisi harus mengubah deliverable nyata atau didelegasikan sampai perubahan terintegrasi. Task biasa tidak berubah.
+- Verifikasi: tes backend konteks revisi lulus 4/4; `pnpm exec tsc -b --pretty false` lulus; `pnpm build` lulus; `git diff --check` lulus. Build tetap memberi peringatan chunk utama 819.86 kB (gzip 248.00 kB).
+- Belum menjalankan ulang task konten pengguna; perubahan kode belum di-commit.
+
+# Pratinjau hasil dan pustaka media profesional
+- [x] Ubah pratinjau `index.html` yang tidak tersedia menjadi galeri aset aktual, sehingga PNG/MP4 tidak lagi menghasilkan `preview_file_not_found`.
+- [x] Tambahkan skill internal Video Editing Pro dan Voice Production Pro dengan aturan format, verifikasi, voice profile, serta fallback aman.
+- [x] Pasang skill otomatis hanya pada provider staff yang mengerjakan task media/audio dan catatnya di pustaka skill.
+- [x] Jalankan tes backend, TypeScript, build, dan pemeriksaan diff.
+
+## Review pratinjau dan pustaka media
+- Endpoint hasil tidak lagi mengembalikan error mentah saat `index.html` tidak ada; endpoint menyajikan galeri aset yang ditemukan di `content`, `output`, `video_output`, `public`, `dist`, atau `assets`.
+- `Video Editing Pro` dan `Voice Production Pro` dipasang lokal ketika teks task cocok, dicatat sebagai skill berhasil untuk provider staff yang menjalankan task, lalu tersedia di prompt agent dan pustaka skill.
+- Verifikasi: tes backend 6/6, `pnpm exec tsc -b --pretty false`, `pnpm build`, Prettier, dan `git diff --check` lulus. Peringatan ukuran chunk utama tetap 819.86 kB (gzip 248.00 kB).
+- Belum commit; menunggu instruksi commit pengguna.
+
+# Penghapusan task membersihkan penyimpanan
+- [x] Hapus worktree/folder task terisolasi beserta seluruh file turunannya saat task dihapus.
+- [x] Hapus lampiran task yang tidak lagi dipakai task atau pesan lain.
+- [x] Pertahankan folder proyek utama dan aset yang dipakai task lain agar tidak terhapus secara keliru.
+- [x] Jalankan tes penghapusan task, TypeScript, build, dan pemeriksaan diff.
+
+## Review penghapusan task
+- Tes penghapusan membuat folder worktree berisi file bersarang, menghapus task, lalu memastikan folder dan isi turunannya hilang.
+- Verifikasi: tes route penghapusan 4/4, TypeScript, build sebelumnya lulus; pemeriksaan Prettier dan `git diff --check` lulus.
+- Root proyek utama tidak disentuh; pembersihan folder dibatasi pada `.climpire-worktrees/<8-karakter-task-id>` dan variasi worktree task yang terdaftar.
+
 # Lampiran konteks untuk tugas, revisi, dan pengumuman
 - [x] Petakan komponen formulir dan endpoint pengumuman/revisi/tugas serta alur eksekusi agent.
 - [x] Implementasikan unggah/validasi/penyimpanan lampiran aman dan tampilan pratinjau di tiap jalur input yang relevan.

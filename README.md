@@ -71,6 +71,10 @@ Claw-Empire transforms your AI coding assistants — connected via **CLI**, **OA
 
 ## Latest Release (v2.0.4)
 
+- **Task cleanup now removes isolated task storage** - deleting a task cleans its task worktree and task-only attachments while preserving the project root and shared assets still referenced elsewhere.
+- **Media production skills are routed automatically** - media tasks can install the local `Video Editing Pro` and `Voice Production Pro` skill profiles for the staff provider that executes the task, with explicit verification and safe external-resource limits.
+- **Result preview has a media fallback** - when a task has no `index.html`, the result view serves a gallery of the actual images, videos, and files instead of returning `preview_file_not_found`.
+- **CEO revisions override conflicting department-only restrictions** - explicit revision requests now require changes to the real deliverable or integrated delegation, while ordinary tasks retain department scope controls.
 - **Docker deployment is now an officially documented path** - the repo now ships a production-oriented `Dockerfile`, `docker-compose.yml`, `.dockerignore`, and container-aware runtime path handling.
 - **Stale `working` agents recover automatically after interrupted runs** - lifecycle startup and interval sweeps now reset agents that are still marked `working` without a live `in_progress` task.
 - **Settings > API now supports official direct-API presets** - OpenCode Go and Bailian Coding Plan presets lock the expected Base URL, seed fallback models immediately, and keep refresh/retry behavior explicit.

@@ -22,3 +22,8 @@
 - Prop UI yang dipakai dalam render bersarang harus diteruskan dan memiliki fallback default; prop undefined pada operasi seperti Set.has dapat membuat seluruh Dashboard blank meskipun TypeScript tidak menangkapnya.
 - Status task perlu terlihat pada tiga tingkat: ringkasan header, kolom status, dan kartu tugas; label dropdown saja mudah terlewat saat pengguna memantau eksekusi.
 - Setelah pengguna meminta fitur baru setelah commit GitHub, perlakukan sebagai perubahan terpisah di atas commit tersebut; jangan menggabungkannya ke commit yang sudah selesai.
+- Revisi task harus dipersistenkan sebelum rerun; kegagalan simpan tidak boleh ditelan. Prompt eksekusi wajib memisahkan revisi CEO dari deskripsi lama, memprioritaskan instruksi terbaru, dan meminta bukti bahwa artefak benar-benar diperiksa serta berubah sesuai permintaan.
+- Instruksi departemen yang normalnya membatasi staf (mis. Planning hanya boleh menulis dokumentasi) tidak boleh membatalkan revisi CEO atas deliverable lintas departemen. Saat revisi eksplisit ada, prompt harus mengizinkan perubahan artefak nyata atau delegasi yang terintegrasi; tugas biasa tetap mengikuti batas spesialisasi.
+- Endpoint hasil tidak boleh mengasumsikan `index.html`; jika output media tersedia, sediakan galeri fallback yang menyajikan file aktual dan tidak mengembalikan error pratinjau mentah kepada CEO.
+- Skill media harus dipasang berdasarkan kebutuhan task dan provider staff yang benar-benar menjalankan task; gunakan instruksi lokal yang dapat diaudit bila instalasi eksternal atau kredensial belum tersedia.
+- Penghapusan task harus membersihkan worktree/folder task dan lampiran yang hanya dipakai task tersebut, tetapi tidak boleh menghapus root proyek atau aset yang masih direferensikan task/pesan lain.
