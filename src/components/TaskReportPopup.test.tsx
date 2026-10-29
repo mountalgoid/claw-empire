@@ -1,7 +1,13 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../i18n";
+import { getTaskPreviewArtifacts } from "../api";
 import TaskReportPopup from "./TaskReportPopup";
+
+vi.mock("../api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../api")>();
+  return { ...actual, getTaskPreviewArtifacts: vi.fn().mockResolvedValue([]) };
+});
 
 const baseReport = {
   task: {
@@ -44,6 +50,9 @@ const baseReport = {
 };
 
 describe("TaskReportPopup", () => {
+  beforeEach(() => vi.mocked(getTaskPreviewArtifacts).mockResolvedValue([]));
+  afterEach(() => vi.restoreAllMocks());
+
   it("shows final branch verification logs in the report popup", () => {
     render(
       <I18nProvider language="en">
@@ -69,5 +78,40 @@ describe("TaskReportPopup", () => {
     );
 
     expect(screen.getByAltText("Ari")).toBeInTheDocument();
+  });
+
+  it("opens generated image and video assets instead of only the text report", async () => {
+    vi.mocked(getTaskPreviewArtifacts).mockResolvedValue([
+      { name: "poster.png", path: "content/poster.png", source: "project", kind: "image", mime: "image/png", size_bytes: 1200, url: "/api/tasks/task-1/preview/content/poster.png?source=project" },
+      { name: "reel.mp4", path: "content/reel.mp4", source: "project", kind: "video", mime: "video/mp4", size_bytes: 2400, url: "/api/tasks/task-1/preview/content/reel.mp4?source=project" },
+    ]);
+    const popup = {
+      opener: window,
+      location: { href: "" },
+      document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
+    } as unknown as Window;
+    vi.spyOn(window, "open").mockReturnValue(popup);
+
+    render(
+      <I18nProvider language="en">
+        <TaskReportPopup
+          report={baseReport as any}
+          agents={[]}
+          departments={[]}
+          uiLanguage="en"
+          onClose={() => {}}
+          onRunTask={async () => {}}
+        />
+      </I18nProvider>,
+    );
+
+    await waitFor(() => expect(getTaskPreviewArtifacts).toHaveBeenCalledWith("task-1"));
+    fireEvent.click(screen.getByRole("button", { name: "Open result" }));
+    await waitFor(() => expect(popup.document.write).toHaveBeenCalled());
+    const gallery = vi.mocked(popup.document.write).mock.calls[0][0] as string;
+    expect(gallery).toContain("<img");
+    expect(gallery).toContain("<video");
+    expect(gallery).toContain("poster.png");
+    expect(gallery).toContain("reel.mp4");
   });
 });

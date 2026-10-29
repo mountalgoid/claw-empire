@@ -4,6 +4,7 @@ import type { RuntimeContext } from "../../../../types/runtime-context.ts";
 import type { AgentRow } from "../../shared/types.ts";
 import { resolveConstrainedAgentScopeForTask, selectAutoAssignableAgentForTask } from "./execution-run-auto-assign.ts";
 import { buildWorkflowPackExecutionGuidance } from "../../../workflow/packs/execution-guidance.ts";
+import { buildAttachmentAnalysisContext } from "../../../workflow/core/file-attachments.ts";
 import { resolveVideoArtifactSpecForTask } from "../../../workflow/packs/video-artifact.ts";
 import { ensureVideoPreprodRemotionBestPracticesSkill } from "../../../workflow/core/video-skill-bootstrap.ts";
 import { createAgentMemoryTools } from "../../../workflow/core/agent-memory-tools.ts";
@@ -86,7 +87,10 @@ export function registerTaskRunRoute(deps: TaskRunRouteDeps): void {
     buildAvailableSkillsPromptBlock,
   } = deps;
   const { getAgentMemoryContext } = createAgentMemoryTools({ db: db as any, nowMs });
-  const { getAgentPermissionContext, getProjectExternalResourceContext } = createProjectGovernanceTools({ db: db as any, nowMs });
+  const { getAgentPermissionContext, getProjectExternalResourceContext } = createProjectGovernanceTools({
+    db: db as any,
+    nowMs,
+  });
 
   app.post("/api/tasks/:id/run", (req, res) => {
     const id = String(req.params.id);
@@ -458,6 +462,7 @@ Whenever you complete a subtask, report it in this format:
     const workflowPackGuidance = buildWorkflowPackExecutionGuidance(task.workflow_pack_key, taskLang, {
       videoArtifactRelativePath: videoArtifactSpec?.relativePath,
     });
+    const attachmentContext = buildAttachmentAnalysisContext(db as any, logsDir, task.description ?? "");
     const agentMemoryContext = getAgentMemoryContext(agent.id, task.project_id, 8);
     const agentPermissionContext = getAgentPermissionContext(agent.id);
     const externalResourceContext = getProjectExternalResourceContext(
@@ -470,7 +475,8 @@ Whenever you complete a subtask, report it in this format:
       [
         (
           buildAvailableSkillsPromptBlock ||
-          ((providerName: string, _taskText?: string) => `[Available Skills][provider=${providerName || "unknown"}][unavailable]`)
+          ((providerName: string, _taskText?: string) =>
+            `[Available Skills][provider=${providerName || "unknown"}][unavailable]`)
         )(provider, `${task.title}\n${task.description ?? ""}`),
         `[Task Session] id=${executionSession.sessionId} owner=${executionSession.agentId} provider=${executionSession.provider}`,
         "This session is task-scoped. Keep continuity for this task only and do not cross-contaminate context from other projects.",
@@ -481,6 +487,7 @@ Whenever you complete a subtask, report it in this format:
         recentChanges ? `[Recent Changes]\n${recentChanges}` : "",
         `[Task] ${task.title}`,
         task.description ? `\n${task.description}` : "",
+        attachmentContext,
         workflowPackGuidance ? `\n[Workflow Pack Execution Rules]\n${workflowPackGuidance}` : "",
         continuationCtx,
         conversationCtx,

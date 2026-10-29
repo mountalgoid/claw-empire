@@ -3,6 +3,7 @@ import type { RuntimeContext } from "../../../types/runtime-context.ts";
 import { getDepartmentPromptForPack } from "../packs/department-scope.ts";
 import { ensureVideoPreprodRemotionBestPracticesSkill } from "../core/video-skill-bootstrap.ts";
 import { buildWorkflowPackExecutionGuidance } from "../packs/execution-guidance.ts";
+import { buildAttachmentAnalysisContext } from "../core/file-attachments.ts";
 import { resolveVideoArtifactSpecForTask } from "../packs/video-artifact.ts";
 import {
   buildInterruptPromptBlock,
@@ -124,6 +125,7 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
     const workflowPackGuidance = buildWorkflowPackExecutionGuidance(taskData.workflow_pack_key, taskLang, {
       videoArtifactRelativePath: videoArtifactSpec?.relativePath,
     });
+    const attachmentContext = buildAttachmentAnalysisContext(db as any, logsDir, taskData.description ?? "");
     notifyTaskStatus(taskId, taskData.title, "in_progress", taskLang);
 
     const projPath = resolveProjectPath(taskData);
@@ -231,6 +233,7 @@ export function createExecutionStartTaskTools(deps: CreateExecutionStartTaskTool
         recentChanges ? `[Recent Changes]\n${recentChanges}` : "",
         `[Task] ${taskData.title}`,
         taskData.description ? `\n${taskData.description}` : "",
+        attachmentContext,
         workflowPackGuidance ? `\n[Workflow Pack Execution Rules]\n${workflowPackGuidance}` : "",
         continuationCtx,
         conversationCtx,

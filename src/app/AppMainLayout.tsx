@@ -36,7 +36,7 @@ import {
   resolveOfficePackSeedProvider,
 } from "./office-workflow-pack";
 import { resolvePackAgentViews, resolvePackDepartmentsForDisplay } from "./office-pack-display";
-import { applyOfficePackToTaskInput, filterTasksByOfficePack, type TaskCreateInput } from "./task-workflow-pack";
+import { applyOfficePackToTaskInput, type TaskCreateInput } from "./task-workflow-pack";
 
 interface AppMainLayoutLabels {
   uiLanguage: string;
@@ -341,7 +341,6 @@ export default function AppMainLayout({
     };
   }, [customRoomThemes, displayDepartments, generatedOfficePresentation, officePackKey, officeScopedAgents]);
 
-  const tasksForActivePack = useMemo(() => filterTasksByOfficePack(tasks, officePackKey), [tasks, officePackKey]);
   const handleCreateTaskForActivePack = useCallback(
     async (input: TaskCreateInput) => {
       await onCreateTask(applyOfficePackToTaskInput(input, officePackKey));
@@ -539,7 +538,8 @@ export default function AppMainLayout({
 
             {view === "tasks" && (
               <TaskBoard
-                tasks={tasksForActivePack}
+                tasks={tasks}
+                activeOfficePackKey={officePackKey}
                 agents={displayAgents}
                 departments={displayDepartments}
                 subtasks={subtasks}

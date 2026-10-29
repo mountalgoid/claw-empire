@@ -8,6 +8,8 @@ import { submitTaskWithProjectHandling } from "./create-modal/submit-task";
 import { useDraftState } from "./create-modal/useDraftState";
 import { usePathHelperMessages } from "./create-modal/usePathHelperMessages";
 import { useProjectPickerState } from "./create-modal/useProjectPickerState";
+import type { UploadedAttachment } from "../../api";
+import { appendAttachmentReferences, clearAttachmentPreviews } from "../attachment-utils";
 
 interface CreateModalProps {
   agents: Agent[];
@@ -39,6 +41,11 @@ function CreateModal({ agents, departments, onClose, onCreate, onAssign }: Creat
   const [submitBusy, setSubmitBusy] = useState(false);
   const [submitWithoutProjectPromptOpen, setSubmitWithoutProjectPromptOpen] = useState(false);
   const [formFeedback, setFormFeedback] = useState<FormFeedback | null>(null);
+  const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
+  const closeModal = useCallback(() => {
+    clearAttachmentPreviews(attachments);
+    onClose();
+  }, [attachments, onClose]);
 
   const filteredAgents = useMemo(
     () => (departmentId ? agents.filter((agent) => agent.department_id === departmentId) : agents),
@@ -103,14 +110,18 @@ function CreateModal({ agents, departments, onClose, onCreate, onAssign }: Creat
       newProjectPath: projectPicker.newProjectPath,
     },
     applyFormState: applyFormStateFromDraft,
-    onClose,
+    onClose: closeModal,
   });
 
   async function submitTask(options?: { allowCreateMissingPath?: boolean; allowWithoutProject?: boolean }) {
     await submitTaskWithProjectHandling(
       {
         title,
-        description,
+        description: appendAttachmentReferences(
+          description,
+          attachments,
+          t({ ko: "첨부 파일", en: "Attachments", ja: "添付ファイル", zh: "附件", id: "Lampiran" }),
+        ),
         departmentId,
         taskType,
         priority,
@@ -126,7 +137,7 @@ function CreateModal({ agents, departments, onClose, onCreate, onAssign }: Creat
         unsupportedPathApiMessage,
         resolvePathHelperErrorMessage,
         onCreate,
-        onClose,
+        onClose: closeModal,
         selectProject: projectPicker.selectProject,
         setFormFeedback,
         setSubmitWithoutProjectPromptOpen,
@@ -298,6 +309,8 @@ function CreateModal({ agents, departments, onClose, onCreate, onAssign }: Creat
       }}
       onPriorityChange={handlePriorityChange}
       onAssignAgentChange={handleAssignAgentChange}
+      attachments={attachments}
+      onAttachmentsChange={setAttachments}
     />
   );
 }

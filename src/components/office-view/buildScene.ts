@@ -27,7 +27,6 @@ import { buildFinalLayers } from "./buildScene-final-layers";
 export function buildOfficeScene(context: BuildOfficeSceneContext): void {
   const {
     appRef,
-    texturesRef,
     dataRef,
     cbRef,
     activeMeetingTaskIdRef,
@@ -63,7 +62,6 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
   } = context;
 
   const app = appRef.current;
-  const textures = texturesRef.current;
   if (!app) return;
 
   const preservedDeliverySprites = new Set<Container>();
@@ -190,7 +188,6 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
 
   buildDepartmentRooms({
     app,
-    textures,
     departments,
     agents,
     tasks,
@@ -221,7 +218,6 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
 
   buildBreakRoom({
     app,
-    textures,
     agents,
     spriteMap,
     activeLocale,
@@ -240,7 +236,6 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
 
   buildFinalLayers({
     app,
-    textures,
     tasks,
     ceoPosRef,
     agentPosRef,

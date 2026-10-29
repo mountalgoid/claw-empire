@@ -1,6 +1,6 @@
 import { Container, Graphics } from "pixi.js";
 import { OFFICE_PASTEL } from "./themes-locale";
-import { TILE, type WallClockVisual } from "./model";
+import { type WallClockVisual } from "./model";
 
 function hashStr(s: string): number {
   let h = 0;
@@ -119,26 +119,16 @@ function drawRoomAtmosphere(
 /* ================================================================== */
 
 function drawTiledFloor(g: Graphics, x: number, y: number, w: number, h: number, c1: number, c2: number) {
-  for (let ty = 0; ty < h; ty += TILE) {
-    for (let tx = 0; tx < w; tx += TILE) {
-      const isEven = ((tx / TILE + ty / TILE) & 1) === 0;
-      g.rect(x + tx, y + ty, TILE, TILE).fill(isEven ? c1 : c2);
-      // Top-left highlight (warm light)
-      g.moveTo(x + tx, y + ty)
-        .lineTo(x + tx + TILE, y + ty)
-        .stroke({ width: 0.3, color: 0xffffff, alpha: 0.15 });
-      g.moveTo(x + tx, y + ty)
-        .lineTo(x + tx, y + ty + TILE)
-        .stroke({ width: 0.3, color: 0xffffff, alpha: 0.1 });
-      // Bottom-right shadow (warm dark)
-      g.moveTo(x + tx, y + ty + TILE)
-        .lineTo(x + tx + TILE, y + ty + TILE)
-        .stroke({ width: 0.3, color: 0x8a7a60, alpha: 0.1 });
-      g.moveTo(x + tx + TILE, y + ty)
-        .lineTo(x + tx + TILE, y + ty + TILE)
-        .stroke({ width: 0.3, color: 0x8a7a60, alpha: 0.08 });
-    }
+  const base = blendColor(c1, c2, 0.5);
+  g.roundRect(x, y, w, h, 10).fill(base);
+  // Quiet architectural floor seams replace the old high-contrast checkerboard.
+  for (let tx = x + 34; tx < x + w; tx += 56) {
+    g.moveTo(tx, y + 8).lineTo(tx, y + h - 8).stroke({ width: 0.7, color: c2, alpha: 0.2 });
   }
+  for (let ty = y + 28; ty < y + h; ty += 44) {
+    g.moveTo(x + 8, ty).lineTo(x + w - 8, ty).stroke({ width: 0.7, color: c1, alpha: 0.22 });
+  }
+  g.roundRect(x + 1, y + 1, w - 2, Math.min(20, h * 0.18), 9).fill({ color: 0xffffff, alpha: 0.08 });
 }
 
 /** Draw a soft ambient glow (radial gradient approximation using concentric ellipses) */

@@ -11,6 +11,8 @@ describe("ChatComposer announcement controls", () => {
       <ChatComposer
         mode="announcement"
         input="@Sage review this request"
+        attachments={[]}
+        onAttachmentsChange={vi.fn()}
         selectedAgent={null}
         isDirectiveMode={false}
         isAnnouncementMode

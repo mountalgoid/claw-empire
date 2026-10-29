@@ -1,5 +1,5 @@
 import type { MutableRefObject } from "react";
-import { Container, Graphics, Sprite, Text, TextStyle, type Application, type Texture } from "pixi.js";
+import { Container, Graphics, Text, TextStyle, type Application } from "pixi.js";
 import type { Agent } from "../../types";
 import { localeName } from "../../i18n";
 import type { CallbackSnapshot, BreakAnimItem } from "./buildScene-types";
@@ -20,11 +20,11 @@ import {
   hashStr,
 } from "./drawing-core";
 import { drawPlant } from "./drawing-furniture-a";
+import { drawOfficeAvatar } from "./drawOfficeAvatar";
 import { drawCoffeeMachine, drawCoffeeTable, drawHighTable, drawSofa, drawVendingMachine } from "./drawing-furniture-b";
 
 interface BuildBreakRoomParams {
   app: Application;
-  textures: Record<string, Texture>;
   agents: Agent[];
   spriteMap: Map<string, number>;
   activeLocale: SupportedLocale;
@@ -43,7 +43,6 @@ interface BuildBreakRoomParams {
 
 export function buildBreakRoom({
   app,
-  textures,
   agents,
   spriteMap,
   activeLocale,
@@ -153,21 +152,7 @@ export function buildBreakRoom({
     charContainer.cursor = "pointer";
     charContainer.on("pointerdown", () => cbRef.current.onSelectAgent(agent));
 
-    const dirKey = `${spriteNum}-${spot.dir}-1`;
-    const fallbackKey = `${spriteNum}-D-1`;
-    const texture = textures[dirKey] || textures[fallbackKey];
-
-    if (texture) {
-      const sprite = new Sprite(texture);
-      sprite.anchor.set(0.5, 1);
-      const scale = (TARGET_CHAR_H * 0.85) / sprite.texture.height;
-      sprite.scale.set(scale);
-      charContainer.addChild(sprite);
-    } else {
-      const fallback = new Text({ text: agent.avatar_emoji || "🤖", style: new TextStyle({ fontSize: 20 }) });
-      fallback.anchor.set(0.5, 1);
-      charContainer.addChild(fallback);
-    }
+    charContainer.addChild(drawOfficeAvatar(spriteNum, TARGET_CHAR_H * 0.85));
     breakRoom.addChild(charContainer);
 
     breakAnimItemsRef.current.push({

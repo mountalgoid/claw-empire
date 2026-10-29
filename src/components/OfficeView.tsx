@@ -5,7 +5,6 @@ import {
   type Graphics,
   type Text,
   type Sprite,
-  type Texture,
   type AnimatedSprite,
 } from "pixi.js";
 import { useI18n } from "../i18n";
@@ -23,7 +22,7 @@ import {
   type MobileMoveDirection,
   type SubCloneBurstParticle,
 } from "./office-view/model";
-import { type SupportedLocale } from "./office-view/themes-locale";
+import { LOCALE_TEXT, type SupportedLocale } from "./office-view/themes-locale";
 import { useCliUsage } from "./office-view/useCliUsage";
 import {
   useMeetingPresenceSync,
@@ -57,7 +56,6 @@ export default function OfficeView({
   themeRef.current = currentTheme;
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
-  const texturesRef = useRef<Record<string, Texture>>({});
   const destroyedRef = useRef(false);
   const initIdRef = useRef(0);
   const initDoneRef = useRef(false);
@@ -73,7 +71,7 @@ export default function OfficeView({
   const keysRef = useRef<Record<string, boolean>>({});
   const ceoPosRef = useRef({ x: 180, y: 60 });
   const ceoSpriteRef = useRef<Container | null>(null);
-  const crownRef = useRef<Text | null>(null);
+  const crownRef = useRef<Graphics | null>(null);
   const highlightRef = useRef<Graphics | null>(null);
   const animItemsRef = useRef<
     Array<{
@@ -280,7 +278,6 @@ export default function OfficeView({
   const buildScene = useCallback(() => {
     buildOfficeScene({
       appRef,
-      texturesRef,
       dataRef,
       cbRef,
       activeMeetingTaskIdRef,
@@ -356,13 +353,11 @@ export default function OfficeView({
   useOfficePixiRuntime({
     containerRef,
     appRef,
-    texturesRef,
     destroyedRef,
     initIdRef,
     initDoneRef,
     officeWRef,
     deliveriesRef,
-    dataRef,
     buildScene,
     followCeoInView,
     triggerDepartmentInteract,
@@ -384,7 +379,6 @@ export default function OfficeView({
     language,
     sceneRevision,
     deliveryLayerRef,
-    texturesRef,
     ceoMeetingSeatsRef,
     agentPosRef,
     deliveriesRef,
@@ -396,7 +390,6 @@ export default function OfficeView({
     language,
     onCrossDeptDeliveryProcessed,
     deliveryLayerRef,
-    texturesRef,
     agentPosRef,
     spriteMapRef,
     processedCrossDeptRef,
@@ -409,7 +402,6 @@ export default function OfficeView({
     language,
     onCeoOfficeCallProcessed,
     deliveryLayerRef,
-    texturesRef,
     ceoMeetingSeatsRef,
     deliveriesRef,
     spriteMapRef,
@@ -428,21 +420,21 @@ export default function OfficeView({
         onPointerCancel={onOfficePointerEnd}
         onClick={onOfficeClick}
         onWheel={onOfficeWheel}
-        aria-label="Kantor interaktif. Gunakan roda mouse untuk zoom dan seret untuk berpindah."
+        aria-label={t(LOCALE_TEXT.officeControls)}
       >
-        <div className="office-view-controls" role="toolbar" aria-label="Kontrol kantor">
-          <button type="button" onClick={() => setOfficeZoom(officeZoomRef.current + 0.1)} aria-label="Perbesar kantor">+</button>
+        <div className="office-view-controls" role="toolbar" aria-label={t(LOCALE_TEXT.officeControls)}>
+          <button type="button" onClick={() => setOfficeZoom(officeZoomRef.current + 0.1)} aria-label={t(LOCALE_TEXT.officeZoomIn)}>+</button>
           <span>{officeZoomPercent}%</span>
-          <button type="button" onClick={() => setOfficeZoom(officeZoomRef.current - 0.1)} aria-label="Perkecil kantor">−</button>
-          <button type="button" onClick={() => setOfficeZoom(1)} aria-label="Atur ulang zoom">↺</button>
+          <button type="button" onClick={() => setOfficeZoom(officeZoomRef.current - 0.1)} aria-label={t(LOCALE_TEXT.officeZoomOut)}>−</button>
+          <button type="button" onClick={() => setOfficeZoom(1)} aria-label={t(LOCALE_TEXT.officeZoomReset)}>↺</button>
           <select
             value={officeMapMode}
             onChange={(event) => setOfficeMapMode(event.target.value as OfficeMapMode)}
-            aria-label="Mode tata letak kantor"
+            aria-label={t(LOCALE_TEXT.officeLayout)}
           >
-            <option value="balanced">Seimbang</option>
-            <option value="wide">Lebar</option>
-            <option value="focused">Fokus</option>
+            <option value="balanced">{t(LOCALE_TEXT.officeLayoutBalanced)}</option>
+            <option value="wide">{t(LOCALE_TEXT.officeLayoutWide)}</option>
+            <option value="focused">{t(LOCALE_TEXT.officeLayoutFocused)}</option>
           </select>
         </div>
         <div ref={officePanLayerRef} className="office-pan-layer" data-office-theme={currentTheme}>

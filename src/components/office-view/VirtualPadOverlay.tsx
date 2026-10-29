@@ -1,4 +1,4 @@
-import type { LanguageText, UiLanguage } from "../../i18n";
+import type { LanguageText } from "../../i18n";
 import { LOCALE_TEXT } from "./themes-locale";
 import type { MobileMoveDirection } from "./model";
 
@@ -12,7 +12,7 @@ interface VirtualPadOverlayProps {
 }
 
 const mobilePadButtonClass =
-  "pointer-events-auto flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300/70 bg-transparent text-sm font-bold text-slate-100 shadow-none active:scale-95 active:bg-slate-500/20";
+  "pointer-events-auto flex h-11 w-11 touch-none items-center justify-center rounded-xl border border-white/15 bg-slate-950/70 text-sm font-semibold text-slate-100 shadow-lg backdrop-blur active:scale-95 active:bg-slate-700/90";
 
 export default function VirtualPadOverlay({
   showVirtualPad,
@@ -24,11 +24,11 @@ export default function VirtualPadOverlay({
 
   return (
     <>
-      <div className="pointer-events-none fixed bottom-3 left-1/2 z-50 -translate-x-1/2">
+      <div className="pointer-events-none absolute bottom-3 left-1/2 z-30 -translate-x-1/2">
         <button
           type="button"
-          aria-label="Interact"
-          className="pointer-events-auto flex h-10 min-w-12 items-center justify-center rounded-xl border border-amber-300/80 bg-amber-500/85 px-2 text-[11px] font-bold tracking-wide text-slate-950 shadow-none active:scale-95 active:bg-amber-400"
+          aria-label={t(LOCALE_TEXT.mobileEnter)}
+          className="pointer-events-auto flex h-11 min-w-14 touch-none items-center justify-center rounded-xl border border-amber-200/50 bg-amber-400 px-3 text-[11px] font-bold tracking-wide text-slate-950 shadow-lg active:scale-95 active:bg-amber-300"
           style={{ touchAction: "none" }}
           onPointerDown={(event) => event.preventDefault()}
           onClick={onInteract}
@@ -37,12 +37,12 @@ export default function VirtualPadOverlay({
         </button>
       </div>
 
-      <div className="pointer-events-none fixed bottom-3 right-3 z-50">
+      <div className="pointer-events-none absolute bottom-3 right-3 z-30">
         <div className="grid grid-cols-3 gap-1">
           <div />
           <button
             type="button"
-            aria-label="Move up"
+            aria-label={t(LOCALE_TEXT.moveUp)}
             className={mobilePadButtonClass}
             style={{ touchAction: "none" }}
             onPointerDown={() => onSetMoveDirectionPressed("up", true)}
@@ -55,7 +55,7 @@ export default function VirtualPadOverlay({
           <div />
           <button
             type="button"
-            aria-label="Move left"
+            aria-label={t(LOCALE_TEXT.moveLeft)}
             className={mobilePadButtonClass}
             style={{ touchAction: "none" }}
             onPointerDown={() => onSetMoveDirectionPressed("left", true)}
@@ -65,10 +65,10 @@ export default function VirtualPadOverlay({
           >
             ◀
           </button>
-          <div className="h-9 w-9" />
+          <div className="h-11 w-11" />
           <button
             type="button"
-            aria-label="Move right"
+            aria-label={t(LOCALE_TEXT.moveRight)}
             className={mobilePadButtonClass}
             style={{ touchAction: "none" }}
             onPointerDown={() => onSetMoveDirectionPressed("right", true)}
@@ -81,7 +81,7 @@ export default function VirtualPadOverlay({
           <div />
           <button
             type="button"
-            aria-label="Move down"
+            aria-label={t(LOCALE_TEXT.moveDown)}
             className={mobilePadButtonClass}
             style={{ touchAction: "none" }}
             onPointerDown={() => onSetMoveDirectionPressed("down", true)}

@@ -5,6 +5,8 @@ import { TASK_TYPE_OPTIONS, taskTypeLabel, type FormFeedback, type TFunction } f
 import CreateTaskModalOverlays from "./Overlays";
 import type { CreateTaskModalOverlaysProps } from "./overlay-types";
 import { AssigneeSection, PrioritySection, ProjectSection } from "./Sections";
+import AttachmentPicker from "../../AttachmentPicker";
+import type { UploadedAttachment } from "../../../api";
 
 interface CreateTaskModalViewProps {
   t: TFunction;
@@ -32,6 +34,8 @@ interface CreateTaskModalViewProps {
   onTaskTypeChange: (value: TaskType) => void;
   onPriorityChange: (value: number) => void;
   onAssignAgentChange: (value: string) => void;
+  attachments: UploadedAttachment[];
+  onAttachmentsChange: (attachments: UploadedAttachment[]) => void;
 }
 
 export default function CreateTaskModalView({
@@ -60,6 +64,8 @@ export default function CreateTaskModalView({
   onTaskTypeChange,
   onPriorityChange,
   onAssignAgentChange,
+  attachments,
+  onAttachmentsChange,
 }: CreateTaskModalViewProps) {
   return (
     <div
@@ -144,6 +150,8 @@ export default function CreateTaskModalView({
                   className="w-full resize-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>
+
+              <AttachmentPicker attachments={attachments} onChange={onAttachmentsChange} disabled={submitBusy} />
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

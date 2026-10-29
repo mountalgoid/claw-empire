@@ -4,6 +4,23 @@ import { DEFAULT_WORKFLOW_PACK_KEY, WORKFLOW_PACK_KEYS, isWorkflowPackKey } from
 type DbLike = Pick<DatabaseSync, "exec" | "prepare">;
 
 export function applyTaskSchemaMigrations(db: DbLike): void {
+  // Private user-provided files referenced by task/chat attachment markers.
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS attachments (
+        id TEXT PRIMARY KEY,
+        original_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        byte_size INTEGER NOT NULL,
+        sha256 TEXT NOT NULL,
+        storage_name TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL
+      )
+    `);
+  } catch {
+    /* schema migration is retried on next startup */
+  }
+
   // Subtask cross-department delegation columns
   try {
     db.exec("ALTER TABLE subtasks ADD COLUMN target_department_id TEXT");

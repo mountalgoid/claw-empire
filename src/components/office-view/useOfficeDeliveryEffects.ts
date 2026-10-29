@@ -1,7 +1,8 @@
 import { useEffect, type MutableRefObject } from "react";
-import { AnimatedSprite, Container, Graphics, Text, TextStyle, type Texture } from "pixi.js";
+import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { Agent, CeoOfficeCall, CrossDeptDelivery, MeetingPresence } from "../../types";
 import { hashStr } from "./drawing-core";
+import { drawOfficeAvatar } from "./drawOfficeAvatar";
 import { type Delivery, destroyNode, trackProcessedId } from "./model";
 import {
   LOCALE_TEXT,
@@ -16,7 +17,6 @@ interface MeetingPresenceSyncParams {
   language: SupportedLocale;
   sceneRevision: number;
   deliveryLayerRef: MutableRefObject<Container | null>;
-  texturesRef: MutableRefObject<Record<string, Texture>>;
   ceoMeetingSeatsRef: MutableRefObject<Array<{ x: number; y: number }>>;
   agentPosRef: MutableRefObject<Map<string, { x: number; y: number }>>;
   deliveriesRef: MutableRefObject<Delivery[]>;
@@ -28,7 +28,6 @@ export function useMeetingPresenceSync({
   language,
   sceneRevision,
   deliveryLayerRef,
-  texturesRef,
   ceoMeetingSeatsRef,
   agentPosRef,
   deliveriesRef,
@@ -36,7 +35,6 @@ export function useMeetingPresenceSync({
 }: MeetingPresenceSyncParams): void {
   useEffect(() => {
     const dlLayer = deliveryLayerRef.current;
-    const textures = texturesRef.current;
     const seats = ceoMeetingSeatsRef.current;
     if (!dlLayer || seats.length === 0) return;
 
@@ -72,25 +70,7 @@ export function useMeetingPresenceSync({
 
       const spriteNum = spriteMapRef.current.get(row.agent_id) ?? (hashStr(row.agent_id) % 13) + 1;
       const actor = new Container();
-      const frames: Texture[] = [];
-
-      for (let frame = 1; frame <= 3; frame++) {
-        const key = `${spriteNum}-D-${frame}`;
-        if (textures[key]) frames.push(textures[key]);
-      }
-
-      if (frames.length > 0) {
-        const animSprite = new AnimatedSprite(frames);
-        animSprite.anchor.set(0.5, 1);
-        const scale = 44 / animSprite.texture.height;
-        animSprite.scale.set(scale);
-        animSprite.gotoAndStop(0);
-        actor.addChild(animSprite);
-      } else {
-        const fallback = new Text({ text: "🧑‍💼", style: new TextStyle({ fontSize: 20 }) });
-        fallback.anchor.set(0.5, 1);
-        actor.addChild(fallback);
-      }
+      actor.addChild(drawOfficeAvatar(spriteNum, 44));
 
       const badge = new Graphics();
       actor.addChild(badge);
@@ -138,7 +118,6 @@ export function useMeetingPresenceSync({
     language,
     sceneRevision,
     deliveryLayerRef,
-    texturesRef,
     ceoMeetingSeatsRef,
     agentPosRef,
     deliveriesRef,
@@ -151,7 +130,6 @@ interface CrossDeptDeliveryAnimationParams {
   language: SupportedLocale;
   onCrossDeptDeliveryProcessed?: (id: string) => void;
   deliveryLayerRef: MutableRefObject<Container | null>;
-  texturesRef: MutableRefObject<Record<string, Texture>>;
   agentPosRef: MutableRefObject<Map<string, { x: number; y: number }>>;
   spriteMapRef: MutableRefObject<Map<string, number>>;
   processedCrossDeptRef: MutableRefObject<Set<string>>;
@@ -163,7 +141,6 @@ export function useCrossDeptDeliveryAnimations({
   language,
   onCrossDeptDeliveryProcessed,
   deliveryLayerRef,
-  texturesRef,
   agentPosRef,
   spriteMapRef,
   processedCrossDeptRef,
@@ -172,7 +149,6 @@ export function useCrossDeptDeliveryAnimations({
   useEffect(() => {
     if (!crossDeptDeliveries?.length) return;
     const dlLayer = deliveryLayerRef.current;
-    const textures = texturesRef.current;
     if (!dlLayer) return;
 
     for (const delivery of crossDeptDeliveries) {
@@ -188,26 +164,7 @@ export function useCrossDeptDeliveryAnimations({
 
       const actor = new Container();
       const spriteNum = spriteMapRef.current.get(delivery.fromAgentId) ?? (hashStr(delivery.fromAgentId) % 13) + 1;
-      const frames: Texture[] = [];
-      for (let frame = 1; frame <= 3; frame++) {
-        const key = `${spriteNum}-D-${frame}`;
-        if (textures[key]) frames.push(textures[key]);
-      }
-
-      if (frames.length > 0) {
-        const animSprite = new AnimatedSprite(frames);
-        animSprite.anchor.set(0.5, 1);
-        const scale = 44 / animSprite.texture.height;
-        animSprite.scale.set(scale);
-        animSprite.animationSpeed = 0.12;
-        animSprite.play();
-        animSprite.position.set(0, 0);
-        actor.addChild(animSprite);
-      } else {
-        const fallback = new Text({ text: "🧑‍💼", style: new TextStyle({ fontSize: 20 }) });
-        fallback.anchor.set(0.5, 1);
-        actor.addChild(fallback);
-      }
+      actor.addChild(drawOfficeAvatar(spriteNum, 44));
 
       const docHolder = new Container();
       const docEmoji = new Text({ text: "📋", style: new TextStyle({ fontSize: 13 }) });
@@ -250,7 +207,6 @@ export function useCrossDeptDeliveryAnimations({
     language,
     onCrossDeptDeliveryProcessed,
     deliveryLayerRef,
-    texturesRef,
     agentPosRef,
     spriteMapRef,
     processedCrossDeptRef,
@@ -264,7 +220,6 @@ interface CeoOfficeCallAnimationParams {
   language: SupportedLocale;
   onCeoOfficeCallProcessed?: (id: string) => void;
   deliveryLayerRef: MutableRefObject<Container | null>;
-  texturesRef: MutableRefObject<Record<string, Texture>>;
   ceoMeetingSeatsRef: MutableRefObject<Array<{ x: number; y: number }>>;
   deliveriesRef: MutableRefObject<Delivery[]>;
   spriteMapRef: MutableRefObject<Map<string, number>>;
@@ -278,7 +233,6 @@ export function useCeoOfficeCallAnimations({
   language,
   onCeoOfficeCallProcessed,
   deliveryLayerRef,
-  texturesRef,
   ceoMeetingSeatsRef,
   deliveriesRef,
   spriteMapRef,
@@ -288,7 +242,6 @@ export function useCeoOfficeCallAnimations({
   useEffect(() => {
     if (!ceoOfficeCalls?.length) return;
     const dlLayer = deliveryLayerRef.current;
-    const textures = texturesRef.current;
     if (!dlLayer) return;
 
     const pickLine = (call: CeoOfficeCall) => {
@@ -389,26 +342,7 @@ export function useCeoOfficeCallAnimations({
       trackProcessedId(processedCeoOfficeRef.current, call.id);
       const actor = new Container();
       const spriteNum = spriteMapRef.current.get(call.fromAgentId) ?? (hashStr(call.fromAgentId) % 13) + 1;
-      const frames: Texture[] = [];
-
-      for (let frame = 1; frame <= 3; frame++) {
-        const key = `${spriteNum}-D-${frame}`;
-        if (textures[key]) frames.push(textures[key]);
-      }
-
-      if (frames.length > 0) {
-        const animSprite = new AnimatedSprite(frames);
-        animSprite.anchor.set(0.5, 1);
-        const scale = 44 / animSprite.texture.height;
-        animSprite.scale.set(scale);
-        animSprite.animationSpeed = 0.12;
-        animSprite.play();
-        actor.addChild(animSprite);
-      } else {
-        const fallback = new Text({ text: "🧑‍💼", style: new TextStyle({ fontSize: 20 }) });
-        fallback.anchor.set(0.5, 1);
-        actor.addChild(fallback);
-      }
+      actor.addChild(drawOfficeAvatar(spriteNum, 44));
 
       const badge = new Graphics();
       actor.addChild(badge);
@@ -458,7 +392,6 @@ export function useCeoOfficeCallAnimations({
     language,
     agents,
     deliveryLayerRef,
-    texturesRef,
     ceoMeetingSeatsRef,
     deliveriesRef,
     spriteMapRef,

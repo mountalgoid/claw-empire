@@ -1,4 +1,151 @@
+# Lampiran konteks untuk tugas, revisi, dan pengumuman
+- [x] Petakan komponen formulir dan endpoint pengumuman/revisi/tugas serta alur eksekusi agent.
+- [x] Implementasikan unggah/validasi/penyimpanan lampiran aman dan tampilan pratinjau di tiap jalur input yang relevan.
+- [x] Teruskan referensi dan metadata file kepada agent agar tool yang tersedia dapat membaca/menganalisis kontennya; tangani format yang tidak didukung dengan jelas.
+- [x] Tambahkan tes API/UI keamanan dan analisis attachment, jalankan build serta pemeriksaan diff.
+
+## Review lampiran konteks
+
+- Task Board, revisi dari kartu/laporan, composer pesan/pengumuman, serta tindakan eksplisit “kirim dan eksekusi sebagai tugas” kini menerima hingga 8 lampiran per permintaan (maks. 50 MB/file): gambar, video, PDF, TXT, Markdown, CSV, dan JSON.
+- Unggahan menggunakan ID acak, allowlist ekstensi plus pemeriksaan signature/teks, penyimpanan privat, dan file hanya dibuka lewat endpoint terautentikasi. Lampiran yang sudah direferensikan task/pesan tidak dapat dihapus.
+- Agent CLI memperoleh jalur file dan instruksi inspeksi. Agent API menerima teks/JSON/CSV/Markdown yang diekstrak, PDF via `pdftotext` bila tersedia, gambar via vision, serta maksimum 8 frame video hasil ekstraksi `ffmpeg`; jika alat atau batas ukuran menghalangi analisis, konteks menyebutkan keterbatasan dan tidak mengklaim hasil analisis. Audio video tidak dikirim.
+- Composer memperingatkan bahwa file dapat dikirim ke provider eksternal yang dikonfigurasi. Pengumuman umum tetap siaran; untuk analisis gunakan @agent atau tombol eksekusi sebagai tugas.
+- Verifikasi lulus: tes frontend lampiran/composer 3/3, tes popup laporan 3/3, tes backend lampiran/resolver 5/5, `tsc -b`, `vite build`, Prettier, dan `git diff --check`. Build memberi peringatan chunk utama 817.07 kB (gzip 247.07 kB); perubahan ini tidak menambah dependensi.
+
+# Stabilitas dan mutu lintas paket kantor
+
+- [x] Petakan sumber kebenaran paket task pada pembuatan, review, retry, revisi, subtask, dan perubahan paket aktif.
+- [x] Perbaiki kebocoran konteks agar tiap task/revisi memakai snapshot paketnya sendiri setelah paket kantor berubah.
+- [x] Audit quality guidance semua paket; tambahkan standar deliverable, validasi, dan fallback yang spesifik tanpa memaksakan tool/provider yang tidak tersedia.
+- [x] Tambahkan tes regresi persistensi paket dan kontrak mutu lintas paket.
+- [x] Jalankan tes relevan, build, tinjau diff; stage hanya perubahan tugas ini bila commit diminta.
+
+## Review stabilitas dan mutu lintas paket
+
+- Task Board kini menampilkan seluruh task dari semua paket secara default; filter paket bersifat opsional. Label pada kartu dan penjelasan header menegaskan bahwa paket setiap task melekat sejak dibuat, sedangkan pergantian paket kantor memengaruhi task baru saja.
+- Backend eksekusi, review, delegasi, dan pembuatan subtask membaca `workflow_pack_key` dari task tersimpan; resolver memakai snapshot source-task sebelum default project/fallback. Tes regresi mengunci prioritas tersebut.
+- Semua 11 paket kini menerima quality/safety gate umum dan daftar pemeriksaan khusus paket. Video mengikuti rasio/platform dan renderer yang tersedia, tanpa pemaksaan Remotion, durasi/shot tetap, atau instalasi tanpa izin.
+- Verifikasi yang sudah lulus: tes frontend routing paket 4/4; tes backend guidance/resolver 8/8; `pnpm build`; `git diff --check`. Vite masih memberi peringatan bundle utama 809 kB (gzip 243.87 kB); belum ada commit.
+
+# Perbaikan tombol Buka Hasil
+
+- [x] Telusuri urutan fallback tombol hasil dan identifikasi kenapa konten media hanya membuka laporan teks.
+- [x] Prioritaskan entry point aplikasi atau tampilkan galeri gambar/video/file dari daftar artefak aktual.
+- [x] Tambahkan tes klik tombol untuk membuktikan hasil PNG dan MP4 muncul di jendela hasil.
+- [x] Jalankan tes terkait, build, dan pemeriksaan diff.
+
+## Review tombol hasil
+
+- Tombol hasil kini membuka `index.html` yang terdaftar sebagai output aplikasi; jika tidak ada, membuka galeri gambar/video/file aktual. Fallback laporan dipakai hanya bila tidak ada artefak.
+- Verifikasi: `TaskReportPopup.test.tsx` lulus 3/3, build produksi lulus, dan `git diff --check` bersih. Peringatan chunk Vite besar tetap ada.
+
+# Penyempurnaan pustaka, eksekusi pengumuman, dan manajemen aset
+
+- [x] Petakan paket kantor, pustaka skill/resource, dan cara capability dipilih saat task didelegasikan.
+- [x] Tingkatkan kebijakan resource routing agar staff memakai resource yang relevan/tersedia; verifikasi ketersediaan dan izin tanpa memasang atau memberi akses berbahaya diam-diam.
+- [x] Buat alur eksplisit dari pengumuman CEO ke eksekusi task, sambil menjaga pengumuman informasional tidak menciptakan task tak sengaja; pastikan tombol Tugas/Laporan tetap dapat dipakai.
+- [x] Lengkapi manajemen aset (refresh, buka/unduh, ganti nama/pindah/hapus) dengan validasi path, konfirmasi aksi destruktif, serta kontrol akses.
+- [x] Uji API/UI, build, keamanan, dan diff; stage hanya perubahan fitur ini, commit dan push jika seluruh pemeriksaan lulus.
+
+## Review peningkatan pustaka, pengumuman, dan aset
+
+- Resource/skill dipilih berdasarkan kecocokan dengan tugas dan arahan paket; prompt mengutamakan tool yang benar-benar tersedia dan izin yang ada.
+- Pengumuman dapat dikirim sekaligus dieksekusi lewat aksi eksplisit dan pemilihan proyek. Mention agent membuka percakapan langsung; mention departemen tetap didelegasikan. Tombol Tugas/Laporan tetap memakai alur pilih proyek.
+- Pustaka aset mengelompokkan output dan mendukung buka/unduh, muat ulang, rename, pindah, serta hapus dengan konfirmasi dan pembatasan folder/path. Kegagalan pencatatan audit tidak mengubah operasi file sukses menjadi respons gagal.
+- Verifikasi: tes frontend 5/5 dan tes backend 12/12 lulus; build produksi serta pemeriksaan diff dilanjutkan sebelum commit.
+
+# Pustaka aset proyek
+
+- [x] Tambahkan menu aset baru pada navigasi desktop dan mobile dengan lokalisasi.
+- [x] Kelompokkan hierarki proyek → task utama → subtask → folder → aset; muat aset hanya ketika task dibuka.
+- [x] Sediakan pencarian, status/loading/error/empty state, preview media, dan unduh berkas.
+- [x] Verifikasi tes komponen/endpoint, TypeScript, build, dan diff tanpa memasukkan perubahan lain.
+
+## Review pustaka aset
+
+- Menu Aset tersedia pada navigasi desktop dan mobile serta mengikuti bahasa UI.
+- Hierarki: proyek → task utama → subtask → folder output → file. Pencarian memfilter proyek/task; pemindaian aset hanya berjalan saat task dibuka.
+- Gambar/video dipratinjau langsung, semua file yang dikenali dapat diunduh, dan state loading/error/kosong tersedia.
+- Verifikasi: tes `AssetLibrary` lulus, `pnpm build` berhasil (887 modul), dan `git diff --check` bersih. Peringatan chunk bundle besar masih muncul.
+- Perubahan ini setelah commit `246e624` dan belum dibuat commit baru.
+
+# Pratinjau media pada hasil tugas
+
+- [x] Pastikan endpoint daftar aset hanya membaca file media dari root task/worktree terisolasi dan tidak mengikuti symlink.
+- [x] Tambahkan galeri gambar dan pemutar video responsif pada laporan tugas.
+- [x] Nyatakan kondisi kosong/hasil belum tersedia dengan jelas, tanpa menganggap laporan teks sebagai media selesai.
+- [x] Tampilkan file hasil umum selain gambar/video dan tambahkan aksi CEO untuk mengunduh file serta menyalin/mengunduh teks laporan.
+- [x] Uji endpoint/UI, build, serta diff; jangan ubah status atau isi task pengguna.
+
+## Temuan awal
+
+- Folder proyek berisi tujuh PNG dan contact sheet; MP4 hanya ada pada worktree lama, tidak di folder proyek aktif.
+- Laporan saat ini menampilkan dokumen sebagai `<pre>` teks saja; tombol “Buka hasil” mengutamakan `index.html` atau README.
+
+## Review pratinjau dan pengelolaan hasil
+
+- Laporan menampilkan gambar sebagai galeri, video dengan pemutar inline, dan file hasil umum (caption, README, PDF/arsip/dokumen) sebagai lampiran unduhan. Daftar aset memeriksa worktree task dan folder proyek dengan batas direktori/tipe berkas dan melewati symlink.
+- Media dapat dibuka dan diunduh. Dokumen dan ringkasan dapat disalin atau diunduh; CEO tetap dapat meminta revisi melalui alur tindak lanjut tanpa mengubah file sumber secara diam-diam.
+- Bila media belum ada atau gagal dimuat, UI menyatakan kondisi tersebut secara eksplisit; status task ditampilkan sesuai status aslinya.
+- API live task mengembalikan 28 aset (7 gambar feed, caption, README, gambar frame, dan file Reel); MP4 valid H.264, 720×1280, 17,6 detik.
+- Verifikasi: `pnpm build` berhasil (886 modul; peringatan ukuran bundle yang sudah ada), seluruh 5 tes `worktrees-and-usage.test.ts` lulus, dan `git diff --check` bersih.
+- Tidak mengubah status maupun isi task pengguna dan tidak membuat commit.
+
+# Penyegaran UI Kantor non-pixel
+
+- [x] Ganti lantai kotak-kotak dengan permukaan kantor vektor yang lebih tenang.
+- [x] Ganti karakter sprite pixel dengan avatar vektor berwarna konsisten lintas tema.
+- [x] Hapus pemuatan gambar sprite lama dan perbarui kontrol kantor agar responsif/lokal.
+- [x] Jalankan pemeriksaan TypeScript dan build; tinjau diff serta risiko fitur.
+
+## Review UI Kantor
+
+- `pnpm build` berhasil (886 modul), begitu juga `pnpm exec tsc -b --pretty false` dan `git diff --check`.
+- Peringatan bundle besar yang sudah ada tetap muncul; tidak ditambahkan dependency baru.
+- Zoom, pan, tata letak, status, interaksi agen, rapat, dan gerak karakter tetap di jalur scene Pixi yang sama.
+- QA visual Playwright tidak dapat dijalankan karena executable Chromium tidak tersedia di lingkungan ini.
+
 # Optimasi Dashboard
+
+## Pemulihan otomatis atas laporan keterbatasan staf
+
+- [x] Tambahkan protokol reviewer untuk mengklasifikasikan dan menangani keterbatasan yang dilaporkan staf.
+- [x] Untuk eksekusi gagal, coba satu remediasi terisolasi yang berizin sebelum hasil masuk Review.
+- [x] Tetap lanjut dengan fallback offline/mock pada bagian independen tanpa melewati kontrol akses.
+- [x] Minta input CEO dengan tujuan, cakupan minimum, opsi aman, dan satu tindakan konkret bila benar-benar perlu.
+- [x] Pastikan laporan mencatat percobaan, bukti verifikasi, dan alasan blocker secara ringkas.
+- [x] Validasi tipe/build dan periksa diff.
+
+### Review pemulihan tanpa menghentikan pekerjaan independen
+
+- `pnpm build` berhasil untuk perubahan alur pemulihan; setelah penyesuaian akhir pada instruksi CEO/privacy, `pnpm exec tsc -b` juga selesai tanpa error.
+- `git diff --check` bersih.
+- Kegagalan tidak lagi masuk loop auto-run. Dengan reviewer tersedia, task tetap kolaborasi lalu masuk Review berisi hasil penuh/parsial dan laporan pemulihan; subtask independen tetap dapat melanjutkan antrean.
+- Kredensial tidak diminta lewat chat dan izin tidak dilewati. CEO diminta hanya untuk akses/data privat yang benar-benar wajib, dengan tujuan, cakupan minimum, opsi aman, dan tindakan spesifik.
+
+## Peningkatan mutu eksekusi dan keselamatan
+
+- [x] Sambungkan QA spesifik setiap workflow pack ke prompt eksekusi.
+- [x] Berikan konteks izin agent kepada reviewer otomatis dan patuhi batas kerja terisolasi.
+- [x] Pastikan reviewer tanpa worktree hanya menilai bukti yang tersedia dan menandai keterbatasan.
+- [x] Validasi perubahan dengan pemeriksaan tipe/build dan tinjau diff.
+
+### Review mutu eksekusi
+
+- `pnpm build` berhasil; TypeScript dan Vite build lulus (885 modul).
+- `git diff --check` bersih.
+- Peringatan bundel Vite yang sudah ada tetap muncul untuk chunk 780.82 kB dan Pixi 533.06 kB.
+- Verifikasi saat ini membuktikan build, bukan menjalankan job AI end-to-end atau membuktikan mutu keluaran seluruh provider.
+
+## Pemeriksaan staf sebelum review CEO
+
+- [x] Tinjau alur selesai task dan laporan tim yang ada.
+- [x] Jalankan pemeriksaan hasil oleh ketua tim pada worktree sebelum status Review CEO.
+- [x] Minta perbaikan otomatis dan verifikasi ulang satu kali untuk ketidaksesuaian goal/error.
+- [x] Catat hasil pemeriksaan staf pada laporan dan log task.
+- [x] Build aplikasi/server dan tinjau diff.
+
+Hasil: build produksi berhasil (`pnpm build`, 885 modul). Build memberi peringatan ukuran chunk yang sudah ada; tidak ada error TypeScript.
 
 - [x] Petakan komponen Dashboard, polling, listener, dan render mahal.
 - [x] Reproduksi/ukur sumber macet di browser atau lewat test/build.

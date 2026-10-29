@@ -1,6 +1,11 @@
 import { useState } from "react";
-import type { Agent, Department, SubTask, Task, TaskStatus } from "../../types";
+import type { Agent, Department, SubTask, Task, TaskStatus, WorkflowPackKey } from "../../types";
 import { localeName, useI18n } from "../../i18n";
+import { getOfficePackMeta } from "../../app/office-workflow-pack";
+import AttachmentPicker from "../AttachmentPicker";
+import type { UploadedAttachment } from "../../api";
+import { appendAttachmentReferences, clearAttachmentPreviews } from "../attachment-utils";
+import AttachmentReferences from "../AttachmentReferences";
 import AgentAvatar from "../AgentAvatar";
 import AgentSelect from "../AgentSelect";
 import DiffModal from "./DiffModal";
@@ -70,17 +75,21 @@ export default function TaskCard({
   const [showRevision, setShowRevision] = useState(false);
   const [revisionInstruction, setRevisionInstruction] = useState("");
   const [revisionBusy, setRevisionBusy] = useState(false);
+  const [revisionAttachments, setRevisionAttachments] = useState<UploadedAttachment[]>([]);
   const [showSubtasks, setShowSubtasks] = useState(false);
   const [agentWarning, setAgentWarning] = useState(false);
 
   const assignedAgent = task.assigned_agent ?? agents.find((agent) => agent.id === task.assigned_agent_id);
-  const fallbackAssignedName = (locale === "ko" ? task.agent_name_ko || task.agent_name : task.agent_name) || task.assigned_agent_id;
+  const fallbackAssignedName =
+    (locale === "ko" ? task.agent_name_ko || task.agent_name : task.agent_name) || task.assigned_agent_id;
   const assignedDisplayName = assignedAgent ? localeName(locale, assignedAgent) : null;
   const assignedLabel = assignedDisplayName || fallbackAssignedName || null;
   const department = departments.find((d) => d.id === task.department_id);
   const typeBadge = getTaskTypeBadge(task.task_type, t);
+  const taskPack = (task.workflow_pack_key || "development") as WorkflowPackKey;
 
-  const canRun = task.status === "planned" || task.status === "inbox" || task.status === "review" || task.status === "done";
+  const canRun =
+    task.status === "planned" || task.status === "inbox" || task.status === "review" || task.status === "done";
   const canStop = task.status === "in_progress";
   const canPause = task.status === "in_progress" && !!onPauseTask;
   const canResume = (task.status === "pending" || task.status === "cancelled") && !!onResumeTask;
@@ -95,10 +104,16 @@ export default function TaskCard({
     try {
       const revisionBlock = `\n\n[REVISION REQUEST]\n${instruction}\n[/REVISION REQUEST]`;
       await onUpdateTask(task.id, {
-        description: `${task.description?.trim() ?? ""}${revisionBlock}`.trim(),
+        description: appendAttachmentReferences(
+          `${task.description?.trim() ?? ""}${revisionBlock}`,
+          revisionAttachments,
+          t({ ko: "첨부 파일", en: "Attachments", ja: "添付ファイル", zh: "附件", id: "Lampiran" }),
+        ),
         status: "planned",
       });
       setRevisionInstruction("");
+      clearAttachmentPreviews(revisionAttachments);
+      setRevisionAttachments([]);
       setShowRevision(false);
       onRunTask(task.id);
     } finally {
@@ -131,12 +146,24 @@ export default function TaskCard({
 
       {task.description && (
         <p className={`mb-2 text-xs leading-relaxed text-slate-400 ${expanded ? "" : "line-clamp-2"}`}>
-          {task.description}
+          <AttachmentReferences content={task.description} />
         </p>
       )}
 
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${typeBadge.color}`}>{typeBadge.label}</span>
+        <span
+          className="rounded-full border border-cyan-800/70 bg-cyan-950/50 px-2 py-0.5 text-xs text-cyan-200"
+          title={t({
+            ko: "이 업무에 고정된 오피스 패키지",
+            en: "Office pack pinned to this task",
+            ja: "このタスクに固定されたオフィスパック",
+            zh: "固定到此任务的工作包",
+            id: "Paket kantor yang tersimpan pada tugas ini",
+          })}
+        >
+          {t(getOfficePackMeta(taskPack).label)}
+        </span>
         {isHiddenTask && (
           <span className="rounded-full bg-cyan-900/60 px-2 py-0.5 text-xs text-cyan-200">
             🙈 {t({ ko: "숨김", en: "Hidden", ja: "非表示", zh: "隐藏" })}
@@ -153,16 +180,27 @@ export default function TaskCard({
         {task.status === "in_progress" && (
           <div className="mb-2 flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-2.5 py-2 text-xs font-semibold text-amber-200">
             <span className="h-2 w-2 animate-pulse rounded-full bg-amber-300" />
-            <span>{t({ ko: "Sedang berjalan", en: "Running now", ja: "実行中", zh: "正在运行", id: "Sedang berjalan" })}</span>
+            <span>
+              {t({ ko: "Sedang berjalan", en: "Running now", ja: "実行中", zh: "正在运行", id: "Sedang berjalan" })}
+            </span>
             <span className="ml-auto text-[10px] font-normal text-amber-200/70">
-              {assignedLabel || t({ ko: "팀 실행", en: "Team execution", ja: "チーム実行", zh: "团队执行", id: "Eksekusi tim" })}
+              {assignedLabel ||
+                t({ ko: "팀 실행", en: "Team execution", ja: "チーム実行", zh: "团队执行", id: "Eksekusi tim" })}
             </span>
           </div>
         )}
         {task.status === "collaborating" && (
           <div className="mb-2 flex items-center gap-2 rounded-lg border border-indigo-400/40 bg-indigo-500/10 px-2.5 py-2 text-xs font-semibold text-indigo-200">
             <span className="animate-pulse">🤝</span>
-            <span>{t({ ko: "팀 협업 중", en: "Team collaboration", ja: "チーム協業中", zh: "团队协作中", id: "Tim sedang berkolaborasi" })}</span>
+            <span>
+              {t({
+                ko: "팀 협업 중",
+                en: "Team collaboration",
+                ja: "チーム協業中",
+                zh: "团队协作中",
+                id: "Tim sedang berkolaborasi",
+              })}
+            </span>
           </div>
         )}
         <select
@@ -314,10 +352,13 @@ export default function TaskCard({
               zh: task.status === "done" || task.status === "review" ? "再次改进此项目" : "运行任务",
             })}
             className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-white transition ${
-              task.status === "done" || task.status === "review" ? "bg-amber-700 hover:bg-amber-600" : "bg-green-700 hover:bg-green-600"
+              task.status === "done" || task.status === "review"
+                ? "bg-amber-700 hover:bg-amber-600"
+                : "bg-green-700 hover:bg-green-600"
             }`}
           >
-            {task.status === "done" || task.status === "review" ? "↻" : "▶"} {t({
+            {task.status === "done" || task.status === "review" ? "↻" : "▶"}{" "}
+            {t({
               ko: task.status === "done" || task.status === "review" ? "다시 개선" : "실행",
               en: task.status === "done" || task.status === "review" ? "Improve again" : "Run",
               ja: task.status === "done" || task.status === "review" ? "再改善" : "実行",
@@ -443,7 +484,12 @@ export default function TaskCard({
                 "noopener,noreferrer",
               )
             }
-            title={t({ ko: "완성 결과 실행", en: "Open finished project", ja: "完成したプロジェクトを開く", zh: "打开已完成项目" })}
+            title={t({
+              ko: "완성 결과 실행",
+              en: "Open finished project",
+              ja: "完成したプロジェクトを開く",
+              zh: "打开已完成项目",
+            })}
             className="flex items-center justify-center gap-1 rounded-lg bg-emerald-700 px-2 py-1.5 text-xs font-medium text-emerald-50 transition hover:bg-emerald-600"
           >
             ▶ {t({ ko: "결과 보기", en: "Preview", ja: "結果を見る", zh: "查看结果" })}
@@ -526,6 +572,14 @@ export default function TaskCard({
             })}
             className="w-full resize-y rounded-md border border-amber-700/60 bg-slate-900/80 px-2.5 py-2 text-xs text-slate-100 outline-none placeholder:text-slate-500 focus:border-amber-400"
           />
+          <div className="mt-2">
+            <AttachmentPicker
+              attachments={revisionAttachments}
+              onChange={setRevisionAttachments}
+              disabled={revisionBusy}
+              compact
+            />
+          </div>
           <div className="mt-2 flex items-center justify-end gap-2">
             <button
               type="button"
@@ -545,7 +599,13 @@ export default function TaskCard({
             >
               {revisionBusy
                 ? t({ ko: "Menjalankan...", en: "Running...", ja: "実行中...", zh: "运行中...", id: "Menjalankan..." })
-                : t({ ko: "Revisi & jalankan", en: "Revise & run", ja: "修正して実行", zh: "修订并运行", id: "Revisi & jalankan" })}
+                : t({
+                    ko: "Revisi & jalankan",
+                    en: "Revise & run",
+                    ja: "修正して実行",
+                    zh: "修订并运行",
+                    id: "Revisi & jalankan",
+                  })}
             </button>
           </div>
         </div>

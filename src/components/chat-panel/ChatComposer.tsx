@@ -1,6 +1,8 @@
 import type { KeyboardEvent, RefObject } from "react";
 import type { Agent } from "../../types";
 import ChatModeHint from "./ChatModeHint";
+import AttachmentPicker from "../AttachmentPicker";
+import type { UploadedAttachment } from "../../api";
 
 type ChatMode = "chat" | "task" | "announcement" | "report";
 type Tr = (ko: string, en: string, ja?: string, zh?: string, id?: string) => string;
@@ -8,6 +10,8 @@ type Tr = (ko: string, en: string, ja?: string, zh?: string, id?: string) => str
 interface ChatComposerProps {
   mode: ChatMode;
   input: string;
+  attachments: UploadedAttachment[];
+  onAttachmentsChange: (attachments: UploadedAttachment[]) => void;
   selectedAgent: Agent | null;
   isDirectiveMode: boolean;
   isAnnouncementMode: boolean;
@@ -24,6 +28,8 @@ interface ChatComposerProps {
 export default function ChatComposer({
   mode,
   input,
+  attachments,
+  onAttachmentsChange,
   selectedAgent,
   isDirectiveMode,
   isAnnouncementMode,
@@ -42,9 +48,7 @@ export default function ChatComposer({
         <button
           onClick={() => onModeChange(mode === "task" ? "chat" : "task")}
           className={`min-w-0 flex flex-1 items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-xs font-medium transition-colors sm:px-2 ${
-            mode === "task"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            mode === "task" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
           }`}
         >
           <span>📋</span>
@@ -64,9 +68,7 @@ export default function ChatComposer({
         <button
           onClick={() => onModeChange(mode === "report" ? "chat" : "report")}
           className={`min-w-0 flex flex-1 items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-xs font-medium transition-colors sm:px-2 ${
-            mode === "report"
-              ? "bg-emerald-600 text-white"
-              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            mode === "report" ? "bg-emerald-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
           }`}
         >
           <span>📊</span>
@@ -81,7 +83,7 @@ export default function ChatComposer({
           <button
             type="button"
             onClick={onExecuteAnnouncement}
-            disabled={!input.trim()}
+            disabled={!input.trim() && attachments.length === 0}
             className="w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-left text-xs font-medium text-amber-200 transition-colors hover:bg-amber-500/15 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
           >
             {tr(
@@ -103,6 +105,10 @@ export default function ChatComposer({
           </button>
         </div>
       )}
+
+      <div className="flex-shrink-0 px-4 pt-2">
+        <AttachmentPicker attachments={attachments} onChange={onAttachmentsChange} compact />
+      </div>
 
       <div className="flex-shrink-0 px-4 pb-4 pt-2">
         <div
@@ -136,17 +142,17 @@ export default function ChatComposer({
                   ? tr(
                       "업무 지시 내용을 입력하세요...",
                       "Write a task instruction...",
-                    "タスク指示内容を入力してください...",
-                    "请输入任务指示内容...",
-                    "Tulis instruksi tugas...",
+                      "タスク指示内容を入力してください...",
+                      "请输入任务指示内容...",
+                      "Tulis instruksi tugas...",
                     )
                   : mode === "report"
                     ? tr(
                         "보고 요청 내용을 입력하세요...",
                         "Write a report request...",
-                    "レポート依頼内容を入力してください...",
-                    "请输入报告请求内容...",
-                    "Tulis permintaan laporan...",
+                        "レポート依頼内容を入力してください...",
+                        "请输入报告请求内容...",
+                        "Tulis permintaan laporan...",
                       )
                     : selectedAgent
                       ? tr(
@@ -159,9 +165,9 @@ export default function ChatComposer({
                       : tr(
                           "메시지를 입력하세요...",
                           "Type a message...",
-                        "メッセージを入力してください...",
-                        "请输入消息...",
-                        "Ketik pesan...",
+                          "メッセージを入力してください...",
+                          "请输入消息...",
+                          "Ketik pesan...",
                         )
             }
             rows={1}
@@ -175,9 +181,9 @@ export default function ChatComposer({
           />
           <button
             onClick={onSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() && attachments.length === 0}
             className={`mb-2 mr-2 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl transition-all ${
-              input.trim()
+              input.trim() || attachments.length > 0
                 ? isDirectiveMode
                   ? "bg-red-600 text-white hover:bg-red-500"
                   : isAnnouncementMode

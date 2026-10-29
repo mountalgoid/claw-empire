@@ -1,5 +1,5 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import type { Application, AnimatedSprite, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
+import type { Application, Container, Graphics, Text } from "pixi.js";
 import type { Agent, Department, SubAgent, Task } from "../../types";
 import type { ThemeMode } from "../../ThemeContext";
 import type { Delivery, OfficeMapMode, RoomRect, SubCloneBurstParticle, WallClockVisual } from "./model";
@@ -43,9 +43,7 @@ export interface BreakAnimItem {
 export interface SubCloneAnimItem {
   container: Container;
   aura: Graphics;
-  cloneVisual: Sprite;
-  animated?: AnimatedSprite;
-  frameCount: number;
+  cloneVisual: Container;
   baseScale: number;
   baseX: number;
   baseY: number;
@@ -55,7 +53,6 @@ export interface SubCloneAnimItem {
 
 export interface BuildOfficeSceneContext {
   appRef: MutableRefObject<Application | null>;
-  texturesRef: MutableRefObject<Record<string, Texture>>;
   dataRef: MutableRefObject<DataSnapshot>;
   cbRef: MutableRefObject<CallbackSnapshot>;
   activeMeetingTaskIdRef: MutableRefObject<string | null>;
@@ -75,7 +72,7 @@ export interface BuildOfficeSceneContext {
   officeWRef: MutableRefObject<number>;
   ceoPosRef: MutableRefObject<{ x: number; y: number }>;
   ceoSpriteRef: MutableRefObject<Container | null>;
-  crownRef: MutableRefObject<Text | null>;
+  crownRef: MutableRefObject<Graphics | null>;
   highlightRef: MutableRefObject<Graphics | null>;
   ceoOfficeRectRef: MutableRefObject<{ x: number; y: number; w: number; h: number } | null>;
   breakRoomRectRef: MutableRefObject<{ x: number; y: number; w: number; h: number } | null>;

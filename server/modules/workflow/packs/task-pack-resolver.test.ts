@@ -63,6 +63,25 @@ describe("task-pack-resolver", () => {
     }
   });
 
+  it("저장된 원본 task 패키지는 변경된 프로젝트/오피스 기본값보다 우선한다", () => {
+    const db = setupDb();
+    try {
+      db.prepare("INSERT INTO projects (id, default_pack_key) VALUES (?, ?)").run("project-1", "app_dev_studio");
+      db.prepare("INSERT INTO tasks (id, workflow_pack_key) VALUES (?, ?)").run("task-1", "video_preprod");
+
+      const resolved = resolveWorkflowPackKeyForTask({
+        db,
+        sourceTaskId: "task-1",
+        projectId: "project-1",
+        fallbackPackKey: "content_studio",
+      });
+
+      expect(resolved).toBe("video_preprod");
+    } finally {
+      db.close();
+    }
+  });
+
   it("유효한 값이 없으면 fallback/default를 사용한다", () => {
     const db = setupDb();
     try {

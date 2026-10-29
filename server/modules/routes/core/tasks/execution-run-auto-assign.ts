@@ -47,6 +47,11 @@ const PACK_DEPARTMENT_PRIORITIES: Record<WorkflowPackKey, string[]> = {
   video_preprod: ["design", "planning", "dev", "operations", "qa", "devsecops"],
   novel: ["design", "planning", "dev", "qa", "operations", "devsecops"],
   roleplay: ["design", "planning", "qa", "dev", "operations", "devsecops"],
+  clipper_studio: ["planning", "dev", "design", "qa", "operations"],
+  content_studio: ["planning", "dev", "design", "operations", "qa"],
+  art_drawing_studio: ["planning", "design", "dev", "qa", "operations"],
+  game_dev_studio: ["planning", "dev", "design", "qa", "devsecops", "operations"],
+  app_dev_studio: ["planning", "dev", "design", "qa", "devsecops", "operations"],
 };
 
 const VALID_AGENT_ROLES = new Set(["team_leader", "senior", "junior", "intern"]);

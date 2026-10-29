@@ -1,5 +1,5 @@
 import type { MutableRefObject } from "react";
-import { Graphics, Text, TextStyle, type AnimatedSprite, type Container, type Sprite } from "pixi.js";
+import { Graphics, Text, TextStyle, type Container } from "pixi.js";
 import type { MeetingPresence } from "../../types";
 import {
   type Delivery,
@@ -38,9 +38,7 @@ interface AgentAnimItem {
 interface SubCloneAnimItem {
   container: Container;
   aura: Graphics;
-  cloneVisual: Sprite;
-  animated?: AnimatedSprite;
-  frameCount: number;
+  cloneVisual: Container;
   baseScale: number;
   baseX: number;
   baseY: number;
@@ -64,7 +62,7 @@ export interface OfficeTickerContext {
   keysRef: MutableRefObject<Record<string, boolean>>;
   ceoPosRef: MutableRefObject<{ x: number; y: number }>;
   ceoSpriteRef: MutableRefObject<Container | null>;
-  crownRef: MutableRefObject<Text | null>;
+  crownRef: MutableRefObject<Graphics | null>;
   highlightRef: MutableRefObject<Graphics | null>;
   animItemsRef: MutableRefObject<AgentAnimItem[]>;
   cliUsageRef: MutableRefObject<Record<string, { windows?: Array<{ utilization: number }> }> | null>;
@@ -423,12 +421,6 @@ export function runOfficeTickerStep(ctx: OfficeTickerContext): void {
     clone.cloneVisual.rotation = Math.sin(wave * 1.45 + clone.phase) * 0.045;
     const scalePulse = clone.baseScale * (1 + Math.sin(wave * 1.7) * 0.01);
     clone.cloneVisual.scale.set(scalePulse);
-
-    if (clone.animated && clone.frameCount > 1) {
-      const frameFloat = (Math.sin(wave * 2.8) + 1) * 0.5 * clone.frameCount;
-      const frame = Math.min(clone.frameCount - 1, Math.floor(frameFloat));
-      clone.animated.gotoAndStop(frame);
-    }
 
     if ((tick + clone.fireworkOffset) % SUB_CLONE_FIREWORK_INTERVAL === 0) {
       const room = clone.container.parent as Container | null;

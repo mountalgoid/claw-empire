@@ -653,6 +653,7 @@ export function initializeWorkflowPartC(ctx: RuntimeContext): WorkflowOrchestrat
     prettyStreamJson,
     getWorktreeDiffSummary,
     hasVisibleDiffSummary,
+    runAgentOneShot,
   });
 
   function handleTaskRunComplete(taskId: string, exitCode: number): void {

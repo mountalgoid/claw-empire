@@ -11,10 +11,7 @@ function parsePublicUrl(raw: unknown): URL | null {
   } catch {
     return null;
   }
-  if (![
-    "http:",
-    "https:",
-  ].includes(url.protocol)) return null;
+  if (!["http:", "https:"].includes(url.protocol)) return null;
   const host = url.hostname.toLowerCase();
   if (host === "localhost" || host.endsWith(".localhost") || host === "::1") return null;
   if (/^(127\.|10\.|192\.168\.|169\.254\.)/.test(host)) return null;
@@ -98,7 +95,16 @@ export function registerExternalResourceRoutes(ctx: RuntimeContext): void {
       `INSERT INTO external_resources
        (id, project_id, agent_id, name, kind, url, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
-    ).run(id, asText(body.project_id) || null, asText(body.agent_id) || null, name.slice(0, 160), kind, url.toString(), stamp, stamp);
+    ).run(
+      id,
+      asText(body.project_id) || null,
+      asText(body.agent_id) || null,
+      name.slice(0, 160),
+      kind,
+      url.toString(),
+      stamp,
+      stamp,
+    );
     const resource = await syncResource(id);
     res.status(201).json({ ok: true, resource });
   });
@@ -111,12 +117,19 @@ export function registerExternalResourceRoutes(ctx: RuntimeContext): void {
 
   app.patch("/api/external-resources/:id", (req, res) => {
     const id = String(req.params.id);
-    if (!db.prepare("SELECT id FROM external_resources WHERE id = ?").get(id)) return res.status(404).json({ error: "resource_not_found" });
+    if (!db.prepare("SELECT id FROM external_resources WHERE id = ?").get(id))
+      return res.status(404).json({ error: "resource_not_found" });
     const body = (req.body ?? {}) as Record<string, unknown>;
     const updates: string[] = [];
-    const values: unknown[] = [];
-    if (typeof body.name === "string" && body.name.trim()) { updates.push("name = ?"); values.push(body.name.trim().slice(0, 160)); }
-    if (body.status === "available" || body.status === "disabled") { updates.push("status = ?"); values.push(body.status); }
+    const values: Array<string | number | null> = [];
+    if (typeof body.name === "string" && body.name.trim()) {
+      updates.push("name = ?");
+      values.push(body.name.trim().slice(0, 160));
+    }
+    if (body.status === "available" || body.status === "disabled") {
+      updates.push("status = ?");
+      values.push(body.status);
+    }
     if (updates.length === 0) return res.status(400).json({ error: "no_fields_to_update" });
     updates.push("updated_at = ?");
     values.push(nowMs(), id);

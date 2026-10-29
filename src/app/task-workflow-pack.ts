@@ -17,6 +17,10 @@ export function filterTasksByOfficePack(tasks: Task[], packKey: WorkflowPackKey)
   return tasks.filter((task) => normalizeOfficeWorkflowPack(task.workflow_pack_key) === packKey);
 }
 
+export function filterTasksForBoard(tasks: Task[], packKey: WorkflowPackKey | "" = ""): Task[] {
+  return packKey ? filterTasksByOfficePack(tasks, packKey) : tasks;
+}
+
 export function applyOfficePackToTaskInput(input: TaskCreateInput, packKey: WorkflowPackKey): TaskCreateInput {
   return {
     ...input,

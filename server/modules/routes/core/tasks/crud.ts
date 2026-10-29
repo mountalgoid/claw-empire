@@ -7,6 +7,7 @@ import type { RuntimeContext } from "../../../../types/runtime-context.ts";
 import type { MeetingMinuteEntryRow, MeetingMinutesRow } from "../../shared/types.ts";
 import { isWorkflowPackKey } from "../../../workflow/packs/definitions.ts";
 import { resolveWorkflowPackKeyForTask } from "../../../workflow/packs/task-pack-resolver.ts";
+import { formatAttachmentReferences } from "../../../workflow/core/file-attachments.ts";
 
 export type TaskCrudRouteDeps = Pick<
   RuntimeContext,
@@ -199,6 +200,11 @@ export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
       return res.status(400).json({ error: "title_required" });
     }
 
+    const attachmentRefs = formatAttachmentReferences(db as any, (body as any).attachment_ids);
+    if (!attachmentRefs) return res.status(400).json({ error: "invalid_attachment_ids" });
+    const description =
+      [normalizeTextField((body as any).description) ?? "", attachmentRefs.text].filter(Boolean).join("\n\n") || null;
+
     const requestedProjectId = normalizeTextField((body as any).project_id);
     let resolvedProjectId: string | null = null;
     let resolvedProjectPath = normalizeProjectPathInput((body as any).project_path);
@@ -236,7 +242,7 @@ export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
     ).run(
       id,
       title,
-      (body as any).description ?? null,
+      description,
       (body as any).department_id ?? null,
       (body as any).assigned_agent_id ?? null,
       resolvedProjectId,
@@ -406,6 +412,14 @@ export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
     if (!existing) return res.status(404).json({ error: "not_found" });
 
     const body = { ...(req.body ?? {}) } as Record<string, unknown>;
+    const attachmentRefs = formatAttachmentReferences(db as any, body.attachment_ids);
+    if (!attachmentRefs) return res.status(400).json({ error: "invalid_attachment_ids" });
+    delete body.attachment_ids;
+    if (attachmentRefs.text) {
+      const currentDescription =
+        normalizeTextField(body.description) ?? normalizeTextField((existing as any).description) ?? "";
+      body.description = [currentDescription, attachmentRefs.text].filter(Boolean).join("\n\n");
+    }
     if ("workflow_pack_key" in body) {
       const workflowPackKey = normalizeTextField(body.workflow_pack_key);
       if (!workflowPackKey || !isWorkflowPackKey(workflowPackKey)) {

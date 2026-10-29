@@ -15,8 +15,10 @@
 - Saat tugas berhasil dibuat tetapi UI hanya menyegarkan data tanpa status visual, pengguna mengira eksekusi berhenti. Semua jalur pembuatan/pengiriman tugas harus memberi umpan balik langsung dan pesan kegagalan di UI.
 - Animasi status kantor perlu memiliki tujuan visual yang jelas: kerja bergerak pendek di area meja, rapat memakai rute menuju kursi, dan presence rapat menjadi sumber kebenaran agar karakter tidak bergerak ganda.
 - Tombol hasil tidak boleh mengasumsikan semua proyek memiliki index.html. Coba preview dan artefak secara berurutan, lalu selalu sediakan fallback laporan yang bisa dibaca.
+- Tombol “Buka hasil” harus menggunakan file hasil aktual yang ditemukan API; jangan menganggap halaman index atau laporan teks sebagai pratinjau media. Verifikasi alurnya dengan klik tombol dan assert bahwa gambar/video benar-benar muncul di jendela hasil.
 - Link artefak yang berasal dari worktree tidak boleh dipakai mentah setelah merge/cleanup; ambil path relatif seperti content/ atau output/ lalu layani dari proyek utama.
 - Pemulihan otomatis harus berada di dalam prompt eksekusi dengan batas keamanan: diagnosis dulu, gunakan resource disetujui, buat fallback lokal hanya jika aman, verifikasi ulang sekali, lalu jeda dengan blocker terukur agar tidak terjadi retry loop.
 - Penemuan external tidak boleh bergantung pada input manual, tetapi harus dibatasi allowlist, query minimum, redaksi data sensitif, validasi paket, dan pencatatan sumber agar otomatis tetap aman dan dapat diaudit.
 - Prop UI yang dipakai dalam render bersarang harus diteruskan dan memiliki fallback default; prop undefined pada operasi seperti Set.has dapat membuat seluruh Dashboard blank meskipun TypeScript tidak menangkapnya.
 - Status task perlu terlihat pada tiga tingkat: ringkasan header, kolom status, dan kartu tugas; label dropdown saja mudah terlewat saat pengguna memantau eksekusi.
+- Setelah pengguna meminta fitur baru setelah commit GitHub, perlakukan sebagai perubahan terpisah di atas commit tersebut; jangan menggabungkannya ke commit yang sudah selesai.

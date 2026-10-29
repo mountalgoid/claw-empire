@@ -20,6 +20,9 @@ import {
   findMentionedAgent,
 } from "./chat-panel/model";
 import ProjectFlowDialog from "./chat-panel/ProjectFlowDialog";
+import AttachmentPicker from "./AttachmentPicker";
+import type { UploadedAttachment } from "../api";
+import { appendAttachmentReferences, clearAttachmentPreviews } from "./attachment-utils";
 
 interface ChatPanelProps {
   selectedAgent: Agent | null;
@@ -64,6 +67,7 @@ export function ChatPanel({
   onClose,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
   const [mode, setMode] = useState<ChatMode>(selectedAgent ? "task" : "announcement");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -145,6 +149,11 @@ export function ChatPanel({
     setNewProjectPath("");
     setNewProjectGoal("");
     setProjectItems([]);
+  };
+
+  const clearSelectedAttachments = () => {
+    clearAttachmentPreviews(attachments);
+    setAttachments([]);
   };
 
   const loadRecentProjects = useCallback(async () => {
@@ -258,14 +267,22 @@ export function ChatPanel({
         return;
       }
       if (action.kind === "announcement_task") {
-        void onSendAnnouncement(action.content).then(() => onSendDirective(action.content, projectMeta)).then(() => {
-          const conversationAgent = findMentionedAgent(action.content, agents) ?? selectedAgent;
-          if (conversationAgent) onOpenAgentChat(conversationAgent);
-        });
+        void onSendAnnouncement(action.content)
+          .then(() => onSendDirective(action.content, projectMeta))
+          .then(() => {
+            const conversationAgent = findMentionedAgent(action.content, agents) ?? selectedAgent;
+            if (conversationAgent) onOpenAgentChat(conversationAgent);
+          });
         return;
       }
       if (action.kind === "task") {
-        onSendMessage(action.content, action.receiverId ? "agent" : "all", action.receiverId, "task_assign", projectMeta);
+        onSendMessage(
+          action.content,
+          action.receiverId ? "agent" : "all",
+          action.receiverId,
+          "task_assign",
+          projectMeta,
+        );
         return;
       }
       if (action.kind === "report") {
@@ -290,6 +307,7 @@ export function ChatPanel({
     };
     dispatchPending(pendingSend, projectMeta);
     setInput("");
+    clearSelectedAttachments();
     textareaRef.current?.focus();
     closeProjectFlow();
   };
@@ -325,28 +343,43 @@ export function ChatPanel({
   };
 
   const handleSend = () => {
-    const trimmed = input.trim();
+    const trimmed =
+      input.trim() ||
+      (attachments.length
+        ? tr(
+            "첨부 파일을 분석해주세요.",
+            "Please analyze the attached files.",
+            "添付ファイルを分析してください。",
+            "请分析附件。",
+            "Mohon analisis file yang dilampirkan.",
+          )
+        : "");
     if (!trimmed) return;
+    const content = appendAttachmentReferences(
+      trimmed.startsWith("$") ? trimmed.slice(1).trim() : trimmed,
+      attachments,
+      tr("첨부 파일", "Attachments", "添付ファイル", "附件", "Lampiran"),
+    );
 
     let action: PendingSendAction;
     if (trimmed.startsWith("$")) {
-      const directiveContent = trimmed.slice(1).trim();
+      const directiveContent = content;
       if (!directiveContent) return;
       action = { kind: "directive", content: directiveContent };
     } else if (mode === "announcement") {
-      action = { kind: "announcement", content: trimmed };
+      action = { kind: "announcement", content };
     } else if (mode === "task") {
-      action = { kind: "task", content: trimmed, receiverId: selectedAgent?.id };
+      action = { kind: "task", content, receiverId: selectedAgent?.id };
     } else if (mode === "report") {
       action = {
         kind: "report",
-        content: `[${tr("보고 요청", "Report Request", "レポート依頼", "报告请求")}] ${trimmed}`,
+        content: `[${tr("보고 요청", "Report Request", "レポート依頼", "报告请求", "Permintaan laporan")}] ${content}`,
         receiverId: selectedAgent?.id,
       };
     } else if (selectedAgent) {
-      action = { kind: "chat", content: trimmed, receiverId: selectedAgent.id };
+      action = { kind: "chat", content, receiverId: selectedAgent.id };
     } else {
-      action = { kind: "broadcast", content: trimmed };
+      action = { kind: "broadcast", content };
     }
 
     const requiresProject = action.kind === "directive" || action.kind === "task" || action.kind === "report";
@@ -358,11 +391,27 @@ export function ChatPanel({
 
     dispatchPending(action);
     setInput("");
+    clearSelectedAttachments();
     textareaRef.current?.focus();
   };
 
   const handleExecuteAnnouncement = () => {
-    const content = input.trim();
+    const message =
+      input.trim() ||
+      (attachments.length
+        ? tr(
+            "첨부 파일을 분석해주세요.",
+            "Please analyze the attached files.",
+            "添付ファイルを分析してください。",
+            "请分析附件。",
+            "Mohon analisis file yang dilampirkan.",
+          )
+        : "");
+    const content = appendAttachmentReferences(
+      message,
+      attachments,
+      tr("첨부 파일", "Attachments", "添付ファイル", "附件", "Lampiran"),
+    );
     if (!content || mode !== "announcement") return;
     openProjectBranch({ kind: "announcement_task", content });
   };
@@ -496,6 +545,8 @@ export function ChatPanel({
       <ChatComposer
         mode={mode}
         input={input}
+        attachments={attachments}
+        onAttachmentsChange={setAttachments}
         selectedAgent={selectedAgent}
         isDirectiveMode={isDirectiveMode}
         isAnnouncementMode={isAnnouncementMode}

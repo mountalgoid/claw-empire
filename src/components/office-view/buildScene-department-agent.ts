@@ -1,5 +1,5 @@
 import type { MutableRefObject } from "react";
-import { AnimatedSprite, Container, Graphics, Sprite, Text, TextStyle, type Texture } from "pixi.js";
+import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { Agent, SubAgent, Task } from "../../types";
 import type { AnimItem, CallbackSnapshot, SubCloneAnimItem } from "./buildScene-types";
 import {
@@ -13,10 +13,10 @@ import {
 } from "./model";
 import { hashStr } from "./drawing-core";
 import { drawDesk } from "./drawing-furniture-a";
+import { drawOfficeAvatar } from "./drawOfficeAvatar";
 
 interface RenderDeskAgentAndSubClonesParams {
   room: Container;
-  textures: Record<string, Texture>;
   spriteMap: Map<string, number>;
   agent: Agent;
   tasks: Task[];
@@ -37,7 +37,6 @@ interface RenderDeskAgentAndSubClonesParams {
 
 export function renderDeskAgentAndSubClones({
   room,
-  textures,
   spriteMap,
   agent,
   tasks,
@@ -62,28 +61,9 @@ export function renderDeskAgentAndSubClones({
   charContainer.cursor = "pointer";
   charContainer.on("pointerdown", () => cbRef.current.onSelectAgent(agent));
 
-  const frames: Texture[] = [];
-  for (let frame = 1; frame <= 3; frame++) {
-    const key = `${spriteNum}-D-${frame}`;
-    if (textures[key]) frames.push(textures[key]);
-  }
-
-  if (frames.length > 0) {
-    const animSprite = new AnimatedSprite(frames);
-    animSprite.anchor.set(0.5, 1);
-    const scale = TARGET_CHAR_H / animSprite.texture.height;
-    animSprite.scale.set(scale);
-    animSprite.gotoAndStop(0);
-    if (isOffline) {
-      animSprite.alpha = 0.3;
-      animSprite.tint = 0x888899;
-    }
-    charContainer.addChild(animSprite);
-  } else {
-    const fallback = new Text({ text: agent.avatar_emoji || "🤖", style: new TextStyle({ fontSize: 24 }) });
-    fallback.anchor.set(0.5, 1);
-    charContainer.addChild(fallback);
-  }
+  const avatar = drawOfficeAvatar(spriteNum, TARGET_CHAR_H);
+  if (isOffline) avatar.alpha = 0.45;
+  charContainer.addChild(avatar);
   room.addChild(charContainer);
 
   const deskG = drawDesk(room, ax - DESK_W / 2, deskY, isWorking);
@@ -176,21 +156,9 @@ export function renderDeskAgentAndSubClones({
       cloneContainer.addChild(aura);
 
       const cloneSpriteNum = (hashStr(`${sub.id}:clone`) % 13) + 1;
-      const cloneFrames: Texture[] = [];
-      for (let frame = 1; frame <= 3; frame++) {
-        const key = `${cloneSpriteNum}-D-${frame}`;
-        if (textures[key]) cloneFrames.push(textures[key]);
-      }
-      const baseTexture = cloneFrames[0];
-      if (!baseTexture) return;
-      const baseScale = (TARGET_CHAR_H / baseTexture.height) * 0.76;
-
-      const cloneVisual = cloneFrames.length > 1 ? new AnimatedSprite(cloneFrames) : new Sprite(baseTexture);
-      cloneVisual.anchor.set(0.5, 1);
-      cloneVisual.scale.set(baseScale);
-      cloneVisual.tint = 0xffffff;
+      const cloneVisual = drawOfficeAvatar(cloneSpriteNum, TARGET_CHAR_H * 0.76);
+      const baseScale = cloneVisual.scale.x;
       cloneVisual.alpha = 0.97;
-      if (cloneVisual instanceof AnimatedSprite) cloneVisual.gotoAndStop((index + 1) % cloneFrames.length);
       cloneContainer.addChild(cloneVisual);
 
       const charIdx = room.children.indexOf(charContainer);
@@ -208,8 +176,6 @@ export function renderDeskAgentAndSubClones({
         container: cloneContainer,
         aura,
         cloneVisual,
-        animated: cloneVisual instanceof AnimatedSprite ? cloneVisual : undefined,
-        frameCount: cloneFrames.length,
         baseScale,
         baseX: sx,
         baseY: sy,

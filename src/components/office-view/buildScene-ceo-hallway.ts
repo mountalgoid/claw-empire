@@ -2,7 +2,7 @@ import type { MutableRefObject } from "react";
 import { type Application, Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { Agent, Task } from "../../types";
 import type { Delivery, RoomTheme, WallClockVisual } from "./model";
-import { CEO_ZONE_H, HALLWAY_H, TILE } from "./model";
+import { CEO_ZONE_H, HALLWAY_H } from "./model";
 import { LOCALE_TEXT, type SupportedLocale, pickLocale } from "./themes-locale";
 import {
   blendColor,
@@ -302,17 +302,12 @@ export function buildCeoAndHallway({
   const hallY = CEO_ZONE_H;
   const hallG = new Graphics();
   const hallBase = isDark ? 0x252535 : 0xe8dcc8;
-  const hallTile1 = isDark ? 0x2d2d40 : 0xf0e4d0;
-  const hallTile2 = isDark ? 0x1f1f30 : 0xe8dcc8;
   const hallDash = isDark ? 0x3a3858 : 0xc8b898;
   const hallTrim = isDark ? 0x3a3858 : 0xd4c4a8;
   const hallGlow = isDark ? 0x3355bb : 0xfff8e0;
   hallG.rect(4, hallY, OFFICE_W - 8, HALLWAY_H).fill(hallBase);
-  drawBandGradient(hallG, 4, hallY, OFFICE_W - 8, HALLWAY_H, hallTile1, hallTile2, 5, 0.38);
-  for (let dx = 4; dx < OFFICE_W - 4; dx += TILE * 2) {
-    hallG.rect(dx, hallY, TILE * 2, HALLWAY_H).fill({ color: hallTile1, alpha: 0.5 });
-    hallG.rect(dx + TILE * 2, hallY, TILE * 2, HALLWAY_H).fill({ color: hallTile2, alpha: 0.3 });
-  }
+  drawBandGradient(hallG, 4, hallY, OFFICE_W - 8, HALLWAY_H, hallBase, isDark ? 0x1f1f30 : 0xe8dcc8, 8, 0.35);
+  hallG.moveTo(12, hallY + HALLWAY_H - 5).lineTo(OFFICE_W - 12, hallY + HALLWAY_H - 5).stroke({ width: 0.8, color: hallTrim, alpha: 0.4 });
   for (let dx = 20; dx < OFFICE_W - 20; dx += 16) {
     hallG.rect(dx, hallY + HALLWAY_H / 2, 6, 1).fill({ color: hallDash, alpha: 0.4 });
   }
@@ -324,11 +319,8 @@ export function buildCeoAndHallway({
 
   const hall2Y = breakRoomY - HALLWAY_H;
   hallG.rect(4, hall2Y, OFFICE_W - 8, HALLWAY_H).fill(hallBase);
-  drawBandGradient(hallG, 4, hall2Y, OFFICE_W - 8, HALLWAY_H, hallTile1, hallTile2, 5, 0.38);
-  for (let dx = 4; dx < OFFICE_W - 4; dx += TILE * 2) {
-    hallG.rect(dx, hall2Y, TILE * 2, HALLWAY_H).fill({ color: hallTile1, alpha: 0.5 });
-    hallG.rect(dx + TILE * 2, hall2Y, TILE * 2, HALLWAY_H).fill({ color: hallTile2, alpha: 0.3 });
-  }
+  drawBandGradient(hallG, 4, hall2Y, OFFICE_W - 8, HALLWAY_H, hallBase, isDark ? 0x1f1f30 : 0xe8dcc8, 8, 0.35);
+  hallG.moveTo(12, hall2Y + HALLWAY_H - 5).lineTo(OFFICE_W - 12, hall2Y + HALLWAY_H - 5).stroke({ width: 0.8, color: hallTrim, alpha: 0.4 });
   for (let dx = 20; dx < OFFICE_W - 20; dx += 16) {
     hallG.rect(dx, hall2Y + HALLWAY_H / 2, 6, 1).fill({ color: hallDash, alpha: 0.4 });
   }

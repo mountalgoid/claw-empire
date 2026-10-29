@@ -4,6 +4,7 @@ import type { DecisionOption } from "../chat/decision-request";
 import AgentAvatar from "../AgentAvatar";
 import MessageContent from "../MessageContent";
 import { localizeMessageContent } from "../../i18n";
+import AttachmentReferences from "../AttachmentReferences";
 
 type Tr = (ko: string, en: string, ja?: string, zh?: string, id?: string) => string;
 
@@ -152,7 +153,7 @@ export default function ChatMessageList({
                   <div className="flex max-w-[75%] flex-col gap-1">
                     <span className="px-1 text-xs text-gray-500">{senderName}</span>
                     <div className="announcement-reply-bubble rounded-2xl rounded-bl-sm border border-yellow-500/20 bg-gray-700/70 px-4 py-2.5 text-sm text-gray-100 shadow-md">
-                      <MessageContent content={localizeMessageContent(language, msg.content)} />
+                      <AttachmentReferences content={localizeMessageContent(language, msg.content)} />
                     </div>
                     {decisionRequest && (
                       <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-2 py-2">
@@ -208,7 +209,7 @@ export default function ChatMessageList({
                         : "announcement-message-bubble border border-yellow-500/30 bg-yellow-500/15 text-yellow-300"
                     }`}
                   >
-                    <MessageContent content={localizeMessageContent(language, msg.content)} />
+                    <AttachmentReferences content={localizeMessageContent(language, msg.content)} />
                   </div>
                   <span className="text-xs text-gray-600">{formatTime(msg.created_at, locale)}</span>
                 </div>
@@ -220,7 +221,7 @@ export default function ChatMessageList({
                 <div key={msg.id} className="flex flex-col items-end gap-1">
                   <span className="px-1 text-xs text-gray-500">{tr("CEO", "CEO")}</span>
                   <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-blue-600 px-4 py-2.5 text-sm text-white shadow-md">
-                    <MessageContent content={localizeMessageContent(language, msg.content)} />
+                    <AttachmentReferences content={localizeMessageContent(language, msg.content)} />
                   </div>
                   <span className="px-1 text-xs text-gray-600">{formatTime(msg.created_at, locale)}</span>
                 </div>
@@ -233,7 +234,7 @@ export default function ChatMessageList({
                 <div className="flex max-w-[75%] flex-col gap-1">
                   <span className="px-1 text-xs text-gray-500">{senderName}</span>
                   <div className="rounded-2xl rounded-bl-sm bg-gray-700 px-4 py-2.5 text-sm text-gray-100 shadow-md">
-                  <MessageContent content={localizeMessageContent(language, msg.content)} />
+                    <AttachmentReferences content={localizeMessageContent(language, msg.content)} />
                   </div>
                   {decisionRequest && (
                     <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-2 py-2">

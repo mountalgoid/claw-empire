@@ -13,6 +13,7 @@ import type { Lang } from "../../../types/lang.ts";
 import type { DelegationOptions } from "./project-resolution.ts";
 import { normalizeAgentReply, shouldPreserveStructuredFallback } from "./direct-chat-intent-utils.ts";
 import type { AgentRow, DirectChatDeps } from "./direct-chat-types.ts";
+import { buildAttachmentAnalysisContext } from "../../workflow/core/file-attachments.ts";
 
 type DirectReplyRuntimeDeps = Pick<
   DirectChatDeps,
@@ -277,7 +278,12 @@ export function createDirectReplyRuntime(deps: DirectReplyRuntimeDeps) {
           const detectedPath = deps.detectProjectPath(ceoMessage);
           const projectPath = detectedPath || (activeTask ? deps.resolveProjectPath(activeTask) : process.cwd());
 
-          const built = deps.buildDirectReplyPrompt(agent, ceoMessage, messageType);
+          const attachmentContext = buildAttachmentAnalysisContext(deps.db as any, deps.logsDir, ceoMessage);
+          const built = deps.buildDirectReplyPrompt(
+            agent,
+            attachmentContext ? `${ceoMessage}\n\n${attachmentContext}` : ceoMessage,
+            messageType,
+          );
 
           console.log(
             `[scheduleAgentReply] agent=${agent.name}, cli_provider=${agent.cli_provider}, api_provider_id=${agent.api_provider_id}, api_model=${agent.api_model}`,

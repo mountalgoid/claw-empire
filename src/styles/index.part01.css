@@ -330,14 +330,17 @@ pre,
    DOM themes. The scene is rebuilt with the matching light/night palette;
    these filters add the identity of the three color templates cheaply. */
 .office-pan-viewport {
-  min-height: clamp(420px, 72vh, 780px);
-  height: auto;
-  overflow: visible;
+  position: relative;
+  height: clamp(460px, 72svh, 780px);
+  min-height: 360px;
+  overflow: hidden;
+  contain: layout paint;
   overscroll-behavior: none;
   touch-action: none;
   background: var(--th-bg-secondary);
   border: 1px solid var(--th-border);
-  border-radius: 0.75rem;
+  border-radius: 1rem;
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--th-glass-shadow) 70%, transparent);
   cursor: grab;
 }
 
@@ -422,30 +425,30 @@ pre,
   z-index: 20;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.3rem;
-  border: 1px solid var(--th-border);
-  border-radius: 0.65rem;
-  background: color-mix(in srgb, var(--th-bg-surface) 88%, transparent);
+  gap: 0.4rem;
+  padding: 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--th-border-strong) 68%, transparent);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--th-bg-primary) 88%, transparent);
   color: var(--th-text-primary);
-  box-shadow: 0 8px 24px var(--th-glass-shadow);
-  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 28px var(--th-glass-shadow);
+  backdrop-filter: blur(14px);
   pointer-events: auto;
 }
 
 .office-view-controls button,
 .office-view-controls select {
-  min-height: 1.85rem;
+  min-height: 2.35rem;
   border: 1px solid var(--th-border);
-  border-radius: 0.4rem;
+  border-radius: 0.65rem;
   background: var(--th-bg-secondary);
   color: var(--th-text-primary);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
 .office-view-controls button {
-  width: 1.85rem;
+  width: 2.35rem;
   cursor: pointer;
 }
 
@@ -467,13 +470,26 @@ pre,
 }
 
 @media (max-width: 640px) {
+  .office-pan-viewport {
+    height: clamp(390px, 64svh, 620px);
+    min-height: 340px;
+    border-radius: 0.8rem;
+  }
+
   .office-view-controls {
-    top: 0.45rem;
-    right: 0.45rem;
+    top: 0.5rem;
+    right: 0.5rem;
+    left: 0.5rem;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    padding: 0.3rem;
   }
 
   .office-view-controls select {
-    max-width: 5.3rem;
+    max-width: 6rem;
+    min-width: 0;
+    padding: 0 0.45rem;
+    font-size: 0.72rem;
   }
 }
 

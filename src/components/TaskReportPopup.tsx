@@ -6,6 +6,9 @@ import type { UiLanguage } from "../i18n";
 import { localeName, pickLang } from "../i18n";
 import AgentAvatar from "./AgentAvatar";
 import { resolveReportAgent } from "./task-report-agent";
+import AttachmentPicker from "./AttachmentPicker";
+import type { UploadedAttachment } from "../api";
+import { appendAttachmentReferences, clearAttachmentPreviews } from "./attachment-utils";
 
 interface TaskReportPopupProps {
   report: TaskReportDetail;
@@ -77,6 +80,7 @@ export default function TaskReportPopup({
   const [expandedDocs, setExpandedDocs] = useState<Record<string, boolean>>({});
   const [documentPages, setDocumentPages] = useState<Record<string, number>>({});
   const [revisionText, setRevisionText] = useState("");
+  const [revisionAttachments, setRevisionAttachments] = useState<UploadedAttachment[]>([]);
   const [actionBusy, setActionBusy] = useState<"run" | "revision" | null>(null);
   const [actionError, setActionError] = useState("");
   const [artifacts, setArtifacts] = useState<TaskPreviewArtifact[]>([]);
@@ -140,6 +144,25 @@ export default function TaskReportPopup({
   const escapeHtml = (value: string): string =>
     value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;");
 
+  const buildArtifactGalleryHtml = (assets: TaskPreviewArtifact[]): string => {
+    const cards = assets
+      .map((asset) => {
+        const safeUrl = escapeHtml(asset.url);
+        const safeName = escapeHtml(asset.name);
+        const safePath = escapeHtml(asset.path);
+        const downloadLabel = escapeHtml(t({ ko: "다운로드", en: "Download", id: "Unduh" }));
+        const preview =
+          asset.kind === "image"
+            ? `<a href="${safeUrl}" target="_blank" rel="noreferrer"><img src="${safeUrl}" alt="${safeName}"></a>`
+            : asset.kind === "video"
+              ? `<video src="${safeUrl}" controls playsinline preload="metadata"></video>`
+              : "";
+        return `<article>${preview}<div><strong>${safeName}</strong><small>${safePath}</small><a class="download" href="${safeUrl}" download="${safeName}">${downloadLabel}</a></div></article>`;
+      })
+      .join("");
+    return `<!doctype html><html lang="${uiLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(currentReport.task.title)}</title><style>body{margin:0;padding:20px;background:#0b1220;color:#e2e8f0;font:15px system-ui,sans-serif}main{max-width:1100px;margin:auto}h1{font-size:22px}section{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}article{min-width:0;overflow:hidden;border:1px solid #334155;border-radius:14px;background:#111c2d}img,video{display:block;width:100%;max-height:70vh;object-fit:contain;background:#020617}article>div{display:grid;gap:6px;padding:12px}strong,small{overflow-wrap:anywhere}small{color:#94a3b8}.download{justify-self:start;color:#93c5fd}</style></head><body><main><h1>${escapeHtml(currentReport.task.title)}</h1><section>${cards}</section></main></body></html>`;
+  };
+
   const buildReportFallbackHtml = (): string => {
     const documents = [
       ...(currentReport.planning_summary?.documents ?? []),
@@ -163,12 +186,31 @@ export default function TaskReportPopup({
       : `/api/tasks/${encodeURIComponent(currentReport.task.id)}/preview/index.html`;
     const popup = window.open("about:blank", "_blank");
     if (!popup) {
-      setActionError(t({ ko: "Browser memblokir tab hasil. Izinkan pop-up lalu coba lagi.", en: "The browser blocked the result tab. Allow pop-ups and try again.", id: "Browser memblokir tab hasil. Izinkan pop-up lalu coba lagi." }));
+      setActionError(
+        t({
+          ko: "Browser memblokir tab hasil. Izinkan pop-up lalu coba lagi.",
+          en: "The browser blocked the result tab. Allow pop-ups and try again.",
+          id: "Browser memblokir tab hasil. Izinkan pop-up lalu coba lagi.",
+        }),
+      );
       return;
     }
     popup.opener = null;
 
     try {
+      const resultAssets = artifacts.length ? artifacts : await getTaskPreviewArtifacts(currentReport.task.id);
+      const appEntry = resultAssets.find((asset) => asset.kind === "file" && /(?:^|\/)index\.html$/i.test(asset.path));
+      if (appEntry) {
+        popup.location.href = appEntry.url;
+        return;
+      }
+      if (resultAssets.length > 0) {
+        popup.document.open();
+        popup.document.write(buildArtifactGalleryHtml(resultAssets));
+        popup.document.close();
+        return;
+      }
+
       const previewResponse = await fetch(previewUrl, { credentials: "include" });
       const previewType = previewResponse.headers.get("content-type") || "";
       if (previewResponse.ok && !previewType.includes("application/json")) {
@@ -185,9 +227,7 @@ export default function TaskReportPopup({
         const rawRelativePath = fileDocument.path.slice(resultProjectPath.length).replace(/^[/\\]+/, "");
         // Completed worktrees can be removed after merge. Preserve the useful
         // project-relative artifact path from stale worktree links.
-        const artifactMatch = fileDocument.path.match(
-          /(?:^|[/\\])(content|public|dist|output)([/\\].*)$/i,
-        );
+        const artifactMatch = fileDocument.path.match(/(?:^|[/\\])(content|public|dist|output)([/\\].*)$/i);
         const relativePath = (artifactMatch ? `${artifactMatch[1]}${artifactMatch[2]}` : rawRelativePath).replace(
           /\\/g,
           "/",
@@ -219,7 +259,13 @@ export default function TaskReportPopup({
     if (!onUpdateTask || !onRunTask || actionBusy) return;
     const instruction = revisionText.trim();
     if (withRevision && !instruction) {
-      setActionError(t({ ko: "작성할 수정 내용을 입력하세요.", en: "Enter the revision instructions first.", id: "Masukkan instruksi revisi terlebih dahulu." }));
+      setActionError(
+        t({
+          ko: "작성할 수정 내용을 입력하세요.",
+          en: "Enter the revision instructions first.",
+          id: "Masukkan instruksi revisi terlebih dahulu.",
+        }),
+      );
       return;
     }
     setActionBusy(withRevision ? "revision" : "run");
@@ -229,17 +275,38 @@ export default function TaskReportPopup({
         const existing = currentReport.task.description?.trim() ?? "";
         const revisionBlock = `[REVISION REQUEST]\n${instruction}\n[/REVISION REQUEST]`;
         await onUpdateTask(currentReport.task.id, {
-          description: existing ? `${existing}\n\n${revisionBlock}` : revisionBlock,
+          description: appendAttachmentReferences(
+            existing ? `${existing}\n\n${revisionBlock}` : revisionBlock,
+            revisionAttachments,
+            t({ ko: "첨부 파일", en: "Attachments", id: "Lampiran" }),
+          ),
           status: "planned",
         });
       } else {
-        await onUpdateTask(currentReport.task.id, { status: "planned" });
+        if (revisionAttachments.length) {
+          await onUpdateTask(currentReport.task.id, {
+            description: appendAttachmentReferences(
+              currentReport.task.description?.trim() ?? "",
+              revisionAttachments,
+              t({ ko: "첨부 파일", en: "Attachments", id: "Lampiran" }),
+            ),
+            status: "planned",
+          });
+        } else {
+          await onUpdateTask(currentReport.task.id, { status: "planned" });
+        }
       }
       await onRunTask(currentReport.task.id);
       setRevisionText("");
+      clearAttachmentPreviews(revisionAttachments);
+      setRevisionAttachments([]);
       onClose();
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : t({ ko: "Tindakan gagal dijalankan.", en: "Action failed.", id: "Tindakan gagal dijalankan." }));
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : t({ ko: "Tindakan gagal dijalankan.", en: "Action failed.", id: "Tindakan gagal dijalankan." }),
+      );
     } finally {
       setActionBusy(null);
     }
@@ -253,7 +320,11 @@ export default function TaskReportPopup({
       await onUpdateTask(currentReport.task.id, { status: "done" });
       onClose();
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : t({ ko: "Penyelesaian tugas gagal.", en: "Could not complete the task.", id: "Penyelesaian tugas gagal." }));
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : t({ ko: "Penyelesaian tugas gagal.", en: "Could not complete the task.", id: "Penyelesaian tugas gagal." }),
+      );
     } finally {
       setActionBusy(null);
     }
@@ -299,7 +370,13 @@ export default function TaskReportPopup({
       setCopiedDocumentId(documentId ?? "planning-summary");
       window.setTimeout(() => setCopiedDocumentId(null), 1800);
     } catch {
-      setActionError(t({ ko: "클립보드에 복사할 수 없습니다. 텍스트를 직접 선택해 복사하세요.", en: "Could not copy to clipboard. Select and copy the text manually.", id: "Teks tidak dapat disalin. Silakan pilih dan salin teks secara manual." }));
+      setActionError(
+        t({
+          ko: "클립보드에 복사할 수 없습니다. 텍스트를 직접 선택해 복사하세요.",
+          en: "Could not copy to clipboard. Select and copy the text manually.",
+          id: "Teks tidak dapat disalin. Silakan pilih dan salin teks secara manual.",
+        }),
+      );
     }
   };
   const downloadText = (filename: string, content: string) => {
@@ -315,19 +392,28 @@ export default function TaskReportPopup({
     const videos = artifacts.filter((asset) => asset.kind === "video");
     const files = artifacts.filter((asset) => asset.kind === "file");
     return (
-      <section className="mb-5 border-b border-slate-700/50 pb-5" aria-label={t({ ko: "미디어 결과", en: "Media results", id: "Hasil media" })}>
+      <section
+        className="mb-5 border-b border-slate-700/50 pb-5"
+        aria-label={t({ ko: "미디어 결과", en: "Media results", id: "Hasil media" })}
+      >
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold text-slate-100">
               {t({ ko: "Hasil media", en: "Media results", id: "Hasil media" })}
             </h3>
             <p className="mt-1 text-xs text-slate-400">
-              {t({ ko: "File, gambar, dan video yang tersedia pada hasil tugas.", en: "Files, images, and videos available in this task output.", id: "File, gambar, dan video yang tersedia pada hasil tugas." })}
+              {t({
+                ko: "File, gambar, dan video yang tersedia pada hasil tugas.",
+                en: "Files, images, and videos available in this task output.",
+                id: "File, gambar, dan video yang tersedia pada hasil tugas.",
+              })}
             </p>
           </div>
           {!artifactsLoading && artifacts.length > 0 && (
             <span className="text-xs text-slate-400">
-              {images.length} {t({ ko: "gambar", en: "images", id: "gambar" })} · {videos.length} {t({ ko: "video", en: "videos", id: "video" })} · {files.length} {t({ ko: "file", en: "files", id: "file" })}
+              {images.length} {t({ ko: "gambar", en: "images", id: "gambar" })} · {videos.length}{" "}
+              {t({ ko: "video", en: "videos", id: "video" })} · {files.length}{" "}
+              {t({ ko: "file", en: "files", id: "file" })}
             </span>
           )}
         </div>
@@ -338,47 +424,100 @@ export default function TaskReportPopup({
           </div>
         ) : artifactsFailed ? (
           <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
-            {t({ ko: "파일 미디어를 불러오지 못했습니다. 결과 파일 경로와 연결을 확인하세요.", en: "Media files could not be loaded. Check the task output path and connection.", id: "File media tidak dapat dimuat. Periksa lokasi hasil tugas dan koneksi." })}
+            {t({
+              ko: "파일 미디어를 불러오지 못했습니다. 결과 파일 경로와 연결을 확인하세요.",
+              en: "Media files could not be loaded. Check the task output path and connection.",
+              id: "File media tidak dapat dimuat. Periksa lokasi hasil tugas dan koneksi.",
+            })}
           </p>
         ) : artifacts.length === 0 ? (
           <p className="rounded-lg border border-slate-700/60 bg-slate-950/40 px-3 py-3 text-xs leading-relaxed text-slate-400">
-            {t({ ko: "아직 이 작업 결과 폴더에서 출력 파일을 찾지 못했습니다. 텍스트 보고서는 요청한 파일이 완성되었다는 뜻이 아닙니다.", en: "No output files were found in this task folder yet. A text report does not mean requested files are finished.", id: "Belum ada file hasil di folder tugas ini. Laporan teks bukan berarti file yang diminta sudah selesai." })}
+            {t({
+              ko: "아직 이 작업 결과 폴더에서 출력 파일을 찾지 못했습니다. 텍스트 보고서는 요청한 파일이 완성되었다는 뜻이 아닙니다.",
+              en: "No output files were found in this task folder yet. A text report does not mean requested files are finished.",
+              id: "Belum ada file hasil di folder tugas ini. Laporan teks bukan berarti file yang diminta sudah selesai.",
+            })}
           </p>
         ) : (
           <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
             {images.map((asset) => (
-              <figure key={asset.path} className="min-w-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-950/50">
+              <figure
+                key={asset.path}
+                className="min-w-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-950/50"
+              >
                 <a href={asset.url} target="_blank" rel="noreferrer" className="block bg-black/20">
-                  <img src={asset.url} alt={asset.name} loading="lazy" decoding="async" className="mx-auto max-h-[360px] w-full object-contain" />
+                  <img
+                    src={asset.url}
+                    alt={asset.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="mx-auto max-h-[360px] w-full object-contain"
+                  />
                 </a>
                 <figcaption className="flex min-w-0 items-center justify-between gap-2 px-3 py-2 text-xs text-slate-300">
-                  <span className="truncate" title={asset.path}>{asset.path}</span>
-                  <a href={asset.url} download={asset.name} className="shrink-0 rounded border border-slate-600 px-2 py-1 hover:bg-slate-700">
+                  <span className="truncate" title={asset.path}>
+                    {asset.path}
+                  </span>
+                  <a
+                    href={asset.url}
+                    download={asset.name}
+                    className="shrink-0 rounded border border-slate-600 px-2 py-1 hover:bg-slate-700"
+                  >
                     {t({ ko: "다운로드", en: "Download", id: "Unduh" })}
                   </a>
                 </figcaption>
               </figure>
             ))}
             {videos.map((asset) => (
-              <figure key={asset.path} className="min-w-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-950/50 sm:col-span-2">
-                <video src={asset.url} controls preload="metadata" playsInline className="mx-auto max-h-[65vh] w-full bg-black object-contain" aria-label={asset.name} />
+              <figure
+                key={asset.path}
+                className="min-w-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-950/50 sm:col-span-2"
+              >
+                <video
+                  src={asset.url}
+                  controls
+                  preload="metadata"
+                  playsInline
+                  className="mx-auto max-h-[65vh] w-full bg-black object-contain"
+                  aria-label={asset.name}
+                />
                 <figcaption className="flex min-w-0 items-center justify-between gap-2 px-3 py-2 text-xs text-slate-300">
-                  <span className="truncate" title={asset.path}>{asset.path}</span>
-                  <a href={asset.url} download={asset.name} className="shrink-0 rounded border border-slate-600 px-2 py-1 hover:bg-slate-700">
+                  <span className="truncate" title={asset.path}>
+                    {asset.path}
+                  </span>
+                  <a
+                    href={asset.url}
+                    download={asset.name}
+                    className="shrink-0 rounded border border-slate-600 px-2 py-1 hover:bg-slate-700"
+                  >
                     {t({ ko: "다운로드", en: "Download", id: "Unduh" })}
                   </a>
                 </figcaption>
               </figure>
             ))}
             {files.length > 0 && (
-              <div className="space-y-2 sm:col-span-2" aria-label={t({ ko: "파일 결과", en: "Output files", id: "File hasil" })}>
+              <div
+                className="space-y-2 sm:col-span-2"
+                aria-label={t({ ko: "파일 결과", en: "Output files", id: "File hasil" })}
+              >
                 {files.map((asset) => (
-                  <div key={asset.path} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-slate-700/60 bg-slate-950/50 px-3 py-2">
+                  <div
+                    key={asset.path}
+                    className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-slate-700/60 bg-slate-950/50 px-3 py-2"
+                  >
                     <div className="min-w-0">
-                      <p className="truncate text-xs font-medium text-slate-200" title={asset.path}>{asset.name}</p>
-                      <p className="truncate text-[11px] text-slate-500">{asset.path} · {formatFileSize(asset.size_bytes)}</p>
+                      <p className="truncate text-xs font-medium text-slate-200" title={asset.path}>
+                        {asset.name}
+                      </p>
+                      <p className="truncate text-[11px] text-slate-500">
+                        {asset.path} · {formatFileSize(asset.size_bytes)}
+                      </p>
                     </div>
-                    <a href={asset.url} download={asset.name} className="shrink-0 rounded border border-slate-600 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-slate-700">
+                    <a
+                      href={asset.url}
+                      download={asset.name}
+                      className="shrink-0 rounded border border-slate-600 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-slate-700"
+                    >
                       {t({ ko: "다운로드", en: "Download", id: "Unduh" })}
                     </a>
                   </div>
@@ -664,7 +803,10 @@ export default function TaskReportPopup({
   };
 
   return (
-    <div className="app-overlay-panel fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm sm:p-4" onClick={onClose}>
+    <div
+      className="app-overlay-panel fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm sm:p-4"
+      onClick={onClose}
+    >
       <div
         className="report-popup-content app-overlay-panel-content relative mx-auto flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-emerald-500/30 bg-slate-900 shadow-2xl shadow-emerald-500/10 sm:max-h-[calc(100dvh-2rem)]"
         onClick={(e) => e.stopPropagation()}
@@ -712,9 +854,11 @@ export default function TaskReportPopup({
                         ? t({ ko: "Sedang berjalan", en: "In progress", id: "Sedang berjalan" })
                         : t({ ko: "Belum selesai", en: "Not complete", id: "Belum selesai" })}
                 </span>
-                {currentReport.task.status === "done" && <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-400">
-                  {elapsed(currentReport.task.created_at, currentReport.task.completed_at)}
-                </span>}
+                {currentReport.task.status === "done" && (
+                  <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-400">
+                    {elapsed(currentReport.task.created_at, currentReport.task.completed_at)}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -771,7 +915,11 @@ export default function TaskReportPopup({
         </div>
 
         <div className="report-popup-footer sticky bottom-0 z-10 shrink-0 border-t border-slate-700/50 bg-slate-900 px-4 py-3 sm:px-6">
-          {actionError && <p className="mb-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{actionError}</p>}
+          {actionError && (
+            <p className="mb-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+              {actionError}
+            </p>
+          )}
           {(onUpdateTask || onRunTask) && (
             <div className="mb-3 rounded-lg border border-blue-500/25 bg-blue-500/5 p-3">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -797,6 +945,14 @@ export default function TaskReportPopup({
                 className="min-h-16 w-full resize-y rounded-md border border-slate-700 bg-slate-950/50 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-400"
                 disabled={Boolean(actionBusy)}
               />
+              <div className="mt-2">
+                <AttachmentPicker
+                  attachments={revisionAttachments}
+                  onChange={setRevisionAttachments}
+                  disabled={Boolean(actionBusy)}
+                  compact
+                />
+              </div>
               <div className="mt-2 flex flex-wrap justify-end gap-2">
                 <button
                   type="button"

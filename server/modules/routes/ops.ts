@@ -15,6 +15,7 @@ import { registerSkillRoutes } from "./ops/skills/routes.ts";
 import { registerApiDocsRoutes } from "./ops/api-docs.ts";
 import { registerWorkflowPackRoutes } from "./ops/workflow-packs.ts";
 import { registerExternalResourceRoutes } from "./ops/external-resources.ts";
+import { registerAttachmentRoutes } from "./ops/attachments.ts";
 
 export function registerRoutesPartC(ctx: RuntimeContext): RouteOpsExports {
   const __ctx: RuntimeContext = ctx;
@@ -233,6 +234,7 @@ export function registerRoutesPartC(ctx: RuntimeContext): RouteOpsExports {
     normalizeTextField,
   });
   registerExternalResourceRoutes(__ctx);
+  registerAttachmentRoutes(__ctx);
 
   registerTaskReportRoutes(__ctx);
 

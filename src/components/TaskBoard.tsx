@@ -9,9 +9,12 @@ import QuickProjectLaunchModal from "./taskboard/QuickProjectLaunchModal";
 import FilterBar from "./taskboard/FilterBar";
 import TaskCard from "./taskboard/TaskCard";
 import { COLUMNS, isHideableStatus, taskStatusLabel, type HideableStatus } from "./taskboard/constants";
+import { filterTasksForBoard } from "../app/task-workflow-pack";
+import { getOfficePackMeta } from "../app/office-workflow-pack";
 
 interface TaskBoardProps {
   tasks: Task[];
+  activeOfficePackKey?: WorkflowPackKey;
   agents: Agent[];
   departments: Department[];
   subtasks: SubTask[];
@@ -42,6 +45,7 @@ interface TaskBoardProps {
 
 export function TaskBoard({
   tasks,
+  activeOfficePackKey = "development",
   agents,
   departments,
   subtasks,
@@ -67,6 +71,7 @@ export function TaskBoard({
   const [filterDept, setFilterDept] = useState("");
   const [filterAgent, setFilterAgent] = useState("");
   const [filterType, setFilterType] = useState("");
+  const [filterPack, setFilterPack] = useState<WorkflowPackKey | "">("");
   const [search, setSearch] = useState("");
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [sortMode, setSortMode] = useState<"updated" | "created" | "priority">("updated");
@@ -95,8 +100,9 @@ export function TaskBoard({
     bulkHideTasks(statuses, 1);
   }, []);
 
+  const tasksForSelectedPack = useMemo(() => filterTasksForBoard(tasks, filterPack), [tasks, filterPack]);
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
+    return tasksForSelectedPack.filter((task) => {
       if (filterDept && task.department_id !== filterDept) return false;
       if (filterAgent && task.assigned_agent_id !== filterAgent) return false;
       if (filterType && task.task_type !== filterType) return false;
@@ -105,7 +111,7 @@ export function TaskBoard({
       if (!showAllTasks && isHidden) return false;
       return true;
     });
-  }, [tasks, filterDept, filterAgent, filterType, search, hiddenTaskIds, showAllTasks]);
+  }, [tasksForSelectedPack, filterDept, filterAgent, filterType, search, hiddenTaskIds, showAllTasks]);
 
   const tasksByStatus = useMemo(() => {
     const grouped: Record<string, Task[]> = {};
@@ -119,9 +125,7 @@ export function TaskBoard({
       return String(a.id).localeCompare(String(b.id));
     };
     for (const column of COLUMNS) {
-      grouped[column.status] = filteredTasks
-        .filter((task) => task.status === column.status)
-        .sort(compareTasks);
+      grouped[column.status] = filteredTasks.filter((task) => task.status === column.status).sort(compareTasks);
     }
     return grouped;
   }, [filteredTasks, sortMode]);
@@ -135,7 +139,7 @@ export function TaskBoard({
     return grouped;
   }, [subtasks]);
 
-  const activeFilterCount = [filterDept, filterAgent, filterType, search].filter(Boolean).length;
+  const activeFilterCount = [filterPack, filterDept, filterAgent, filterType, search].filter(Boolean).length;
   const runningTasks = useMemo(
     () => tasks.filter((task) => task.status === "in_progress" || task.status === "collaborating"),
     [tasks],
@@ -165,6 +169,16 @@ export function TaskBoard({
               zh: "个已应用",
             })})`}
         </span>
+        <p className="basis-full text-xs text-slate-500">
+          {t({
+            ko: "각 업무는 생성 당시의 패키지를 유지합니다. 현재 오피스 패키지 변경은 새 업무에만 적용됩니다.",
+            en: "Each task keeps the pack it was created with. Changing the office pack affects new tasks only.",
+            ja: "各タスクは作成時のパックを保持します。オフィスパックの変更は新しいタスクにのみ適用されます。",
+            zh: "每个任务都会保留创建时的工作包。更改办公室工作包只影响新任务。",
+            id: "Setiap tugas tetap memakai paket saat dibuat. Perubahan paket kantor hanya berlaku untuk tugas baru.",
+          })}{" "}
+          {t(getOfficePackMeta(activeOfficePackKey).label)}
+        </p>
         <div
           role="status"
           className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
@@ -176,23 +190,58 @@ export function TaskBoard({
           <span className={runningTasks.length > 0 ? "animate-pulse text-amber-300" : "text-slate-600"}>●</span>
           {runningTasks.length > 0
             ? `${t({ ko: "Sedang berjalan", en: "Running now", ja: "実行中", zh: "正在运行", id: "Sedang berjalan" })} ${runningTasks.length}`
-            : t({ ko: "실행 중인 업무 없음", en: "No task running", ja: "実行中のタスクなし", zh: "没有运行中的任务", id: "Tidak ada tugas berjalan" })}
+            : t({
+                ko: "실행 중인 업무 없음",
+                en: "No task running",
+                ja: "実行中のタスクなし",
+                zh: "没有运行中的任务",
+                id: "Tidak ada tugas berjalan",
+              })}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <button onClick={() => setShowQuickProject(true)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-500">
-            {t({ ko: "자동 프로젝트", en: "Auto Project", ja: "自動プロジェクト", zh: "自动项目", id: "Proyek Otomatis" })}
+          <button
+            onClick={() => setShowQuickProject(true)}
+            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-500"
+          >
+            {t({
+              ko: "자동 프로젝트",
+              en: "Auto Project",
+              ja: "自動プロジェクト",
+              zh: "自动项目",
+              id: "Proyek Otomatis",
+            })}
           </button>
           <label className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-400">
-            <span className="hidden lg:inline">{t({ ko: "정렬", en: "Sort", ja: "並べ替え", zh: "排序", id: "Urutan" })}</span>
+            <span className="hidden lg:inline">
+              {t({ ko: "정렬", en: "Sort", ja: "並べ替え", zh: "排序", id: "Urutan" })}
+            </span>
             <select
               value={sortMode}
               onChange={(event) => setSortMode(event.target.value as typeof sortMode)}
               className="bg-transparent text-xs font-medium text-slate-200 outline-none"
-              aria-label={t({ ko: "업무 정렬 순서", en: "Task sort order", ja: "タスクの並び順", zh: "任务排序", id: "Urutan tugas" })}
+              aria-label={t({
+                ko: "업무 정렬 순서",
+                en: "Task sort order",
+                ja: "タスクの並び順",
+                zh: "任务排序",
+                id: "Urutan tugas",
+              })}
             >
-              <option value="updated">{t({ ko: "최근 변경", en: "Recently updated", ja: "最近更新", zh: "最近更新", id: "Perubahan terbaru" })}</option>
-              <option value="created">{t({ ko: "최근 생성", en: "Recently created", ja: "最近作成", zh: "最近创建", id: "Dibuat terbaru" })}</option>
-              <option value="priority">{t({ ko: "Prioritas", en: "Priority", ja: "優先度", zh: "优先级", id: "Prioritas" })}</option>
+              <option value="updated">
+                {t({
+                  ko: "최근 변경",
+                  en: "Recently updated",
+                  ja: "最近更新",
+                  zh: "最近更新",
+                  id: "Perubahan terbaru",
+                })}
+              </option>
+              <option value="created">
+                {t({ ko: "최근 생성", en: "Recently created", ja: "最近作成", zh: "最近创建", id: "Dibuat terbaru" })}
+              </option>
+              <option value="priority">
+                {t({ ko: "Prioritas", en: "Priority", ja: "優先度", zh: "优先级", id: "Prioritas" })}
+              </option>
             </select>
           </label>
           {activeFilterCount > 0 && (
@@ -201,6 +250,7 @@ export function TaskBoard({
                 setFilterDept("");
                 setFilterAgent("");
                 setFilterType("");
+                setFilterPack("");
                 setSearch("");
               }}
               className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white"
@@ -272,10 +322,12 @@ export function TaskBoard({
       <FilterBar
         agents={agents}
         departments={departments}
+        filterPack={filterPack}
         filterDept={filterDept}
         filterAgent={filterAgent}
         filterType={filterType}
         search={search}
+        onFilterPack={setFilterPack}
         onFilterDept={setFilterDept}
         onFilterAgent={setFilterAgent}
         onFilterType={setFilterType}
@@ -294,7 +346,9 @@ export function TaskBoard({
             >
               <div className={`flex items-center justify-between rounded-t-xl ${column.headerBg} px-3.5 py-2.5`}>
                 <div className="flex items-center gap-2">
-                  <span className={`h-2 w-2 flex-shrink-0 rounded-full ${column.dotColor} ${column.status === "in_progress" && columnTasks.length > 0 ? "animate-pulse" : ""}`} />
+                  <span
+                    className={`h-2 w-2 flex-shrink-0 rounded-full ${column.dotColor} ${column.status === "in_progress" && columnTasks.length > 0 ? "animate-pulse" : ""}`}
+                  />
                   <span className="text-sm font-semibold text-white">
                     {column.icon} {taskStatusLabel(column.status, t)}
                     {column.status === "in_progress" && columnTasks.length > 0 && (
@@ -354,7 +408,12 @@ export function TaskBoard({
           onAssign={onAssignTask}
         />
       )}
-      {showQuickProject && <QuickProjectLaunchModal onClose={() => setShowQuickProject(false)} onRefresh={onRefresh ?? (() => undefined)} />}
+      {showQuickProject && (
+        <QuickProjectLaunchModal
+          onClose={() => setShowQuickProject(false)}
+          onRefresh={onRefresh ?? (() => undefined)}
+        />
+      )}
 
       {showProjectManager && (
         <ProjectManagerModal agents={agents} departments={departments} onClose={() => setShowProjectManager(false)} />

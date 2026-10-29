@@ -162,6 +162,16 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at INTEGER DEFAULT (unixepoch()*1000)
 );
 
+CREATE TABLE IF NOT EXISTS attachments (
+  id TEXT PRIMARY KEY,
+  original_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  byte_size INTEGER NOT NULL,
+  sha256 TEXT NOT NULL,
+  storage_name TEXT NOT NULL UNIQUE,
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS task_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   task_id TEXT REFERENCES tasks(id),

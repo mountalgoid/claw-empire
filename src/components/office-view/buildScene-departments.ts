@@ -1,5 +1,5 @@
 import type { MutableRefObject } from "react";
-import { Container, Graphics, Text, TextStyle, type Application, type Texture } from "pixi.js";
+import { Container, Graphics, Text, TextStyle, type Application } from "pixi.js";
 import type { Agent, Department, SubAgent, Task } from "../../types";
 import { localeName } from "../../i18n";
 import type { CallbackSnapshot, AnimItem, SubCloneAnimItem } from "./buildScene-types";
@@ -36,7 +36,6 @@ import { renderDeskAgentAndSubClones } from "./buildScene-department-agent";
 
 interface BuildDepartmentRoomsParams {
   app: Application;
-  textures: Record<string, Texture>;
   departments: Department[];
   agents: Agent[];
   tasks: Task[];
@@ -66,7 +65,6 @@ interface BuildDepartmentRoomsParams {
 
 export function buildDepartmentRooms({
   app,
-  textures,
   departments,
   agents,
   tasks,
@@ -193,7 +191,6 @@ export function buildDepartmentRooms({
       } else {
         renderDeskAgentAndSubClones({
           room,
-          textures,
           spriteMap,
           agent,
           tasks,
